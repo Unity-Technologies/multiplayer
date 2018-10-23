@@ -50,7 +50,7 @@ Protocol and you can find it using our Matchmaker.
 Ping consists of multiple scenes, all found in `sampleproject/Assets/Scenes/` .
 - `PingMainThread.unity` - A main-thread only implementation of ping.
 - `Ping.unity` - A fully jobified version of the ping client and server.
-- `PingClient.unity` - The same jobified client code as `Ping.untiy`, but without the server.
+- `PingClient.unity` - The same jobified client code as `Ping.unity`, but without the server.
 - `PingServer.unity` - The dedicated server version of the jobified ping. A headless (or Server Build in 2018.3) Linux 64 bit build of this scene is what should be deployed to Multiplay.
 - `PingECS.unity` - An ECS version of the jobified ping sample.
 #### Soaker
@@ -58,7 +58,7 @@ A stress test which will create a set number of clients and a server in the same
 
 ## Installation
 
-To try out the samples in this repository all you need to do is open
+To try out samples in this repository all you need to do is open
 `sampleprojects/` in Unity.
 If you wish to create a new Unity project using these packages that is
 also possible.
