@@ -1,0 +1,8 @@
+{
+	"name": "com.unity.ucg.matchmaking",
+	"displayName":"Matchmaking",
+	"version": "0.1.0",
+	"description": "Unity Matchmaking client",
+	"dependencies": {
+	}
+}
