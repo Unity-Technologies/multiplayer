@@ -2,19 +2,18 @@
 using System.Net;
 using Unity.Collections;
 using UnityEngine;
-
 using Unity.Networking.Transport;
 
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
 using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
-public class ClientBehaviour : MonoBehaviour {
-
+public class ClientBehaviour : MonoBehaviour
+{
     public UdpCNetworkDriver m_Driver;
     public NetworkConnection m_Connection;
-    public bool Done;
+    public bool m_Done;
     
-    void Start () {
+    void Start ()
+	{
         m_Driver = new UdpCNetworkDriver(new INetworkParameter[0]);
         m_Connection = default(NetworkConnection);
         
@@ -33,7 +32,7 @@ public class ClientBehaviour : MonoBehaviour {
 
         if (!m_Connection.IsCreated)
         {
-            if (!Done)
+            if (!m_Done)
                 Debug.Log("Something went wrong during connect");
             return;
         }
@@ -42,7 +41,7 @@ public class ClientBehaviour : MonoBehaviour {
         NetworkEvent.Type cmd;
         
         while ((cmd = m_Connection.PopEvent(m_Driver, out stream)) != 
-            NetworkEvent.Type.Empty)
+               NetworkEvent.Type.Empty)
         {
             if (cmd == NetworkEvent.Type.Connect)
             {
@@ -60,7 +59,7 @@ public class ClientBehaviour : MonoBehaviour {
                 var readerCtx = default(DataStreamReader.Context);
                 uint value = stream.ReadUInt(ref readerCtx);
                 Debug.Log("Got the value = " + value + " back from the server");
-                Done = true;
+                m_Done = true;
                 m_Connection.Disconnect(m_Driver);
                 m_Connection = default(NetworkConnection);
             }
@@ -71,6 +70,5 @@ public class ClientBehaviour : MonoBehaviour {
             }
         }
     }
-    
 }
 ```

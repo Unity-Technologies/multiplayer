@@ -46,7 +46,7 @@ public class PingClientUIBehaviour : MonoBehaviour
         {
             m_matchmaker = new Matchmaker(MatchmakingServer);
             MatchmakingPlayerProperties playerProps = new MatchmakingPlayerProperties() {hats = 5};
-            MatchmakingGroupProperties groupProps = new MatchmakingGroupProperties() {mode = 1};
+            MatchmakingGroupProperties groupProps = new MatchmakingGroupProperties() {mode = 0};
             MatchmakingRequest request = Matchmaker.CreateMatchmakingRequest(Guid.NewGuid().ToString(), playerProps, groupProps);
             m_matchmaker.RequestMatch(request, OnMatchmakingSuccess, OnMatchmakingError);
         }

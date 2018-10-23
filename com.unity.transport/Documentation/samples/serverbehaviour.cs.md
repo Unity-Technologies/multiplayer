@@ -5,15 +5,16 @@ using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using UnityEngine.Assertions;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
+
 using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
-public class ServerBehaviour : MonoBehaviour {
-
+public class ServerBehaviour : MonoBehaviour
+{
     public UdpCNetworkDriver m_Driver;
     private NativeList<NetworkConnection> m_Connections;
     
-    void Start () {
+    void Start ()
+	{
         m_Driver = new UdpCNetworkDriver(new INetworkParameter[0]);
         if (m_Driver.Bind(new IPEndPoint(IPAddress.Any, 9000)) != 0)
             Debug.Log("Failed to bind to port 9000");
@@ -29,8 +30,8 @@ public class ServerBehaviour : MonoBehaviour {
         m_Connections.Dispose();
     }
     
-    void Update () {
-        
+    void Update ()
+	{
         m_Driver.ScheduleUpdate().Complete();
         
         // CleanUpConnections
@@ -58,7 +59,7 @@ public class ServerBehaviour : MonoBehaviour {
             
             NetworkEvent.Type cmd;
             while ((cmd = m_Driver.PopEventForConnection(m_Connections[i], out stream)) !=
-                NetworkEvent.Type.Empty)
+                   NetworkEvent.Type.Empty)
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
