@@ -5,7 +5,9 @@ Welcome to the Unity Real-time Multiplayer Alpha repository!
 Here you can find all the resources you need to start prototyping
 your own real-time multiplayer games.
 
-[Click here to visit the forum](https://forum.unity.com/forums/connected-games.26/)
+[Manual - Table Of Contents](com.unity.transport/Documentation/TableOfContents.md)  
+  
+[Click here to visit the forum](https://forum.unity.com/forums/connected-games.26/)  
 
 ## Included content
 
