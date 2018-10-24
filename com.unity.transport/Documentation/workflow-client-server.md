@@ -30,7 +30,7 @@ A server is an endpoint that listens for incoming connection requests and sends 
 
 Start by creating a C# script in the Unity Editor.
 
-Filename: [_Assets\Scripts\ServerBehaviour.cs_][samples/serverbehaviour.cs.md]
+Filename: [_Assets\Scripts\ServerBehaviour.cs_](samples/serverbehaviour.cs.md)
 ```c#
 using System.Collections;
 using System.Collections.Generic;
@@ -58,7 +58,7 @@ As the `unity.networking.transport` package is a low level API, there is a bit o
 
 The next step is to clean up the dependencies and add our boilerplate code:
 
-**Filename**: [_Assets\Scripts\ServerBehaviour.cs_][samples/serverbehaviour.cs.md]
+**Filename**: [_Assets\Scripts\ServerBehaviour.cs_](samples/serverbehaviour.cs.md)
 
 ```c#
 using System.Net;
@@ -100,7 +100,7 @@ To reduce typing, this code sets up some type aliases.
 
 Adding the members we need the following code:
 
-**Filename**: [_Assets\Scripts\ServerBehaviour.cs_][samples/serverbehaviour.cs.md]
+**Filename**: [_Assets\Scripts\ServerBehaviour.cs_](samples/serverbehaviour.cs.md)
 
 ```c#
 using ...
@@ -132,7 +132,7 @@ You need to declare a `INetworkDriver`, in this case you can use the `BasicNetwo
 
 ### Start method
 
-**Filename**: [_Assets\Scripts\ServerBehaviour.cs_][samples/serverbehaviour.cs.md]
+**Filename**: [_Assets\Scripts\ServerBehaviour.cs_](samples/serverbehaviour.cs.md)
 
 ```c#
     void Start () {
@@ -289,7 +289,7 @@ Finally, you need to handle the disconnect case. This is pretty straight forward
 
 ```
 
-That's the whole server. Here is the full source code to [_ServerBehaviour.cs_][samples/serverbehaviour.cs.md].
+That's the whole server. Here is the full source code to [_ServerBehaviour.cs_](samples/serverbehaviour.cs.md).
 
 ## Creating a Client
 
@@ -299,7 +299,7 @@ The client code looks pretty similar to the server code at first glance, but the
 
 You still define a `UdpCNetworkDriver` but instead of having a list of connections we now only have one. There is a `Done` flag to indicate when we are done, or in case you have issues with a connection, you can exit quick.
 
-**Filename**: [_Assets\Scripts\ClientBehaviour.cs_][samples/clientbehaviour.cs.md]
+**Filename**: [_Assets\Scripts\ClientBehaviour.cs_](samples/clientbehaviour.cs.md)
 
 ```c#
 using ...
