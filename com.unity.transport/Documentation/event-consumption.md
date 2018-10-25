@@ -52,7 +52,7 @@ while ((c = m_Driver.Accept()) != default(NetworkConnection))
 Looking at this table we see that there are 2 things that stand out.
 
 - The first thing is that the `Connect` event is only available if the `NetworkDriver` is **NOT** `Listening`  
-  - In order to receive any `Connect` events on a `NetworkDriver` that is in the `Listening` state we need to call the special function `Accept` just as we did in ***2.1**. Creating a Server*.
+  - In order to receive any `Connect` events on a `NetworkDriver` that is in the `Listening` state we need to call the special function `Accept` just as we did in the *Creating a Server* section in the [Creating a minimal client and server](workflow-client-server.md) workflow page.
 - The second thing to notice is that if you call `Disconnect` on a `NetworkConnection` this will not trigger an event inside your own driver.
 
 

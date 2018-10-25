@@ -1,11 +1,13 @@
 # Jobyfiying our Example
 
-We start off where we left off in the previous example [Chapter 2](manual.md), our client should look something like this  [Client Code](samples/clientbehaviour.cs.md).  A good thing to do before reading this chapter is to refresh your memory on how the [JobSystem](https://docs.unity3d.com/Manual/JobSystem.html) works.
+In the workflow [Creating a minimal client and server](workflow-client-server.md), our client should look like this [code example](samples/clientbehaviour.cs.md).  
+
+> **Note**: It is recommended, before reading this workflow, to refresh your memory on how the [C# Job System](https://docs.unity3d.com/Manual/JobSystem.html) works.
 
 
 ## Creating a Jobified Client
 
-We start off by creating a client job to handle our inputs from the network. Because we will only handle one client at a time we will use the `IJob` as our Job type.  We need to pass the driver and the connection to the job so we handle updates within the execution of the job.
+Start by creating a client job to handle your inputs from the network. As you only handle one client at a time we will use the [IJob](https://docs.unity3d.com/ScriptReference/Unity.Jobs.IJob.html) as our job type.  You need to pass the driver and the connection to the job so you can handle updates within the `Execute` method of the job.
 
 ```c#
 struct ClientUpdateJob: IJob
@@ -18,11 +20,15 @@ struct ClientUpdateJob: IJob
 }
 ```
 
-We need to keep in mind that the data to the ClientUpdateJob is **copied**. So if we want to use the data after the job is completed we need to have them in a shared container. This is where the [NativeContainers](https://docs.unity3d.com/Manual/JobSystemNativeContainer.html) help us out. Because we might update the `NetworkConnection`  and the `done` variables inside the job (we might receive a disconnect message). We need to make sure we can share the data between the job and the caller, *NativeContainers* can help us with that, in our case the `NativeArray` comes to our rescue. 
+> **Note**: The data inside the ClientUpdateJob is **copied**. If you want to use the data after the job is completed, you need to have your data in a shared container, such as a [NativeContainer](https://docs.unity3d.com/Manual/JobSystemNativeContainer.html). 
 
-> One thing to keep in mind is that we can only use a native container together with [Blittable Types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types). So in the case of our `bool` we chose to use a `byte` instead as its a `blittable` type.
+Since you might want to update the `NetworkConnection`  and the `done` variables inside your job (we might receive a disconnect message), you need to make sure you can share the data between the job and the caller. In this case, you can use a [NativeArray](https://docs.unity3d.com/ScriptReference/Unity.Collections.NativeArray_1.html). 
 
-In our execute method we now move in our code from the `Update` method we had before and we are done. We just need to change any call to `m_Connection` now to `connection[0]` to refer to the first element inside our `NativeArray` And the same goes for our `done` variable, we need to make sure we call `done[0]` when we refer to the `done` variable.
+> Note: You can only use [blittable types](https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types) in a `NativeContainer`. In this case, instead of a `bool` you need  to use a `byte`, as its a blittable type.
+
+In your `Execute` method, move over your code from the `Update` method that you have already in place from [_ClientBehaviour.cs_](samples/clientbehaviour.cs.md) and you are done. 
+
+You need to change any call to `m_Connection` to `connection[0]` to refer to the first element inside your `NativeArray`. The same goes for your `done` variable, you need to call `done[0]` when you refer to the `done` variable. See the code below:
 
 ```c#
 public void Execute()
@@ -70,9 +76,9 @@ public void Execute()
 }
 ```
 
-### Updating the *MonoBehaviour*
+### Updating the client MonoBehaviour
 
-Now when we have a job. We need to make sure that we can execute the job accordingly, to do so we need to do some tweaks in our ClientBehaviour. 
+When you have a job, you need to make sure that you can execute the job. To do this, you need to make some changes to your ClientBehaviour:
 
 
 ```c#
@@ -88,9 +94,9 @@ public class JobifiedClientBehaviour : MonoBehaviour {
 }
 ```
 
-As you can see we made both `m_Done` and `m_Connection` a `NativeArray`.  We also added a `JobHandle` so we can track our ongoing jobs.
+Both `m_Done` and `m_Connection` in the code above, have been changed to type `NativeArray`.  We also added a [JobHandle](https://docs.unity3d.com/Manual/JobSystemJobDependencies.html) so you can track your ongoing jobs.
 
-
+#### Start method
 
 ```c#
 void Start () {
@@ -103,9 +109,9 @@ void Start () {
 }
 ```
 
-The `Start` method looks pretty similar to before, the major update here is to make sure we create our ``NativeArray`. 
+The `Start` method looks pretty similar to before, the major update here is to make sure you create your `NativeArray`. 
 
-
+#### OnDestroy method
 
 ```c#
 public void OnDestroy()
@@ -118,11 +124,11 @@ public void OnDestroy()
 }
 ```
 
-Same goes for the `OnDestroy` method, we make sure we dispose all our `NativeArray` objects and a new addition here is the `ClientJobHandle.Complete()` call. This is so we make sure to complete our jobs before cleaning up and destroying data they might be using.
+Same goes for the `OnDestroy` method. Make sure you dispose all your `NativeArray` objects. A new addition is the `ClientJobHandle.Complete()` call. This makes sure your jobs complete before cleaning up and destroying the data they might be using.
 
+#### Client Update loop
 
-
-Finally we update our core game loop.
+Finally you need to update your core game loop:
 
 ```c#
 void Update()
@@ -132,9 +138,9 @@ void Update()
 }
 ```
 
-Just as before we want to make sure that before we get started running our new frame, we sync that the last frame was finished. But instead of `m_Driver.ScheduleUpdate().Complete();` we instead use the `JobHandle` and call `ClientJobHandle.Complete()`.
+You want to make sure (again) that before you start running your new frame, we check that the last frame is complete. Instead of calling `m_Driver.ScheduleUpdate().Complete()`, use the `JobHandle` and call `ClientJobHandle.Complete()`.
 
-Now lets chain our jobs. We start by creating a job struct.
+To chain your job, start by creating a job struct:
 
 ```c#
 var job = new ClientUpdateJob
@@ -146,26 +152,24 @@ var job = new ClientUpdateJob
 
 ```
 
- To schedule the job we need to pass the dependency `JobHandle` that was returned from the `m_Driver.ScheduleUpdate` call into the `Schedule` function of our `IJob`. We start by first invoking the `m_Driver.ScheduleUpdate` without a call to `Complete` and we pass the returning `JobHandle` to our saved `ClientJobHandle`. 
+ To schedule the job, you need to pass the  `JobHandle` dependency that was returned from the `m_Driver.ScheduleUpdate` call in the `Schedule` function of your `IJob`. Start by invoking the `m_Driver.ScheduleUpdate` without a call to `Complete`, and pass the returning `JobHandle` to your saved `ClientJobHandle`. 
 
 ```c#
 ClientJobHandle = m_Driver.ScheduleUpdate();
 ClientJobHandle = job.Schedule(ClientJobHandle);
 ```
 
-Then we pass the returned `ClientJobHandle` to our own job function returning a newly  updated `ClientJobHandle`. 
+As you can see in the code above, you pass the returned `ClientJobHandle` to your own job, returning a newly updated `ClientJobHandle`. 
 
-
-
-And that's it. We now should have a *JobifiedClientBehaviour* that looks like [this](samples/jobifiedclientbehaviour.cs.md)
+You now have a *JobifiedClientBehaviour* that looks like [this](samples/jobifiedclientbehaviour.cs.md).
 
 
 
 ## Creating a Jobified Server
 
-We start off pretty similar on the Server side. We create jobs needed and then we update the usage code.
+The server side is pretty similar to start with. You create the jobs you need and then you update the usage code.
 
-Before we begin let's start and think about it a little bit. We know that the `NetworkDriver` has a `ScheduleUpdate` function that returns a job handle. The job as we saw populates the internal buffers of the `NetworkDriver` and lets us call `PopEvent`/`PopEventForConnection`. So what if we create a job that will fan out and run the processing code for all connected Clients, and we do it in Parallel. Sure thing, looking at the documentation for the [JobSystem](https://docs.unity3d.com/Manual/JobSystemParallelForJobs.html), we can see that there is a `IJobParallelFor` that might do the trick so lets use that.
+Consider this: you know that the `NetworkDriver` has a `ScheduleUpdate` method that returns a `JobHandle`. The job as you saw above populates the internal buffers of the `NetworkDriver` and lets us call `PopEvent`/`PopEventForConnection` method. What if you create a job that will fan out and run the processing code for all connected clients in parallel? If you look at the documentation for the C# Job System, you can see that there is a [IJobParallelFor](https://docs.unity3d.com/Manual/JobSystemParallelForJobs.html) job type that can handle this scenario:
 
 ```c#
 struct ServerUpdateJob : IJobParallelFor
@@ -177,9 +181,11 @@ struct ServerUpdateJob : IJobParallelFor
 }
 ```
 
-But if we stop and think a little bit we can’t make all of our code run in parallel. In our previous example we started off by cleaning up closed connection and accepting new ones, this cant be done in parallel. So let’s do a Connection Job as well;
+However, we can’t run all of our code in parallel. 
 
-We start by creating a `ServerUpdateConnectionJob`, we know we will need to pass both the *driver* and the *connections* to our *ConnectionsJob* and then we want it to *CleanUpConnections* and *AcceptNewConnection*.
+In the client example above, we started off by cleaning up closed connections and accepting new ones, this can't be done in parallel. You need to create a connection job as well;
+
+Start by creating a `ServerUpdateConnectionJob` job. You know you need to pass both the `driver` and `connections` to our connection job. Then you want your job to "Clean up connections" and "Accept new connections":
 
 ```c#
 struct ServerUpdateConnectionsJob : IJob
@@ -189,7 +195,7 @@ struct ServerUpdateConnectionsJob : IJob
     
     public void Execute()
     {
-        // CleanUpConnections
+        // Clean up connections
         for (int i = 0; i < connections.Length; i++)
         {
             if (!connections[i].IsCreated)
@@ -198,7 +204,7 @@ struct ServerUpdateConnectionsJob : IJob
                 --i;
             }
         }
-        // AcceptNewConnections
+        // Accept new connections
         NetworkConnection c;
         while ((c = driver.Accept()) != default(NetworkConnection))
         {
@@ -209,9 +215,9 @@ struct ServerUpdateConnectionsJob : IJob
 }
 ```
 
-The code above should be almost identical to you old non-jobified code.
+The code above should be almost identical to your old non-jobified code.
 
-With the `ServerUpdateConnectionsJob` completed lets look at how to implement the `ServerUpdateJob` using `IParallelFor`.
+With the `ServerUpdateConnectionsJob` done, lets look at how to implement the `ServerUpdateJob` using `IJobParallelFor`.
 
 ```c#
 struct ServerUpdateJob : IJobParallelFor
@@ -226,9 +232,9 @@ struct ServerUpdateJob : IJobParallelFor
 }
 ```
 
-There are **two** major differences here compared with our other job. First off we are using the `UdpCNetworkDriver.Concurrent` type, this allows us to call the `NetworkDriver` from multiple threads, precisely what we need for the `IParallelForJob`. Secondly we are now passing a `NativeArray` of `NetworkConnection` instead of a `NativeList`. This is because the `IParallelForJob` does not allow any other `Unity.Collections` type than a `NativeArray` to work on (More on this later).
+There are **two** major differences here compared with our other `IParallelForJob` job. First off we are using the `UdpCNetworkDriver.Concurrent` type, this allows you to call the `NetworkDriver` from multiple threads, precisely what you need for the `IParallelForJob`. Secondly, you are now passing a `NativeArray` of type `NetworkConnection` instead of a `NativeList`. The `IParallelForJob` does not accept any other `Unity.Collections` type than a `NativeArray` (more on this later).
 
-Now to the body of the execute function. 
+### Execute method
 
 ```c#
 public void Execute(int index)
@@ -264,23 +270,26 @@ public void Execute(int index)
 }
 ```
 
-The only difference between our old code and our jobified example is that we removed the top level for loop we had in our code before `for (int i = 0; i < m_Connections.Length; i++)`. This is because the `Execute` function on this job will be called for each connection, and the index to that a available connection will be passed in. As you can see in the top level `while` loop.
+The only difference between our old code and our jobified example is that you remove the top level `for` loop that you had in your code: `for (int i = 0; i < m_Connections.Length; i++)`. This is removed because the `Execute` function on this job will be called for each connection, and the `index` to that a available connection will be passed in. You can see this `index` in use in the top level `while` loop:
 
-`while ((cmd = driver.PopEventForConnection(connections[index], out stream)) !=
-​	NetworkEvent.Type.Empty)` 
+```
+while ((cmd = driver.PopEventForConnection(connections[index], out stream)) != NetworkEvent.Type.Empty`
+```
 
-> **Note**: We are using the `index` that was passed into our `Execute` to iterate over the `connections`.
+> **Note**: You are using the `index` that was passed into your `Execute` method to iterate over all the `connections`.
 
+You now have 2 jobs:
 
-
-We now have 2 jobs.
-
-- First Job is to Update our Connection Status.
+- The first job is to update your connection status.
   - Add new connections
   - Remove old / stale connections
-- Second Job is to Parse `NetworkEvent` on each connected client.
+- The second job is to parse `NetworkEvent` on each connected client.
 
-With this we can now go back to our *MonoBehaviour* and start updating the Server.
+
+
+### Updating the server MonoBehaviour
+
+With this we can now go back to our [MonoBehaviour](https://docs.unity3d.com/ScriptReference/MonoBehaviour.html) and start updating the server.
 
 ```c#
 public class JobifiedServerBehaviour : MonoBehaviour 
@@ -297,7 +306,11 @@ public class JobifiedServerBehaviour : MonoBehaviour
 }
 ```
 
-The only change we have made in our variable declaration is that we have once again added a `JobHandle` so we can keep track of our ongoing jobs. We do not need to change our `Start` method as it should look the same.
+The only change made in your variable declaration is that you have once again added a `JobHandle` so you can keep track of your ongoing jobs. 
+
+#### Start method
+
+You do not need to change your `Start` method as it should look the same:
 
 ```c#
 void Start ()
@@ -312,7 +325,9 @@ void Start ()
 }
 ```
 
-But we need to remember to call `ServerJobHandle.Complete` in our `OnDestroy` method so we can properly clean up after our self.
+#### OnDestroy method
+
+You need to remember to call `ServerJobHandle.Complete` in your `OnDestroy` method so you can properly clean up after yourself:
 
 ```c#
 public void OnDestroy()
@@ -324,9 +339,9 @@ public void OnDestroy()
 }
 ```
 
+#### Server update loop
 
-
-In our `Update` call we start by completing the  `JobHandle`. This will force the Jobs to complete before we start a new frame of work.
+In your `Update` method, call `Complete`on the `JobHandle`. This will force the jobs to complete before we start a new frame:
 
 ```c#
 void Update () 
@@ -351,10 +366,10 @@ void Update ()
 }
 ```
 
-Now it's just about chaining the jobs. We want to following to happen.
-`NetworkDriver.Update -> ServerUpdateConnectionsJob -> ServerUpdateJob`. 
+To chain the jobs, you want to following to happen:
+`NetworkDriver.Update` -> `ServerUpdateConnectionsJob` -> `ServerUpdateJob`. 
 
-We start off populating our `ServerUpdateConnectionsJob`:
+Start by populating your `ServerUpdateConnectionsJob`:
 
 ```c#
 var connectionJob = new ServerUpdateConnectionsJob
@@ -364,10 +379,7 @@ var connectionJob = new ServerUpdateConnectionsJob
 };
 ```
 
-
-
-Then we create our `ServerUpdateJob`, here we have to remember to use the 
-`ToConcurrent()` call on our driver to make sure we are using a concurrent driver for the `IParallelForJob`.
+Then create your `ServerUpdateJob`. Remember to use the `ToConcurrent` call on your driver, to make sure you are using a concurrent driver for the `IParallelForJob`:
 
 ```c#
 var serverUpdateJob = new ServerUpdateJob
@@ -377,10 +389,10 @@ var serverUpdateJob = new ServerUpdateJob
 };
 ```
 
-The final addition is to make sure that the `NativeArray` is populated to the correct size. This 
-can be done using a `DeferredJobArray` basically it's just making sure that when the job gets executed the connections array is populated with the correct amount of items we have in our list. Remember we will run the `ServerUpdateConnectionsJob` first and this might change the *size* of the list.
+The final step is to make sure the `NativeArray` is populated to the correct size. This 
+can be done using a `DeferredJobArray`. It makes sure that, when the job is executed, that the connections array is populated with the correct number of items that you have in your list. Since we will run the `ServerUpdateConnectionsJob` first, this might change the **size** of the list.
 
-That's it, let's create our job chain and call `Scheduele`.
+Create your job chain and call `Scheduele` as follows:
 
 ```
 ServerJobHandle = m_Driver.ScheduleUpdate();
@@ -388,17 +400,17 @@ ServerJobHandle = connectionJob.Schedule(ServerJobHandle);
 ServerJobHandle = serverUpdateJob.Schedule(m_Connections, 1, ServerJobHandle);
 ```
 
-Here we created our chain. 
+In the code above, you have:
 
-- We schedule the `NetworkDriver` job.
-- We add the handle we got as a dependency on the `ServerUpdateConnectionJob`.
-- And the final chain is the `ServerUpdateJob` that needs to run after the `ServerUpdateConnectionsJob`. Here we do a trick to invoke the `IJobParallelForDeferExtensions` as you can see we pass our `m_Connections` `NativeList` to the `Schedule`, this makes sure to update the count of connections before starting the job. Its here we will fan out and run all the *ServerUpdateConnectionJobs* in parallel.
+- Scheduled the `NetworkDriver` job.
+- Add the `JobHandle` returned as a dependency on the `ServerUpdateConnectionJob`.
+- The final link in the chain is the `ServerUpdateJob` that needs to run after the `ServerUpdateConnectionsJob`. In this line of code, there is a trick to invoke the `IJobParallelForDeferExtensions`. As you can see, `m_Connections` `NativeList` is passed to the `Schedule` method, this updates the count of connections before starting the job. It's here that it will fan out and run all the `ServerUpdateConnectionJobs` in parallel.
 
-> **Note**: You might need to add `"com.unity.jobs": "0.0.7-preview.5"` to you `manifest.json` file, inside the `Packages/` folder. If you are having trouble with the `serverUpdateJob.Schedule(m_Connections, 1, ServerJobHandle);` call.
+> **Note**: If you are having trouble with the `serverUpdateJob.Schedule(m_Connections, 1, ServerJobHandle);` call, you might need to add `"com.unity.jobs": "0.0.7-preview.5"` to your `manifest.json` file, inside the _/Packages_ folder. 
 
 
 
-That's it. You should not have a fully functional [Jobified Server](samples/jobifiedserverbehaviour.cs.md).
+You should now have a fully functional [jobified server](samples/jobifiedserverbehaviour.cs.md).
 
 You can download all examples from [here](https://oc.unity3d.com/index.php/s/PHaNZP79Va2YOLT).
 

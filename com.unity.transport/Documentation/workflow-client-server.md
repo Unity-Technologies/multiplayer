@@ -8,7 +8,7 @@
 
 ## Introduction
 
-This workflow helps you to create a sample project that shows you how to use the `com.unity.transport` API to:
+This workflow helps you create a sample project that highlights how to use the `com.unity.transport` API to:
 
 - Configure
 - Connect

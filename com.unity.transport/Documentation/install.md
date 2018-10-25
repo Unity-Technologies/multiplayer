@@ -6,22 +6,22 @@ Open up a terminal and navigate to where you want to have your samples root fold
 
 `$ git clone https://github.com/Unity-Technologies/multiplayer`
 
-This command makes git clone the repository into a folder called _unity.networking_.
+This command makes git clone the repository into a folder called _multiplayer_.
 
 ## Setup a project in Unity
 
-Start up the Unity Editor and begin by creating a __New Project__. Set the project location to the same root folder as the cloned `com.unity.transport` repository. Your root should look something like this:
+Start up the Unity Editor and begin by creating a __New Project__. Set the project location to the same root folder as the cloned `multiplayer` repository, name it _client-server_. Your root should look something like this:
 
 ```
 client-server/
-unity.networking/
+multiplayer/
 ```
 
 Update the manifest file inside the _Packages_ folder, so it points to our newly downloaded preview package.  
 
-Open up the _Packages\manifest.json_ file in your favorite editor and, inside the `{}` under `"dependencies"`, add the line: `"com.unity.transport": "file:../../unity.networking/com.unity.transport",`  
+Open up the _Packages/manifest.json_ file in your favorite editor and, inside the `{}` under `"dependencies"`, add the line: `"com.unity.transport": "file:../../multiplayer/com.unity.transport",`  
 
-The path `"../../unity.networking"` is relative, this means that if you go two levels up in the folder structure there should be a folder called _unity.networking_. See overview below:
+The path `"../../multiplayer"` is relative, this means that if you go two levels up in the folder structure there should be a folder called _multiplayer_. See overview below:
 
 ```
 :.                         
@@ -33,7 +33,7 @@ The path `"../../unity.networking"` is relative, this means that if you go two l
 │   │       manifest.json   
 │   │                       
 │   └───ProjectSettings     
-└───unity.networking        
+└───multiplayer        
     ├───com.unity.transport <- We want to point to here.
     └───network.bindings    
 ```
@@ -47,7 +47,7 @@ Filename: _Packages/manifest.json_
 ```json
 {
   "dependencies": {
-    "com.unity.transport": "file:../../unity.networking/com.unity.transport",
+    "com.unity.transport": "file:../../multiplayer/com.unity.transport",
     "com.unity.mathematics": "0.0.12-preview.19",
     "com.unity.ads": "2.0.8",
     ...
