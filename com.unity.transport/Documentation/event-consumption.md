@@ -14,7 +14,7 @@ public enum Type
 
 As mentioned, there are a few subtle differences running the driver as a host or client. Mainly when it comes to consumption of events. 
 
-Both your client and you server loop will want to consume the events that are produced by the `NetworkDriver`. And you do so by either calling `PopEvent` on each `NetworkConnection` similar to how we did before.
+Both your client and your server loop will want to consume the events that are produced by the `NetworkDriver`. And you do so by either calling `PopEvent` on each `NetworkConnection` similar to how we did before.
 
 ```c#
 DataStreamReader strm;
