@@ -69,7 +69,7 @@ namespace Unity.Networking.Transport.Tests
                 dataStream.Write((byte) 'c');
                 var reader = new DataStreamReader(dataStream, 0, dataStream.Length);
                 var readerCtx = default(DataStreamReader.Context);
-                reader.ReadBytesIntoArray(ref readerCtx, ref byteArray, dataStream.Length);
+                reader.ReadBytesIntoArray(ref readerCtx, byteArray, dataStream.Length);
                 readerCtx = default(DataStreamReader.Context);
                 for (int i = 0; i < reader.Length; ++i)
                 {

@@ -599,7 +599,7 @@ namespace Unity.Networking.Transport
         /// <param name="ctx"></param>
         /// <param name="dest"></param>
         /// <param name="length"></param>
-        public void ReadBytesIntoArray(ref Context ctx, ref byte[] dest, int length)
+        public void ReadBytesIntoArray(ref Context ctx, byte[] dest, int length)
         {
             for (var i = 0; i < length; ++i)
                 dest[i] = ReadByte(ref ctx);
