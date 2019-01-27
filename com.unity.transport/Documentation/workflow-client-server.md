@@ -184,7 +184,7 @@ Add the following code to the `OnDestroy` method on your [MonoBehaviour](https:/
 
 ### Server Update loop
 
-As the `unity.networking.transport` package uses the [Unity C# Job System](https://docs.unity3d.com/Manual/JobSystem.html) internally, the the `m_Driver` has a `ScheduleUpdate` method call. Inside our `Update` loop you need to make sure to call the `Complete` method on the [JobHandle](https://docs.unity3d.com/Manual/JobSystemJobDependencies.html) that is returned, in order to know when you are ready to process any updates.
+As the `unity.networking.transport` package uses the [Unity C# Job System](https://docs.unity3d.com/Manual/JobSystem.html) internally, the `m_Driver` has a `ScheduleUpdate` method call. Inside our `Update` loop you need to make sure to call the `Complete` method on the [JobHandle](https://docs.unity3d.com/Manual/JobSystemJobDependencies.html) that is returned, in order to know when you are ready to process any updates.
 
 ```c#
     void Update () {
