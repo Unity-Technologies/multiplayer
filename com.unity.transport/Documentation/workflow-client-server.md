@@ -52,7 +52,7 @@ public class ServerBehaviour : MonoBehaviour {
 
 ### Boilerplate code
 
-As the `unity.networking.transport` package is a low level API, there is a bit of boiler plate code you might want to setup. This is a architecture design Unity chose to make sure that you always have full control. 
+As the `unity.networking.transport` package is a low level API, there is a bit of boiler plate code you might want to setup. This is an architecture design Unity chose to make sure that you always have full control. 
 
 > **Note**: As development on the `unity.networking` package evolves, more abstractions may be created to reduce your workload on a day-to-day basis. 
 
