@@ -55,9 +55,10 @@ Ping consists of multiple scenes, all found in `sampleproject/Assets/Scenes/` .
 - `PingClient.unity` - The same jobified client code as `Ping.unity`, but without the server.
 - `PingServer.unity` - The dedicated server version of the jobified ping. A headless (or Server Build in 2019.1) Linux 64 bit build of this scene is what should be deployed to Multiplay.
 - `PingECS.unity` - An ECS version of the jobified ping sample.
-- `Asteroids.unity` - An small game serving as the testbed for new netcode features.
 #### Soaker
 A stress test which will create a set number of clients and a server in the same process. Each client will send messages at the specified rate with the specified size and measure statistics.
+#### Asteroids
+A small game serving as the testbed for new netcode features.
 
 ## Installation
 
