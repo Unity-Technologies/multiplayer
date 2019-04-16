@@ -1,6 +1,4 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Unity.Collections.LowLevel.Unsafe;
 
@@ -12,8 +10,8 @@ namespace Unity.Networking.Transport
     /// </summary>
     public enum NetworkFamily
     {
-        UdpIpv4 = AddressFamily.InterNetwork,
-        IPC = AddressFamily.Unspecified
+        UdpIpv4 = 2,//AddressFamily.InterNetwork,
+        IPC = 0//AddressFamily.Unspecified
     }
 
     /// <summary>
@@ -23,22 +21,41 @@ namespace Unity.Networking.Transport
     public unsafe struct NetworkEndPoint
     {
         internal const int Length = 28;
-        [FieldOffset(0)] internal fixed byte data[28];
+        [FieldOffset(0)] internal fixed byte data[Length];
         [FieldOffset(0)] internal sa_family_t family;
-        [FieldOffset(2)] private ushort port;
+        [FieldOffset(2)] internal ushort nbo_port;
         [FieldOffset(4)] internal int ipc_handle;
         [FieldOffset(28)] internal int length;
 
+        private static bool IsLittleEndian = true;
+        static NetworkEndPoint()
+        {
+            uint test = 1;
+            unsafe
+            {
+                byte* test_b = (byte*) &test;
+                IsLittleEndian = test_b[0] == 1;
+            }
+        }
+
+        private static ushort ByteSwap(ushort val)
+        {
+            return (ushort)(((val & 0xff) << 8) | (val >> 8));
+        }
+        private static uint ByteSwap(uint val)
+        {
+            return (uint)(((val & 0xff) << 24) |((val&0xff00)<<8) | ((val>>8)&0xff00) | (val >> 24));
+        }
         public ushort Port
         {
-            get { return (ushort) IPAddress.NetworkToHostOrder((short) port); }
-            set { port = (ushort) IPAddress.HostToNetworkOrder((short) value); }
+            get { return IsLittleEndian ? ByteSwap(nbo_port) : nbo_port; }
+            set { nbo_port = IsLittleEndian ? ByteSwap(value) : value; }
         }
 
         public NetworkFamily Family
         {
             get => (NetworkFamily) family.sa_family;
-#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_IOS)
+#if (UNITY_EDITOR_OSX || ((UNITY_STANDALONE_OSX || UNITY_IOS) && !UNITY_EDITOR))
             set => family.sa_family = (byte) value;
 #else
             set => family.sa_family = (ushort)value;
@@ -47,65 +64,69 @@ namespace Unity.Networking.Transport
 
         public bool IsValid => Family != 0;
 
-        public static implicit operator NetworkEndPoint(EndPoint ep)
+        private static NetworkEndPoint CreateIpv4(uint ip, ushort port)
         {
-#if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (!(ep is IPEndPoint))
-                throw new InvalidOperationException("NetworkEndPoint can only be created from IPEndPoint");
-#endif
-            var endpoint = ep as IPEndPoint;
-
-            switch (endpoint.AddressFamily)
+            if (IsLittleEndian)
             {
-                case AddressFamily.InterNetwork:
-                {
-                    var sai = new sockaddr_in();
+                port = ByteSwap(port);
+                ip = ByteSwap(ip);
+            }
 
-#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_IOS)
-                    sai.sin_family.sa_family = (byte) AddressFamily.InterNetwork;
-                    sai.sin_family.sa_len = (byte) sizeof(sockaddr_in);
+            var sai = new sockaddr_in();
+
+#if (UNITY_EDITOR_OSX || ((UNITY_STANDALONE_OSX || UNITY_IOS) && !UNITY_EDITOR))
+            sai.sin_family.sa_family = (byte) NetworkFamily.UdpIpv4;
+            sai.sin_family.sa_len = (byte) sizeof(sockaddr_in);
 #else
-                    sai.sin_family.sa_family = (ushort) AddressFamily.InterNetwork;
+            sai.sin_family.sa_family = (ushort) NetworkFamily.UdpIpv4;
 #endif
-                    sai.sin_port = (ushort) IPAddress.HostToNetworkOrder((short) endpoint.Port);
-                    sai.sin_addr.s_addr = (uint) BitConverter.ToInt32(endpoint.Address.GetAddressBytes(), 0);
+            sai.sin_port = port;
+            sai.sin_addr.s_addr = ip;
 
-                    var len = sizeof(sockaddr_in);
-                    var address = new NetworkEndPoint
-                    {
-                        length = len
-                    };
-
-                    UnsafeUtility.MemCpy(address.data, sai.data, len);
-                    return address;
-                }
-            }
-
-            return default(NetworkEndPoint);
-        }
-
-        public string GetIp()
-        {
-            var ipAndPort = ToEndPoint(this).ToString();
-            return ipAndPort.Substring(0, ipAndPort.IndexOf(':'));
-        }
-
-        public static EndPoint ToEndPoint(NetworkEndPoint ep)
-        {
-            switch (ep.Family)
+            var len = sizeof(sockaddr_in);
+            var address = new NetworkEndPoint
             {
-                case NetworkFamily.UdpIpv4:
+                length = len
+            };
+
+            UnsafeUtility.MemCpy(address.data, sai.data, len);
+            return address;
+        }
+
+        public static NetworkEndPoint AnyIpv4 => CreateIpv4(0, 0);
+        public static NetworkEndPoint LoopbackIpv4 => CreateIpv4((127<<24) | 1, 0);
+        public static NetworkEndPoint Parse(string ip, ushort port)
+        {
+            uint ipaddr = 0;
+            int pos = 0;
+            for (int part = 0; part < 4; ++part)
+            {
+                if (pos >= ip.Length || ip[pos] < '0' || ip[pos] > '9')
                 {
-                    var soi = new sockaddr_in();
-                    UnsafeUtility.MemCpy(soi.data, ep.data, 16);
-                    return new IPEndPoint(new IPAddress(soi.sin_addr.s_addr),
-                        (int) ((ushort) System.Net.IPAddress.NetworkToHostOrder((short) (soi.sin_port))));
+                    // Parsing failed
+                    ipaddr = 0;
+                    break;
                 }
-                case NetworkFamily.IPC:
-                    throw new NotImplementedException();
-                default:
-                    throw new NotImplementedException();
+                uint byteVal = 0;
+                while (pos < ip.Length && ip[pos] >= '0' && ip[pos] <= '9')
+                {
+                    byteVal = (byteVal * 10) + (uint) (ip[pos] - '0');
+                    ++pos;
+                }
+                if (byteVal > 255)
+                {
+                    // Parsing failed
+                    ipaddr = 0;
+                    break;
+                }
+
+                ipaddr = (ipaddr << 8) | byteVal;
+
+                if (pos < ip.Length && ip[pos] == '.')
+                    ++pos;
             }
+
+            return CreateIpv4(ipaddr, port);
         }
 
         public static bool operator ==(NetworkEndPoint lhs, NetworkEndPoint rhs)
@@ -139,19 +160,6 @@ namespace Unity.Networking.Transport
                 }
         }
 
-#if !UNITY_2018_3_OR_NEWER
-        private int memcmp(void* ptr1, void* ptr2, int size)
-        {
-            for (int i = 0; i < size; ++i)
-            {
-                if (((byte*) ptr1)[i] != ((byte*) ptr2)[i])
-                    return 1;
-            }
-
-            return 0;
-        }
-#endif
-
         bool Compare(NetworkEndPoint other)
         {
             if (length != other.length)
@@ -159,11 +167,7 @@ namespace Unity.Networking.Transport
 
             fixed (void* p = this.data)
             {
-#if UNITY_2018_3_OR_NEWER
                 if (UnsafeUtility.MemCmp(p, other.data, length) == 0)
-#else
-                if (memcmp(p, other.data, length) == 0)
-#endif
                     return true;
             }
 

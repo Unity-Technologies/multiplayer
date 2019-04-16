@@ -53,8 +53,9 @@ Ping consists of multiple scenes, all found in `sampleproject/Assets/Scenes/` .
 - `PingMainThread.unity` - A main-thread only implementation of ping.
 - `Ping.unity` - A fully jobified version of the ping client and server.
 - `PingClient.unity` - The same jobified client code as `Ping.unity`, but without the server.
-- `PingServer.unity` - The dedicated server version of the jobified ping. A headless (or Server Build in 2018.3) Linux 64 bit build of this scene is what should be deployed to Multiplay.
+- `PingServer.unity` - The dedicated server version of the jobified ping. A headless (or Server Build in 2019.1) Linux 64 bit build of this scene is what should be deployed to Multiplay.
 - `PingECS.unity` - An ECS version of the jobified ping sample.
+- `Asteroids.unity` - An small game serving as the testbed for new netcode features.
 #### Soaker
 A stress test which will create a set number of clients and a server in the same process. Each client will send messages at the specified rate with the specified size and measure statistics.
 
@@ -64,7 +65,7 @@ To try out samples in this repository all you need to do is open
 `sampleprojects/` in Unity.
 If you wish to create a new Unity project using these packages that is
 also possible.
-* Make sure you have a supported version of Unity (2018.2 or newer)
+* Make sure you have a supported version of Unity (2019.1 or newer)
 * Create a new Unity project
 * Once the project is created then navigate in the Editor menu to: __Edit__ > __Project Settings__ > __Player__ > __Other Settings__ then set __Scripting Runtime Version__ to: __4.x equivalent__. This will cause Unity to restart.
 * Copy `com.unity.transport/` from this repository to `<YourNewUnityProject>/Packages/`

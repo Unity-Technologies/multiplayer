@@ -60,7 +60,7 @@ namespace Unity.Networking.Transport.Tests
         public void ReadIntoExistingByteArray()
         {
             byte[] byteArray = new byte[100];
-            
+
             DataStreamWriter dataStream;
             using (dataStream = new DataStreamWriter(3, Allocator.Persistent))
             {
@@ -137,6 +137,81 @@ namespace Unity.Networking.Transport.Tests
                 Assert.AreEqual(nativeArray[1], (byte) 'd');
                 Assert.AreEqual(nativeArray[2], (byte) 'e');
                 Assert.AreNotEqual(nativeArray[3], (byte) 'f');
+            }
+        }
+
+        [Test]
+        public void ReadWritePackedUInt()
+        {
+            using (var dataStream = new DataStreamWriter(300 * 4, Allocator.Persistent))
+            using (var compressionModel = new NetworkCompressionModel(Allocator.Persistent))
+            {
+                uint base_val = 2000;
+                uint count = 277;
+                for (uint i = 0; i < count; ++i)
+                    dataStream.WritePackedUInt(base_val + i, compressionModel);
+
+                dataStream.Write((int) 1979);
+                dataStream.Flush();
+                var reader = new DataStreamReader(dataStream, 0, dataStream.Length);
+                var ctx = default(DataStreamReader.Context);
+                for (uint i = 0; i < count; ++i)
+                {
+                    var val = reader.ReadPackedUInt(ref ctx, compressionModel);
+                    Assert.AreEqual(base_val + i, val);
+                }
+                Assert.AreEqual(1979, reader.ReadInt(ref ctx));
+            }
+        }
+        [Test]
+        public void ReadWritePackedInt()
+        {
+            using (var dataStream = new DataStreamWriter(300 * 4, Allocator.Persistent))
+            using (var compressionModel = new NetworkCompressionModel(Allocator.Persistent))
+            {
+                int base_val = -10;
+                int count = 20;
+                for (int i = 0; i < count; ++i)
+                    dataStream.WritePackedInt(base_val + i, compressionModel);
+
+                dataStream.Write((int) 1979);
+                dataStream.Flush();
+                var reader = new DataStreamReader(dataStream, 0, dataStream.Length);
+                var ctx = default(DataStreamReader.Context);
+                for (int i = 0; i < count; ++i)
+                {
+                    var val = reader.ReadPackedInt(ref ctx, compressionModel);
+                    Assert.AreEqual(base_val + i, val);
+                }
+                Assert.AreEqual(1979, reader.ReadInt(ref ctx));
+            }
+        }
+        [Test]
+        public void ReadWritePackedUIntWithDeferred()
+        {
+            using (var dataStream = new DataStreamWriter(300 * 4, Allocator.Persistent))
+            using (var compressionModel = new NetworkCompressionModel(Allocator.Persistent))
+            {
+                uint base_val = 2000;
+                uint count = 277;
+                var def = dataStream.Write((int) 0);
+                for (uint i = 0; i < count; ++i)
+                    dataStream.WritePackedUInt(base_val + i, compressionModel);
+
+                dataStream.Flush();
+                def.Update(1979);
+                def = dataStream.Write((int) 0);
+                def.Update(1979);
+                dataStream.Flush();
+                var reader = new DataStreamReader(dataStream, 0, dataStream.Length);
+                var ctx = default(DataStreamReader.Context);
+                Assert.AreEqual(1979, reader.ReadInt(ref ctx));
+                for (uint i = 0; i < count; ++i)
+                {
+                    var val = reader.ReadPackedUInt(ref ctx, compressionModel);
+                    Assert.AreEqual(base_val + i, val);
+                }
+                Assert.AreEqual(1979, reader.ReadInt(ref ctx));
             }
         }
     }

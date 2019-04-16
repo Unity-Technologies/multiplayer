@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Text;
 using Unity.Networking.Transport.LowLevel.Unsafe;
 using NUnit.Framework;
@@ -28,9 +27,6 @@ namespace Unity.Networking.Transport.Tests.Utilities
 
 namespace Unity.Networking.Transport.Tests
 {
-    using LocalNetworkDriver = BasicNetworkDriver<IPCSocket>;
-    using UdpCNetworkDriver = BasicNetworkDriver<IPv4UDPSocket>;
-
     public struct LocalDriverHelper : IDisposable
     {
         public NetworkEndPoint Address { get; }
@@ -394,7 +390,7 @@ namespace Unity.Networking.Transport.Tests
                 var timeout = m_timer.ElapsedMilliseconds + 100;
                 while (m_timer.ElapsedMilliseconds < timeout)
                 {
-                    host.m_LocalDriver.Send(host.ClientConnections[0], stream);
+                    host.m_LocalDriver.Send(NetworkPipeline.Null, host.ClientConnections[0], stream);
                     popEvent = host.m_LocalDriver.PopEvent(out id, out reader);
                     if (popEvent != NetworkEvent.Type.Empty)
                         break;
@@ -431,7 +427,7 @@ namespace Unity.Networking.Transport.Tests
                 stream.Clear();
                 var data = Encoding.ASCII.GetBytes("data to send");
                 stream.Write(data);
-                driver.Send(connectionId, stream);
+                driver.Send(NetworkPipeline.Null, connectionId, stream);
                 driver.ScheduleUpdate().Complete();
 
                 host.Assert_GotDataRequest(local, data);
@@ -541,7 +537,7 @@ namespace Unity.Networking.Transport.Tests
                 {
                     stream.Clear();
                     stream.Write(dataBlob[i]);
-                    client.Send(connectionId, stream);
+                    client.Send(NetworkPipeline.Null, connectionId, stream);
                 }
 
                 // Process the pending events
@@ -578,15 +574,16 @@ namespace Unity.Networking.Transport.Tests
             using (var clientSendData = new DataStreamWriter(64, Allocator.Persistent))
             {
                 DataStreamReader stream;
-                var serverEndpoint = new IPEndPoint(IPAddress.Loopback, Random.Range(2000, 65000));
+                var serverEndpoint = NetworkEndPoint.LoopbackIpv4;
+                serverEndpoint.Port = (ushort)Random.Range(2000, 65000);
 
-                var serverDriver = new UdpCNetworkDriver(new NetworkDataStreamParameter {size = 64});
+                var serverDriver = new UdpNetworkDriver(new NetworkDataStreamParameter {size = 64});
                 serverDriver.Bind(serverEndpoint);
 
                 serverDriver.Listen();
 
-                var clientDriver = new UdpCNetworkDriver(new NetworkDataStreamParameter {size = 64});
-                clientDriver.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                var clientDriver = new UdpNetworkDriver(new NetworkDataStreamParameter {size = 64});
+                clientDriver.Bind(NetworkEndPoint.LoopbackIpv4);
 
                 var clientToServerId = clientDriver.Connect(serverEndpoint);
 
@@ -614,7 +611,7 @@ namespace Unity.Networking.Transport.Tests
                 clientSendData.Write(testFloat);
                 clientSendData.Write(testByteArray.Length);
                 clientSendData.Write(testByteArray);
-                var sentBytes = clientDriver.Send(clientToServerId, clientSendData);
+                var sentBytes = clientDriver.Send(NetworkPipeline.Null, clientToServerId, clientSendData);
 
                 // Header size is included in the sent bytes count (4 bytes overhead)
                 Assert.AreEqual(clientSendData.Length + 4, sentBytes);
@@ -678,7 +675,7 @@ namespace Unity.Networking.Transport.Tests
                 clientSendData.Write(testFloat);
                 clientSendData.Write(testByteArray.Length);
                 clientSendData.Write(testByteArray);
-                var sentBytes = clientDriver.Send(clientToServerId, clientSendData);
+                var sentBytes = clientDriver.Send(NetworkPipeline.Null, clientToServerId, clientSendData);
 
                 // Header size is included in the sent bytes count (4 bytes overhead)
                 Assert.AreEqual(clientSendData.Length + 4, sentBytes);

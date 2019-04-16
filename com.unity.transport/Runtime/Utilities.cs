@@ -1,8 +1,5 @@
 using System;
-using System.Linq;
-using System.Threading;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 
 namespace Unity.Networking.Transport.Utilities
 {
@@ -15,7 +12,7 @@ namespace Unity.Networking.Transport.Utilities
     {
         private NativeList<T> m_Queue;
         private NativeList<int> m_QueueHeadTail;
-        private int m_MaxItems;
+        private NativeArray<int> m_MaxItems;
 
         /// <summary>
         /// New NativeMultiQueue has a single bucket and the specified number
@@ -25,13 +22,15 @@ namespace Unity.Networking.Transport.Utilities
         /// </summary>
         public NativeMultiQueue(int initialMessageCapacity)
         {
-            m_MaxItems = initialMessageCapacity;
+            m_MaxItems = new NativeArray<int>(1, Allocator.Persistent);
+            m_MaxItems[0] = initialMessageCapacity;
             m_Queue = new NativeList<T>(initialMessageCapacity, Allocator.Persistent);
             m_QueueHeadTail = new NativeList<int>(2, Allocator.Persistent);
         }
 
         public void Dispose()
         {
+            m_MaxItems.Dispose();
             m_Queue.Dispose();
             m_QueueHeadTail.Dispose();
         }
@@ -50,26 +49,26 @@ namespace Unity.Networking.Transport.Utilities
                 m_QueueHeadTail.ResizeUninitialized((bucket+1)*2);
                 for (;oldSize < m_QueueHeadTail.Length; ++oldSize)
                     m_QueueHeadTail[oldSize] = 0;
-                m_Queue.ResizeUninitialized((m_QueueHeadTail.Length / 2) * m_MaxItems);
+                m_Queue.ResizeUninitialized((m_QueueHeadTail.Length / 2) * m_MaxItems[0]);
             }
             int idx = m_QueueHeadTail[bucket * 2 + 1];
-            if (idx >= m_MaxItems)
+            if (idx >= m_MaxItems[0])
             {
                 // Grow number of items per bucket
-                int oldMax = m_MaxItems;
-                while (idx >= m_MaxItems)
-                    m_MaxItems *= 2;
+                int oldMax = m_MaxItems[0];
+                while (idx >= m_MaxItems[0])
+                    m_MaxItems[0] = m_MaxItems[0]*2;
                 int maxBuckets = m_QueueHeadTail.Length / 2;
-                m_Queue.ResizeUninitialized(maxBuckets * m_MaxItems);
+                m_Queue.ResizeUninitialized(maxBuckets * m_MaxItems[0]);
                 for (int b = maxBuckets-1; b >= 0; --b)
                 {
                     for (int i = m_QueueHeadTail[b*2+1]-1; i >= m_QueueHeadTail[b * 2]; --i)
                     {
-                        m_Queue[b * m_MaxItems + i] = m_Queue[b * oldMax + i];
+                        m_Queue[b * m_MaxItems[0] + i] = m_Queue[b * oldMax + i];
                     }
                 }
             }
-            m_Queue[m_MaxItems * bucket + idx] = value;
+            m_Queue[m_MaxItems[0] * bucket + idx] = value;
             m_QueueHeadTail[bucket * 2 + 1] = idx + 1;
         }
 
@@ -91,9 +90,16 @@ namespace Unity.Networking.Transport.Utilities
                 value = default(T);
                 return false;
             }
+            else if (idx + 1 == m_QueueHeadTail[bucket * 2 + 1])
+            {
+                m_QueueHeadTail[bucket * 2] = m_QueueHeadTail[bucket * 2 + 1] = 0;
+            }
+            else
+            {
+                m_QueueHeadTail[bucket * 2] = idx + 1;
+            }
 
-            value = m_Queue[m_MaxItems * bucket + idx];
-            m_QueueHeadTail[bucket * 2] = idx + 1;
+            value = m_Queue[m_MaxItems[0] * bucket + idx];
             return true;
         }
 
@@ -115,7 +121,7 @@ namespace Unity.Networking.Transport.Utilities
                 return false;
             }
 
-            value = m_Queue[m_MaxItems * bucket + idx];
+            value = m_Queue[m_MaxItems[0] * bucket + idx];
             return true;
         }
 
@@ -145,5 +151,60 @@ namespace Unity.Networking.Transport.Utilities
         }
 
         public long ElapsedMilliseconds => stopwatch.ElapsedMilliseconds;
+    }
+
+    public struct SequenceHelpers
+    {
+        // Calculate difference between the sequence IDs taking into account wrapping, so when you go from 65535 to 0 the distance is 1
+        public static int AbsDistance(ushort lhs, ushort rhs)
+        {
+            int distance;
+            if (lhs < rhs)
+                distance = lhs + ushort.MaxValue + 1 - rhs;
+            else
+                distance = lhs - rhs;
+            return distance;
+        }
+        
+        public static bool IsNewer(uint current, uint old)
+        {
+            // Invert the check so same does not count as newer
+            return !(old - current < (1u << 31));
+        }
+
+        public static bool GreaterThan16(ushort lhs, ushort rhs)
+        {
+            const uint max_sequence_divide_2 = 0x7FFF;
+            return lhs > rhs && lhs - rhs <= (ushort) max_sequence_divide_2 ||
+                   lhs < rhs && rhs - lhs > (ushort) max_sequence_divide_2;
+        }
+
+        public static bool LessThan16(ushort lhs, ushort rhs)
+        {
+            return GreaterThan16(rhs, lhs);
+        }
+
+        public static bool StalePacket(ushort sequence, ushort oldSequence, ushort windowSize)
+        {
+            return LessThan16(sequence, (ushort) (oldSequence - windowSize));
+        }
+
+        public static string BitMaskToString(uint mask)
+        {
+            //  31     24      16      8       0
+            // |-------+-------+-------+--------|
+            //  00000000000000000000000000000000
+
+            var bits = sizeof(uint) * 8;
+            var sb = new System.Text.StringBuilder(new string('*', bits));
+
+            for (int i = bits - 1; i >= 0; i--)
+            {
+                sb[i] = (mask & 1) != 0 ? '1' : '0';
+                mask >>= 1;
+            }
+
+            return sb.ToString();
+        }
     }
 }

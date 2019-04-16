@@ -2,13 +2,11 @@ using System;
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
 using System.IO;
 #endif
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Networking.Transport.Utilities;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
-using Socket = Unity.Networking.Transport.IPCSocket;
 
 namespace Unity.Networking.Transport
 {
@@ -83,7 +81,7 @@ namespace Unity.Networking.Transport
                 Family = NetworkFamily.IPC,
                 ipc_handle = id,
                 length = 6,
-                Port = m_IPCEndPoints[id]
+                nbo_port = m_IPCEndPoints[id]
             };
 
             return endpoint;
@@ -136,7 +134,7 @@ namespace Unity.Networking.Transport
         {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             if (address.Family != NetworkFamily.IPC || local.Family != NetworkFamily.IPC ||
-                address.Port == 0 || local.Port == 0)
+                address.nbo_port == 0 || local.nbo_port == 0)
                 throw new InvalidOperationException("Sending data over IPC requires both local and remote EndPoint to be valid IPC EndPoints");
 #endif
 
@@ -170,13 +168,13 @@ namespace Unity.Networking.Transport
                 throw new InvalidDataException("An incorrect message was pushed to the IPC message queue");
 #endif
 
-#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX || UNITY_IOS)
-            remote.family.sa_family = (byte) AddressFamily.Unspecified;
+#if (UNITY_EDITOR_OSX || ((UNITY_STANDALONE_OSX || UNITY_IOS) && !UNITY_EDITOR))
+            remote.family.sa_family = (byte) NetworkFamily.IPC;
 #else
-            remote.family.sa_family = (ushort) AddressFamily.Unspecified;
+            remote.family.sa_family = (ushort) NetworkFamily.IPC;
 #endif
             remote.ipc_handle = endpoint.ipc_handle;
-            remote.Port = endpoint.Port;
+            remote.nbo_port = endpoint.nbo_port;
             remote.length = 6;
 
             int totalLength = 0;
@@ -189,7 +187,7 @@ namespace Unity.Networking.Transport
             }
 
             if (totalLength < data.length)
-                return 0;
+                return -1;
             m_IPCQueue.Dequeue(local.ipc_handle, out data);
 
             return totalLength;
@@ -197,11 +195,15 @@ namespace Unity.Networking.Transport
 
         public unsafe bool TryGetEndPointByHandle(int handle, out NetworkEndPoint endpoint)
         {
+            endpoint = default(NetworkEndPoint);
+            if (handle >= m_IPCEndPoints.Length)
+                return false;
+
             var temp = new NetworkEndPoint();
             temp.Family = NetworkFamily.IPC;
             temp.ipc_handle = handle;
 
-            temp.Port = m_IPCEndPoints[handle];
+            temp.nbo_port = m_IPCEndPoints[handle];
             endpoint = temp;
             endpoint.length = 6;
             return true;

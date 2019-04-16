@@ -1,10 +1,5 @@
 using System;
-using System.Diagnostics;
 using NUnit.Framework;
-using System.Net;
-using Unity.Networking.Transport.Tests.Helpers;
-using System.Collections.Generic;
-using Unity.Collections;
 
 namespace Unity.Networking.Transport.Tests
 {
@@ -29,13 +24,13 @@ namespace Unity.Networking.Transport.Tests
 
         public class UnreliableServer : IDisposable
         {
-            private BasicNetworkDriver<IPCSocket> m_Driver;
+            private LocalNetworkDriver m_Driver;
 
             //private List<NetworkConnection> m_Connections;
 
             public UnreliableServer()
             {
-                m_Driver = new BasicNetworkDriver<IPCSocket>(new NetworkDataStreamParameter
+                m_Driver = new LocalNetworkDriver(new NetworkDataStreamParameter
                     {size = NetworkParameterConstants.MTU});
             }
 
@@ -81,11 +76,11 @@ namespace Unity.Networking.Transport.Tests
             /*
             Stopwatch stopwatch = new Stopwatch();
             var frequency = Stopwatch.Frequency;
-            
+
             stopwatch.Start();
             var frametime = (double) stopwatch.ElapsedTicks / frequency;
             double nexttick = 0.0f;
-            
+
             UnreliableServer server = new UnreliableServer();
             server.Host(new IPCEndPoint("server"));
             UnreliableClient[] clients = new UnreliableClient[NetworkParams.Constants.MaximumConnectionsSupported];

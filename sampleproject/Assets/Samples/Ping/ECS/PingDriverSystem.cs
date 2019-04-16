@@ -1,18 +1,10 @@
 using System;
-using System.Net;
-using Unity.Collections;
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Collections;
 using Unity.Networking.Transport;
-using UnityEngine.Experimental.PlayerLoop;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
-
-// Barrier to execute the creation and destruction of connection entities
-// This runs at the end of fixed update but before the PingServerSystem
-[UpdateAfter(typeof(FixedUpdate))]
-public class PingBarrierSystem : BarrierSystem
-{
-}
+using UnityEngine;
 
 // SystemStateComponent to track which drivers have been created and destroyed
 public struct PingDriverStateComponent : ISystemStateComponentData
@@ -22,49 +14,29 @@ public struct PingDriverStateComponent : ISystemStateComponentData
 
 // The PingDriverSystem runs at the beginning of FixedUpdate. It updates the NetworkDriver(s) and Accepts new connections
 // creating entities to track the connections
-[UpdateBefore(typeof(FixedUpdate))]
-[UpdateBefore(typeof(PingBarrierSystem))]
+[UpdateInGroup(typeof(SimulationSystemGroup))]
+[AlwaysUpdateSystem]
 public class PingDriverSystem : JobComponentSystem
 {
-    public UdpCNetworkDriver ServerDriver { get; private set; }
-    public UdpCNetworkDriver ClientDriver { get; private set; }
+    public UdpNetworkDriver ServerDriver { get; private set; }
+    public UdpNetworkDriver ClientDriver { get; private set; }
+    public UdpNetworkDriver.Concurrent ConcurrentServerDriver { get; private set; }
+    public UdpNetworkDriver.Concurrent ConcurrentClientDriver { get; private set; }
 
-#pragma warning disable 649
-    [Inject] private PingBarrierSystem m_Barrier;
+    private BeginSimulationEntityCommandBufferSystem m_Barrier;
+    private ComponentGroup m_NewDriverGroup;
+    private ComponentGroup m_DestroyedDriverGroup;
+    private ComponentGroup m_ServerConnectionGroup;
 
-    struct ServerConnectionList
+    protected override void OnCreateManager()
     {
-        public ComponentDataArray<PingServerConnectionComponentData> connections;
-        public EntityArray entities;
+        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_NewDriverGroup = GetComponentGroup(ComponentType.ReadOnly<PingDriverComponentData>(),
+            ComponentType.Exclude<PingDriverStateComponent>());
+        m_DestroyedDriverGroup = GetComponentGroup(ComponentType.Exclude<PingDriverComponentData>(),
+            ComponentType.ReadOnly<PingDriverStateComponent>());
+        m_ServerConnectionGroup = GetComponentGroup(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
-
-    struct DriverList
-    {
-        public ComponentDataArray<PingDriverComponentData> drivers;
-        public ComponentDataArray<PingDriverStateComponent> state;
-    }
-    struct NewDriverList
-    {
-        public ComponentDataArray<PingDriverComponentData> drivers;
-        public SubtractiveComponent<PingDriverStateComponent> state;
-        public EntityArray entities;
-    }
-    struct DestroyedDriverList
-    {
-        public SubtractiveComponent<PingDriverComponentData> drivers;
-        public ComponentDataArray<PingDriverStateComponent> state;
-        public EntityArray entities;
-    }
-
-    // List of all active server connections
-    [Inject] private ServerConnectionList serverConnectionList;
-    // List of all drivers which are currently in use
-    [Inject] private DriverList driverList;
-    // List of all drivers which needs to be created
-    [Inject] private NewDriverList newDriverList;
-    // List of all drivers which should be destroyed
-    [Inject] private DestroyedDriverList destroyedDriverList;
-#pragma warning restore 649
 
     protected override void OnDestroyManager()
     {
@@ -75,9 +47,11 @@ public class PingDriverSystem : JobComponentSystem
             ClientDriver.Dispose();
     }
 
+    // Adding and removing components with EntityCommandBuffer is not burst compatible
+    //[BurstCompile]
     struct DriverAcceptJob : IJob
     {
-        public UdpCNetworkDriver driver;
+        public UdpNetworkDriver driver;
         public EntityCommandBuffer commandBuffer;
 
         public void Execute()
@@ -88,93 +62,114 @@ public class PingDriverSystem : JobComponentSystem
                 var con = driver.Accept();
                 if (!con.IsCreated)
                     break;
-                commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(new PingServerConnectionComponentData{connection = con});
+                var ent = commandBuffer.CreateEntity();
+                commandBuffer.AddComponent(ent, new PingServerConnectionComponentData{connection = con});
             }
         }
     }
-    struct DriverCleanupJob : IJob
+    [BurstCompile]
+    struct DriverCleanupJob : IJobProcessComponentDataWithEntity<PingServerConnectionComponentData>
     {
-        public ComponentDataArray<PingServerConnectionComponentData> serverConnections;
-        public EntityArray serverConnectionEntities;
-        public EntityCommandBuffer commandBuffer;
+        public EntityCommandBuffer.Concurrent commandBuffer;
 
-        public void Execute()
+        public void Execute(Entity entity, int index, [ReadOnly] ref PingServerConnectionComponentData connection)
         {
             // Cleanup old connections
-            for (int i = 0; i < serverConnections.Length; ++i)
+            if (!connection.connection.IsCreated)
             {
-                if (!serverConnections[i].connection.IsCreated)
-                {
-                    commandBuffer.DestroyEntity(serverConnectionEntities[i]);
-                }
+                commandBuffer.DestroyEntity(index, entity);
             }
         }
     }
     protected override JobHandle OnUpdate(JobHandle inputDep)
     {
-        inputDep.Complete();
         var commandBuffer = m_Barrier.CreateCommandBuffer();
         // Destroy drivers if the PingDriverComponents were removed
-        for (int i = 0; i < destroyedDriverList.state.Length; ++i)
+        if (!m_DestroyedDriverGroup.IsEmptyIgnoreFilter)
         {
-            if (destroyedDriverList.state[i].isServer != 0)
+            inputDep.Complete();
+            var destroyedDriverEntity = m_DestroyedDriverGroup.ToEntityArray(Allocator.TempJob);
+            var destroyedDriverList = m_DestroyedDriverGroup.ToComponentDataArray<PingDriverComponentData>(Allocator.TempJob);
+            for (int i = 0; i < destroyedDriverList.Length; ++i)
             {
-                // Allso destroy all active connections when the driver dies
-                for (int con = 0; con < serverConnectionList.connections.Length; ++con)
-                    commandBuffer.DestroyEntity(serverConnectionList.entities[con]);
-                ServerDriver.Dispose();
-            }
-            else
-                ClientDriver.Dispose();
-            commandBuffer.RemoveComponent<PingDriverStateComponent>(destroyedDriverList.entities[i]);
-        }
-        // Create drivers if new PingDriverComponents were added
-        for (int i = 0; i < newDriverList.drivers.Length; ++i)
-        {
-            if (newDriverList.drivers[i].isServer != 0)
-            {
-                if (ServerDriver.IsCreated)
-                    throw new InvalidOperationException("Cannot create multiple server drivers");
-                var drv = new UdpCNetworkDriver(new INetworkParameter[0]);
-                if (drv.Bind(new IPEndPoint(IPAddress.Any, 9000)) != 0)
-                    throw new Exception("Failed to bind to port 9000");
+                if (destroyedDriverList[i].isServer != 0)
+                {
+                    var serverConnectionList = m_ServerConnectionGroup.ToEntityArray(Allocator.TempJob);
+                    // Also destroy all active connections when the driver dies
+                    for (int con = 0; con < serverConnectionList.Length; ++con)
+                        commandBuffer.DestroyEntity(serverConnectionList[con]);
+                    serverConnectionList.Dispose();
+                    ServerDriver.Dispose();
+                }
                 else
-                    drv.Listen();
-                ServerDriver = drv;
+                    ClientDriver.Dispose();
+
+                commandBuffer.RemoveComponent<PingDriverStateComponent>(destroyedDriverEntity[i]);
             }
-            else
+
+            destroyedDriverList.Dispose();
+            destroyedDriverEntity.Dispose();
+        }
+
+        // Create drivers if new PingDriverComponents were added
+        if (!m_NewDriverGroup.IsEmptyIgnoreFilter)
+        {
+            inputDep.Complete();
+            var newDriverEntity = m_NewDriverGroup.ToEntityArray(Allocator.TempJob);
+            var newDriverList = m_NewDriverGroup.ToComponentDataArray<PingDriverComponentData>(Allocator.TempJob);
+            for (int i = 0; i < newDriverList.Length; ++i)
             {
-                if (ClientDriver.IsCreated)
-                    throw new InvalidOperationException("Cannot create multiple client drivers");
-                ClientDriver = new UdpCNetworkDriver(new INetworkParameter[0]);
+                if (newDriverList[i].isServer != 0)
+                {
+                    if (ServerDriver.IsCreated)
+                        throw new InvalidOperationException("Cannot create multiple server drivers");
+                    var drv = new UdpNetworkDriver(new INetworkParameter[0]);
+                    var addr = NetworkEndPoint.AnyIpv4;
+                    addr.Port = 9000;
+                    if (drv.Bind(addr) != 0)
+                        throw new Exception("Failed to bind to port 9000");
+                    else
+                        drv.Listen();
+                    ServerDriver = drv;
+                    ConcurrentServerDriver = ServerDriver.ToConcurrent();
+                }
+                else
+                {
+                    if (ClientDriver.IsCreated)
+                        throw new InvalidOperationException("Cannot create multiple client drivers");
+                    ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+                    ConcurrentClientDriver = ClientDriver.ToConcurrent();
+                }
+
+                commandBuffer.AddComponent(newDriverEntity[i],
+                    new PingDriverStateComponent {isServer = newDriverList[i].isServer});
             }
-            commandBuffer.AddComponent(newDriverList.entities[i], new PingDriverStateComponent{isServer = newDriverList.drivers[i].isServer});
+            newDriverList.Dispose();
+            newDriverEntity.Dispose();
         }
 
         JobHandle clientDep = default(JobHandle);
         JobHandle serverDep = default(JobHandle);
 
         // Go through and update all drivers, also accept all incoming connections for server drivers
-        for (int i = 0; i < driverList.drivers.Length; ++i)
+        if (ServerDriver.IsCreated)
         {
-            if (driverList.drivers[i].isServer != 0)
+            // Schedule a chain with driver update, a job to accept all connections and finally a job to delete all invalid connections
+            serverDep = ServerDriver.ScheduleUpdate(inputDep);
+            var acceptJob = new DriverAcceptJob
+                {driver = ServerDriver, commandBuffer = commandBuffer};
+            serverDep = acceptJob.Schedule(serverDep);
+            var cleanupJob = new DriverCleanupJob
             {
-                // Schedule a chain with driver update, a job to accept all connections and finally a job to delete all invalid connections
-                serverDep = ServerDriver.ScheduleUpdate();
-                var acceptJob = new DriverAcceptJob
-                    {driver = ServerDriver, commandBuffer = commandBuffer};
-                serverDep = acceptJob.Schedule(serverDep);
-                var cleanupJob = new DriverCleanupJob
-                {
-                    serverConnections = serverConnectionList.connections,
-                    serverConnectionEntities = serverConnectionList.entities,
-                    commandBuffer = commandBuffer
-                };
-                serverDep = cleanupJob.Schedule(serverDep);
-            }
-            else
-                clientDep = ClientDriver.ScheduleUpdate();
+                commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent()
+            };
+            serverDep = cleanupJob.Schedule(this, serverDep);
+            m_Barrier.AddJobHandleForProducer(serverDep);
+        }
+
+        if (ClientDriver.IsCreated)
+        {
+            clientDep = ClientDriver.ScheduleUpdate(inputDep);
         }
 
         return JobHandle.CombineDependencies(clientDep, serverDep);

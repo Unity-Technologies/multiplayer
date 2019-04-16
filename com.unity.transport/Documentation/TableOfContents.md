@@ -6,6 +6,7 @@
 * **Workflows**
   * [Creating a minimal client and server](workflow-client-server.md)
   * [Creating a jobified client and server](workflow-client-server-jobs.md)
+  * [Using pipelines](pipelines-usage.md)
 * **Background information**
   * [Understanding the Update flow](update-flow.md)
   * [Understanding the Connection State Machine](connection-state-machine.md)

@@ -1,19 +1,8 @@
-using System;
-using System.Net;
-using System.Text;
 using NUnit.Framework;
 using Unity.Collections;
-using UnityEngine;
-using Unity.Networking.Transport.Protocols;
-using Unity.Networking.Transport.Tests.Helpers;
-using UnityEngine.Apple.TV;
-using Random = UnityEngine.Random;
 
 namespace Unity.Networking.Transport.Tests
 {
-    using LocalNetworkDriver = BasicNetworkDriver<IPCSocket>;
-    using UdpCNetworkDriver = BasicNetworkDriver<IPv4UDPSocket>;
-
     public static class SharedConstants
     {
         public static byte[] ping =
@@ -131,7 +120,7 @@ namespace Unity.Networking.Transport.Tests
             connection.Close(Driver);
             Driver.ScheduleUpdate().Complete();
             RemoteDriver.ScheduleUpdate().Complete();
-            
+
             Assert.That(
                 RemoteDriver.PopEventForConnection(remoteId, out reader) == NetworkEvent.Type.Disconnect);
         }

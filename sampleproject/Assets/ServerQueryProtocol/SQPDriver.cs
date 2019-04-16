@@ -19,7 +19,7 @@ public class SQPDriver : MonoBehaviour
     void Start()
     {
         ushort newPort = 0;
-        if (CommandLine.TryGetCommandLineArgValue("+server.sqp_port", out newPort))
+        if (CommandLine.TryGetCommandLineArgValue("-query_port", out newPort))
             m_SQPPort = newPort;
     }
 

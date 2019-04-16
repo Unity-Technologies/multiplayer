@@ -1,0 +1,9 @@
+{
+    "name": "Unity.Networking.Transport.Editor",
+    "references": [
+           "Unity.Networking.Transport"
+    ],
+    "includePlatforms": [ "Editor" ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true
+}

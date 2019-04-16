@@ -1,14 +1,4 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.Serialization.Json;
-using System.Text;
 using UnityEngine;
-using Unity.Networking.Transport;
-using Unity.Collections;
-using Unity.Jobs;
-using UnityEngine.Assertions;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 public class SoakClientBehaviour : MonoBehaviour
 {

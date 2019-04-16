@@ -14,7 +14,7 @@ namespace UnityEngine.Ucg.Matchmaking
 
         MatchmakingController matchmakingController;
 
-        public delegate void SuccessCallback(string connectionInfo);
+        public delegate void SuccessCallback(Assignment assignment);
 
         public delegate void ErrorCallback(string error);
 
@@ -114,11 +114,11 @@ namespace UnityEngine.Ucg.Matchmaking
             Debug.Log(State);
         }
 
-        void OnSuccess(string connectionInfo)
+        void OnSuccess(Assignment assignment)
         {
             State = MatchmakingState.Found;
             Debug.Log(State);
-            m_Success.Invoke(connectionInfo);
+            m_Success.Invoke(assignment);
         }
 
         void OnError(string error)

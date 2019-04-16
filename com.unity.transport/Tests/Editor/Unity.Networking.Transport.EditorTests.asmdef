@@ -1,6 +1,7 @@
 {
     "name": "Unity.Networking.Transport.EditorTests",
     "references": [
+        "Unity.Burst",
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.Networking.Transport"

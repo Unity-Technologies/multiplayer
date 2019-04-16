@@ -1,17 +1,16 @@
 ﻿using System;
-using System.Net;
 using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Jobs;
-
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
+using Unity.Networking.Transport.Utilities;
 
 public class SoakServer : IDisposable
 {
-    private UdpCNetworkDriver m_ServerDriver;
+    private UdpNetworkDriver m_ServerDriver;
+    private NetworkPipeline m_Pipeline;
     private int m_Tick;
+    private double m_NextStatsPrint;
 
     private NativeList<SoakClientCtx> m_Connections;
     private JobHandle m_UpdateHandle;
@@ -21,8 +20,12 @@ public class SoakServer : IDisposable
     public void Start()
     {
         m_Connections = new NativeList<SoakClientCtx>(1, Allocator.Persistent);
-        m_ServerDriver = new UdpCNetworkDriver(new INetworkParameter[0]);
-        if (m_ServerDriver.Bind(new IPEndPoint(IPAddress.Any, 9000)) != 0)
+        m_ServerDriver = new UdpNetworkDriver(new ReliableUtility.Parameters { WindowSize = 32 });
+        //m_Pipeline = m_ServerDriver.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
+        m_Pipeline = m_ServerDriver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
+        var addr = NetworkEndPoint.AnyIpv4;
+        addr.Port = 9000;
+        if (m_ServerDriver.Bind(addr) != 0)
             Debug.Log("Failed to bind to port 9000");
         else
             m_ServerDriver.Listen();
@@ -47,8 +50,16 @@ public class SoakServer : IDisposable
         var soakJob = new SoakServerUpdateClientsJob
         {
             driver = m_ServerDriver.ToConcurrent(),
-            connections = m_Connections.ToDeferredJobArray()
+            pipeline = m_Pipeline,
+            connections = m_Connections.AsDeferredJobArray()
         };
+
+        /*var time = Time.fixedTime;
+        if (time > m_NextStatsPrint)
+        {
+            PrintStatistics();
+            m_NextStatsPrint = time + 10;
+        }*/
 
         m_UpdateHandle = m_ServerDriver.ScheduleUpdate();
         m_UpdateHandle = acceptJob.Schedule(m_UpdateHandle);
@@ -60,5 +71,14 @@ public class SoakServer : IDisposable
         m_UpdateHandle.Complete();
         m_ServerDriver.Dispose();
         m_Connections.Dispose();
+    }
+
+    void PrintStatistics()
+    {
+        for (int i = 0; i < m_Connections.Length; i++)
+        {
+            Debug.Log("Server dumping stats for client " + i);
+            Util.DumpReliabilityStatistics(m_ServerDriver, m_Pipeline, m_Connections[i].Connection);
+        }
     }
 }

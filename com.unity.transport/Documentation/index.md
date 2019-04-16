@@ -22,7 +22,7 @@ To learn how to use the `com.unity.transport` package in your own project, read 
 
 This version of `com.unity.transport` is compatible with the following versions of the Unity Editor:
 
-* 2018.2 and later (recommended)
+* 2019.1 and later
 
 ## Known limitations
 

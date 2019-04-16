@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using Unity.Collections;
 using UnityEngine;
 using Unity.Jobs;
+using Unity.Networking.Transport;
 using UnityEngine.Assertions;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 public class SoakClientJobManager : IDisposable
 {
@@ -41,7 +40,8 @@ public class SoakClientJobManager : IDisposable
     {
         Debug.Log("Soak test initiated");
 
-        var endpoint = new IPEndPoint(IPAddress.Loopback, 9000);
+        var endpoint = NetworkEndPoint.LoopbackIpv4;
+        endpoint.Port = 9000;
         if (!m_Started)
         {
             foreach (var client in m_SoakClients)
@@ -79,6 +79,7 @@ public class SoakClientJobManager : IDisposable
             var soakJob = new SoakClientJob
             {
                 driver = client.DriverHandle,
+                pipeline = client.Pipeline,
                 connection = client.ConnectionHandle,
                 streamWriter = client.SoakClientStreamWriter,
                 serverEP = client.ServerEndPoint,
@@ -87,6 +88,7 @@ public class SoakClientJobManager : IDisposable
 
                 deltaTime = Time.fixedDeltaTime,
                 frameId = m_FrameId,
+                timestamp = System.Diagnostics.Stopwatch.GetTimestamp() / TimeSpan.TicksPerMillisecond,
 
                 packetData = client.SoakJobDataPacket,
                 jobContext = client.SoakJobContextsHandle,

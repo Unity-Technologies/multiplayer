@@ -112,71 +112,47 @@ network_set_connection_reset(int64_t handle, int value)
     return result;
 }
 
-EXPORT_API int32_t network_get_socket_address(int64_t socket_handle, network_address* own_address)
+EXPORT_API int32_t network_get_socket_address(int64_t socket_handle, network_address* own_address, int32_t* errorcode)
 {
     int retval = 0;
 #if PLATFORM_WIN
     if ((retval = getsockname(socket_handle, (struct sockaddr *)own_address, (int *)&own_address->length)) == 0)
 #else
-    if ((retval = getsockname(socket_handle, (struct sockaddr *)own_address, (socklen_t*)&own_address->length)) == 0)
+    if ((retval = getsockname(socket_handle, (struct sockaddr *)own_address, (socklen_t*)&own_address->length)) < 0)
 #endif
-        return retval;
-    else
-        return native_get_last_error();
+        *errorcode = native_get_last_error();
+    return retval;
 }
 
 EXPORT_API int32_t
-network_create_and_bind(int64_t *socket_handle, const char *address, uint16_t port)
+network_create_and_bind(int64_t *socket_handle, network_address *address, int32_t* errorcode)
 {
-    struct addrinfo hints;
-    struct addrinfo *info, *it;
-
-    char port_str[6];
-    snprintf(port_str, sizeof(port_str), "%hu", port);
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    int status = 0;
-    if ((status = getaddrinfo(address, port_str, &hints, &info)) != 0)
+    int64_t s = socket(address->addr.sa_family, SOCK_DGRAM, IPPROTO_UDP);
+    if (s < 0)
     {
-        return native_get_last_error();
+        *errorcode = native_get_last_error();
+        return -1;
     }
-
-    it = info;
-    int64_t s = 0;
-    do
+    if (address->addr.sa_family == AF_INET6)
     {
-        s = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
-        if (s < 0)
-            continue;
-        if (s > 0 && it->ai_family == AF_INET6)
+        int off = 0;
+        int result = setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&off, sizeof(off));
+        if (result != 0)
         {
-            int off = 0;
-            int result = setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (char *)&off, sizeof(off));
-            if (result != 0)
-            {
-                closesocket(s);
-                s = -1;
-                continue;
-            }
-        }
-        if (bind(s, it->ai_addr, (int)it->ai_addrlen) != 0)
-        {
-            int error = native_get_last_error();
+            *errorcode = native_get_last_error();
             closesocket(s);
-            return error;
+            return -1;
         }
-        break;
-    } while ((it = it->ai_next) != NULL);
-    freeaddrinfo(info);
-
-    if (s == -1)
+    }
+#if PLATFORM_WIN
+    if (bind(s, (SOCKADDR*)address, (int)address->length) != 0)
+#else
+    if (bind(s, (struct sockaddr*)address, (int)address->length) != 0)
+#endif
     {
-        return native_get_last_error();
+        *errorcode = native_get_last_error();
+        closesocket(s);
+        return -1;
     }
 
     *socket_handle = s;
@@ -184,7 +160,7 @@ network_create_and_bind(int64_t *socket_handle, const char *address, uint16_t po
 }
 
 EXPORT_API int32_t
-network_sendmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, network_address *address)
+network_sendmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, network_address *address, int32_t* errorcode)
 {
     int ret = 0;
 #if PLATFORM_WIN
@@ -218,11 +194,13 @@ network_sendmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, netw
 
     ret = sendmsg(socket_handle, &message, 0);
 #endif
+    if (ret < 0)
+        *errorcode = native_get_last_error();
     return ret;
 }
 
 EXPORT_API int32_t
-network_recvmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, network_address *remote)
+network_recvmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, network_address *remote, int32_t* errorcode)
 {
     int ret = 0;
 #if PLATFORM_WIN
@@ -259,14 +237,16 @@ network_recvmsg(int64_t socket_handle, network_iov_t *iov, int32_t iov_len, netw
     ret = recvmsg(socket_handle, &message, 0);
     remote->length = message.msg_namelen;
 #endif
+    if (ret < 0)
+        *errorcode = native_get_last_error();
     return ret;
 }
 
-EXPORT_API int32_t network_close(int64_t *socket_handle)
+EXPORT_API int32_t network_close(int64_t *socket_handle, int32_t* errorcode)
 {
     int retval = closesocket(*socket_handle);
     if (retval == SOCKET_ERROR)
-        return native_get_last_error();
+        *errorcode = native_get_last_error();
 
     *socket_handle = 0;
     return retval;

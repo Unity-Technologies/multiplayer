@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="netdbg.js"></script>
+<style>
+#legendOverlay {
+	position:absolute;
+	max-height:200px;
+	overflow-y: auto;
+}
+#connectDlg {
+	position: fixed;
+	right: 10px;
+	top: 0;
+	padding: 0;
+}
+#connectUI, #connectingUI, #disconnectUI {
+	display:none;
+}
+.NetDbgDisconnected #connectUI {
+	display: block;
+	background-color: red;
+	padding: 2px;
+}
+.NetDbgConnecting #connectingUI {
+	display: block;
+	background-color: yellow;
+	padding: 2px;
+}
+.NetDbgConnected #disconnectUI {
+	display: block;
+	background-color: green;
+	padding: 2px;
+}
+</style>
+</head>
+<body>
+<div id="controlPanel"><input type="checkbox" id="liveUpdate" onchange="g_debugger.toggleLiveUpdate(this.checked);"><label for="liveUpdate">Live update</label></div>
+<div id="legendOverlay"></div>
+<canvas id="canvas"></canvas>
+<div id="descr"></div>
+<div id="connectDlg" class="NetDbgDisconnected">
+<div id="connectUI">
+<input type="text" value="localhost:8787">
+<input type="button" value="Connect" onclick="g_debugger.connect(this.parentElement.getElementsByTagName('input')[0].value);">
+</div>
+<div id="connectingUI">
+<input type="button" value="Cancel" onclick="g_debugger.disconnect();">
+</div>
+<div id="disconnectUI">
+<input type="button" value="Disconnect" onclick="g_debugger.disconnect();">
+</div>
+</div>
+</body>
+</html>

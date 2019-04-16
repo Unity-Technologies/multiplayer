@@ -1,10 +1,7 @@
 using System;
-using System.Net;
-using System.Security;
 using UnityEngine;
 using Unity.Networking.Transport;
 using UnityEngine.Ucg.Matchmaking;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 /* The PingClientUIBehaviour is responsible for displaying statistics of a
  running ping client as well as for starting and stopping the ping of a
@@ -96,7 +93,11 @@ public class PingClientUIBehaviour : MonoBehaviour
             {
                 ushort port = 9000;
                 if (string.IsNullOrEmpty(m_CustomIp))
-                    ServerEndPoint = new IPEndPoint(IPAddress.Loopback, port);
+                {
+                    var endpoint = NetworkEndPoint.LoopbackIpv4;
+                    endpoint.Port = port;
+                    ServerEndPoint = endpoint;
+                }
                 else
                 {
                     string[] endpoint = m_CustomIp.Split(':');
@@ -105,7 +106,7 @@ public class PingClientUIBehaviour : MonoBehaviour
                         port = newPort;
 
                     Debug.Log($"Connecting to PingServer at {endpoint[0]}:{port}.");
-                    ServerEndPoint = new IPEndPoint(IPAddress.Parse(endpoint[0]), port);
+                    ServerEndPoint = NetworkEndPoint.Parse(endpoint[0], port);
                 }
             }
 
@@ -125,10 +126,17 @@ public class PingClientUIBehaviour : MonoBehaviour
         }
     }
 
-    void OnMatchmakingSuccess(string connectionInfo)
+    void OnMatchmakingSuccess(Assignment assignment)
     {
-        Debug.Log($"Matchmaking has found a game! The server is at: {connectionInfo}.");
-        m_CustomIp = connectionInfo;
+        if (string.IsNullOrEmpty(assignment.ConnectionString))
+        {
+            Debug.Log("Matchmaking finished, but did not return a game server.  Ensure your server has been allocated and is running then try again.");
+        }
+        else
+        {
+            Debug.Log($"Matchmaking has found a game! The server is at {assignment.ConnectionString} with players: " + string.Join(", ", assignment.Roster));
+            m_CustomIp = assignment.ConnectionString;
+        }
         m_useMatchmaking = false;
         m_matchmaker = null;
     }

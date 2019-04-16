@@ -10,4 +10,4 @@ public struct PingDriverComponentData : IComponentData
 }
 
 [UnityEngine.DisallowMultipleComponent]
-public class PingDriverComponent : ComponentDataWrapper<PingDriverComponentData> { }
+public class PingDriverComponent : ComponentDataProxy<PingDriverComponentData> { }

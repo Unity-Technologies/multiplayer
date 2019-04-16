@@ -1,10 +1,8 @@
-﻿using System.Net;
+﻿using Unity.Burst;
 using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Jobs;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 public class PingClientBehaviour : MonoBehaviour
 {
@@ -14,7 +12,7 @@ public class PingClientBehaviour : MonoBehaviour
         public float time;
     }
 
-    private UdpCNetworkDriver m_ClientDriver;
+    private UdpNetworkDriver m_ClientDriver;
     private NativeArray<NetworkConnection> m_clientToServerConnection;
     // pendingPings is an array of pings sent to the server which have not yet received a response.
     // Currently we only support one ping in-flight
@@ -28,7 +26,7 @@ public class PingClientBehaviour : MonoBehaviour
     {
         // Create a NetworkDriver for the client. We could bind to a specific address but in this case we rely on the
         // implicit bind since we do not need to bing to anything special
-        m_ClientDriver = new UdpCNetworkDriver(new INetworkParameter[0]);
+        m_ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
 
         m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
         m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
@@ -45,9 +43,10 @@ public class PingClientBehaviour : MonoBehaviour
         m_clientToServerConnection.Dispose();
     }
 
+    [BurstCompile]
     struct PingJob : IJob
     {
-        public UdpCNetworkDriver driver;
+        public UdpNetworkDriver driver;
         public NativeArray<NetworkConnection> connection;
         public NetworkEndPoint serverEP;
         public NativeArray<PendingPing> pendingPings;
@@ -80,7 +79,6 @@ public class PingClientBehaviour : MonoBehaviour
                     var pingData = new DataStreamWriter(4, Allocator.Temp);
                     pingData.Write(pingStats[0]);
                     connection[0].Send(driver, pingData);
-                    pingData.Dispose();
                     // Update the number of sent pings
                     pingStats[0] = pingStats[0] + 1;
                 }

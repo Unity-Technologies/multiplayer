@@ -1,19 +1,7 @@
-using System;
-using System.Net;
-using System.Text;
 using NUnit.Framework;
-using Unity.Collections;
-using UnityEngine;
-using Unity.Networking.Transport.Protocols;
-using Unity.Networking.Transport.Tests.Helpers;
-using UnityEngine.Apple.TV;
-using Random = UnityEngine.Random;
 
 namespace Unity.Networking.Transport.Tests
 {
-    using LocalNetworkDriver = BasicNetworkDriver<IPCSocket>;
-    using UdpCNetworkDriver = BasicNetworkDriver<IPv4UDPSocket>;
-
     public class NetworkHostUnitTests
     {
         private LocalNetworkDriver Driver;

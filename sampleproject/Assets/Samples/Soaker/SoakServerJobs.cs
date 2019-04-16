@@ -1,12 +1,9 @@
 using System;
+using Unity.Burst;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Jobs;
-using UnityEngine;
 using UnityEngine.Assertions;
-
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 struct SoakClientCtx
 {
@@ -14,10 +11,11 @@ struct SoakClientCtx
     public int NextSequenceId;
 }
 
+[BurstCompile]
 struct SoakServerAcceptJob : IJob
 {
     public int now;
-    public UdpCNetworkDriver driver;
+    public UdpNetworkDriver driver;
     public NativeList<SoakClientCtx> connections;
 
     public void Execute()
@@ -39,9 +37,11 @@ struct SoakServerAcceptJob : IJob
     }
 }
 
+[BurstCompile]
 struct SoakServerUpdateClientsJob : IJobParallelFor
 {
-    public UdpCNetworkDriver.Concurrent driver;
+    public UdpNetworkDriver.Concurrent driver;
+    public NetworkPipeline pipeline;
     public NativeArray<SoakClientCtx> connections;
 
     public void Execute(int i)
@@ -62,8 +62,6 @@ struct SoakServerUpdateClientsJob : IJobParallelFor
                     var readerCtx = default(DataStreamReader.Context);
                     unsafe
                     {
-                        if (!strm.IsCreated)
-                            Debug.Log("wtf not created.");
                         strm.ReadBytes(ref readerCtx, inbound.data, strm.Length);
                         Assert.AreEqual(strm.Length, inbound.length + SoakMessage.HeaderLength);
 
@@ -73,8 +71,7 @@ struct SoakServerUpdateClientsJob : IJobParallelFor
                         var soakData = new DataStreamWriter(SoakMessage.HeaderLength, Allocator.Temp);
                         soakData.WriteBytes(outbound.data, SoakMessage.HeaderLength);
 
-                        driver.Send(connections[i].Connection, soakData);
-                        soakData.Dispose();
+                        driver.Send(pipeline, connections[i].Connection, soakData);
                     }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)

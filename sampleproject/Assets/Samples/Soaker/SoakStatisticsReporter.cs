@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text;
 using Unity.Collections;
@@ -46,6 +47,18 @@ public class SoakStatisticsReporter
         var br_data = new ChartData(columns, rows); // Bytes Received;
         var bs_data = new ChartData(columns, rows); // Bytes Sent;
 
+        var relsent_data = new ChartData(columns, rows);
+        var relresent_data = new ChartData(columns, rows);
+        var reldrop_data = new ChartData(columns, rows);
+        var relrecv_data = new ChartData(columns, rows);
+        var reldup_data = new ChartData(columns, rows);
+        var relrtt_data = new ChartData(columns, rows);
+        var relrtt_queue = new ChartData(columns, rows);
+        var relrtt_age = new ChartData(columns, rows);
+        var relrtt_max = new ChartData(columns, rows);
+        var relrtt_smooth = new ChartData(columns, rows);
+        var relrtt_proc = new ChartData(columns, rows);
+
         int it = 0;
         for (int row = 0; row < rows; row++)
         {
@@ -58,6 +71,18 @@ public class SoakStatisticsReporter
             br_data.Points[row * columns] = timestamp;
             bs_data.Points[row * columns] = timestamp;
 
+            relsent_data.Points[row * columns] = timestamp;
+            relresent_data.Points[row * columns] = timestamp;
+            reldrop_data.Points[row * columns] = timestamp;
+            relrecv_data.Points[row * columns] = timestamp;
+            reldup_data.Points[row * columns] = timestamp;
+            relrtt_data.Points[row * columns] = timestamp;
+            relrtt_queue.Points[row * columns] = timestamp;
+            relrtt_age.Points[row * columns] = timestamp;
+            relrtt_max.Points[row * columns] = timestamp;
+            relrtt_smooth.Points[row * columns] = timestamp;
+            relrtt_proc.Points[row * columns] = timestamp;
+
             for (int col = 1; col < columns; col++)
             {
                 var sample = report.Samples[it++];
@@ -67,10 +92,22 @@ public class SoakStatisticsReporter
                 pd_data.Points[row * columns + col] = sample.DroppedOrStalePackets;
                 br_data.Points[row * columns + col] = sample.ReceivedBytes;
                 bs_data.Points[row * columns + col] = sample.SentBytes;
+
+                relsent_data.Points[row * columns + col] = sample.ReliableSent;
+                relresent_data.Points[row * columns + col] = sample.ReliableResent;
+                reldrop_data.Points[row * columns + col] = sample.ReliableDropped;
+                relrecv_data.Points[row * columns + col] = sample.ReliableReceived;
+                reldup_data.Points[row * columns + col] = sample.ReliableDuplicate;
+                relrtt_data.Points[row * columns + col] = sample.ReliableRTT;
+                relrtt_queue.Points[row * columns + col] = sample.ReliableResendQueue;
+                relrtt_age.Points[row * columns + col] = sample.ReliableOldestResendPacketAge;
+                relrtt_max.Points[row * columns + col] = sample.ReliableMaxRTT;
+                relrtt_smooth.Points[row * columns + col] = sample.ReliableSRTT;
+                relrtt_proc.Points[row * columns + col] = sample.ReliableMaxProcessingTime;
             }
         }
 
-        using (StreamWriter writer = new StreamWriter("c:\\Dump\\report.html"))
+        using (StreamWriter writer = new StreamWriter(UnityEngine.Application.dataPath + "/../soaker_report.html"))
         {
             string ptmds = "Ping Times (Mean)";
             string prds = "Packets Received";
@@ -88,6 +125,18 @@ public class SoakStatisticsReporter
             writer.Write(GenerateBody(br_data, brds, 5, clientInfos));
             writer.Write(GenerateBody(bs_data, bsds, 6, clientInfos));
 
+            writer.Write(GenerateBody(relsent_data, "Reliable Sent", 7, clientInfos));
+            writer.Write(GenerateBody(relrecv_data, "Reliable Received", 8, clientInfos));
+            writer.Write(GenerateBody(relresent_data, "Reliable Resent", 9, clientInfos));
+            writer.Write(GenerateBody(reldup_data, "Reliable Duplicate", 10, clientInfos));
+            writer.Write(GenerateBody(reldrop_data, "Reliable Dropped", 11, clientInfos));
+            writer.Write(GenerateBody(relrtt_data, "Reliable RTT", 12, clientInfos));
+            writer.Write(GenerateBody(relrtt_smooth, "Reliable Smooth RTT", 13, clientInfos));
+            writer.Write(GenerateBody(relrtt_max, "Reliable Max RTT", 14, clientInfos));
+            writer.Write(GenerateBody(relrtt_proc, "Reliable Max Processing Time", 15, clientInfos));
+            writer.Write(GenerateBody(relrtt_queue, "Reliable Resend Queue Size", 16, clientInfos));
+            writer.Write(GenerateBody(relrtt_age, "Reliable Oldest Resend Packet Age", 17, clientInfos));
+
             writer.Write(footer);
             writer.Flush();
         }
@@ -97,6 +146,18 @@ public class SoakStatisticsReporter
         pd_data.Points.Dispose();
         br_data.Points.Dispose();
         bs_data.Points.Dispose();
+
+        reldup_data.Points.Dispose();
+        reldrop_data.Points.Dispose();
+        relrecv_data.Points.Dispose();
+        relsent_data.Points.Dispose();
+        relresent_data.Points.Dispose();
+        relrtt_data.Points.Dispose();
+        relrtt_queue.Points.Dispose();
+        relrtt_age.Points.Dispose();
+        relrtt_max.Points.Dispose();
+        relrtt_smooth.Points.Dispose();
+        relrtt_proc.Points.Dispose();
     }
 
     string GenerateBody(ChartData data, string chartName, int chartId, string[] clientInfos)
@@ -122,10 +183,10 @@ public class SoakStatisticsReporter
 
         for (int row = 0; row < rows; row++)
         {
-            chartData.Append("[" + data.Points[row * columns]);
+            chartData.Append("[" + data.Points[row * columns].ToString(CultureInfo.InvariantCulture));
             for (int col = 1; col < columns; col++)
             {
-                chartData.Append(", " + data.Points[row * columns + col]);
+                chartData.Append(", " + data.Points[row * columns + col].ToString(CultureInfo.InvariantCulture));
             }
             if (row + 1 >= rows)
                 chartData.Append("]\n");

@@ -1,15 +1,11 @@
-﻿using System;
-using System.Net;
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Jobs;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 public class PingMainThreadServerBehaviour : MonoBehaviour
 {
-    public UdpCNetworkDriver m_ServerDriver;
+    public UdpNetworkDriver m_ServerDriver;
     private NativeList<NetworkConnection> m_connections;
 
     private JobHandle m_updateHandle;
@@ -17,8 +13,10 @@ public class PingMainThreadServerBehaviour : MonoBehaviour
     void Start()
     {
         // Create the server driver, bind it to a port and start listening for incoming connections
-        m_ServerDriver = new UdpCNetworkDriver(new INetworkParameter[0]);
-        if (m_ServerDriver.Bind(new IPEndPoint(IPAddress.Any, 9000)) != 0)
+        m_ServerDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+        var addr = NetworkEndPoint.AnyIpv4;
+        addr.Port = 9000;
+        if (m_ServerDriver.Bind(addr) != 0)
             Debug.Log("Failed to bind to port 9000");
         else
             m_ServerDriver.Listen();
@@ -67,8 +65,7 @@ public class PingMainThreadServerBehaviour : MonoBehaviour
                     var pongData = new DataStreamWriter(4, Allocator.Temp);
                     pongData.Write(id);
                     // Send the pong message with the same id as the ping
-                    m_ServerDriver.Send(m_connections[i], pongData);
-                    pongData.Dispose();
+                    m_ServerDriver.Send(NetworkPipeline.Null, m_connections[i], pongData);
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {

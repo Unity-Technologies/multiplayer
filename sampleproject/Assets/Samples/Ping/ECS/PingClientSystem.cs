@@ -1,94 +1,77 @@
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Networking.Transport;
 using UnityEngine;
-using UnityEngine.Experimental.PlayerLoop;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
-[UpdateAfter(typeof(FixedUpdate))]
-[UpdateAfter(typeof(PingBarrierSystem))]
+[UpdateInGroup(typeof(SimulationSystemGroup))]
+[AlwaysUpdateSystem]
 public class PingClientSystem : JobComponentSystem
 {
-#pragma warning disable 649
-    [Inject] private PingBarrierSystem m_Barrier;
-    [Inject] private PingDriverSystem m_DriverSystem;
-
-    struct ConnectionList
-    {
-        public ComponentDataArray<PingClientConnectionComponentData> connections;
-        public EntityArray entities;
-    }
-    [Inject] private ConnectionList connectionList;
-
-    // Inject the driver list to make sure we get automatic dependency tracking for accessing the driver
-    struct DriverList
-    {
-        public ComponentDataArray<PingDriverComponentData> drivers;
-    }
-    [Inject] private DriverList driverList;
-#pragma warning restore 649
+    private BeginSimulationEntityCommandBufferSystem m_Barrier;
+    private PingDriverSystem m_DriverSystem;
+    private ComponentGroup m_ConnectionGroup;
 
     struct PendingPing
     {
         public int id;
         public float time;
     }
-    struct PingJob : IJob
+    // Adding and removing components with EntityCommandBuffer is not burst compatible
+    //[BurstCompile]
+    struct PingJob : IJobProcessComponentDataWithEntity<PingClientConnectionComponentData>
     {
-        public UdpCNetworkDriver driver;
-        public ComponentDataArray<PingClientConnectionComponentData> connections;
-        public EntityArray connectionEntities;
+        public UdpNetworkDriver driver;
         public NetworkEndPoint serverEP;
         public NativeArray<PendingPing> pendingPings;
         public NativeArray<int> pingStats;
         public float fixedTime;
         public EntityCommandBuffer commandBuffer;
 
-        public void Execute()
+        public void Execute(Entity entity, int index, ref PingClientConnectionComponentData connection)
         {
-            if (serverEP.IsValid && connections.Length == 0)
+            if (!serverEP.IsValid)
             {
-                commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(new PingClientConnectionComponentData{connection = driver.Connect(serverEP)});
-            }
-            if (!serverEP.IsValid && connections.Length > 0)
-            {
-                for (int con = 0; con < connections.Length; ++con)
-                {
-                    connections[con].connection.Disconnect(driver);
-                    commandBuffer.DestroyEntity(connectionEntities[con]);
-                }
-
+                connection.connection.Disconnect(driver);
+                commandBuffer.DestroyEntity(entity);
                 return;
             }
-            for (int con = 0; con < connections.Length; ++con)
+            DataStreamReader strm;
+            NetworkEvent.Type cmd;
+            while ((cmd = connection.connection.PopEvent(driver, out strm)) != NetworkEvent.Type.Empty)
             {
-                DataStreamReader strm;
-                NetworkEvent.Type cmd;
-                while ((cmd = connections[con].connection.PopEvent(driver, out strm)) != NetworkEvent.Type.Empty)
+                if (cmd == NetworkEvent.Type.Connect)
                 {
-                    if (cmd == NetworkEvent.Type.Connect)
-                    {
-                        pendingPings[0] = new PendingPing {id = pingStats[0], time = fixedTime};
-                        var pingData = new DataStreamWriter(4, Allocator.Temp);
-                        pingData.Write(pingStats[0]);
-                        connections[con].connection.Send(driver, pingData);
-                        pingData.Dispose();
-                        pingStats[0] = pingStats[0] + 1;
-                    }
-                    else if (cmd == NetworkEvent.Type.Data)
-                    {
-                        pingStats[1] = (int) ((fixedTime - pendingPings[0].time) * 1000);
-                        connections[con].connection.Disconnect(driver);
-                        commandBuffer.DestroyEntity(connectionEntities[con]);
-                    }
-                    else if (cmd == NetworkEvent.Type.Disconnect)
-                    {
-                        commandBuffer.DestroyEntity(connectionEntities[con]);
-                    }
+                    pendingPings[0] = new PendingPing {id = pingStats[0], time = fixedTime};
+                    var pingData = new DataStreamWriter(4, Allocator.Temp);
+                    pingData.Write(pingStats[0]);
+                    connection.connection.Send(driver, pingData);
+                    pingStats[0] = pingStats[0] + 1;
+                }
+                else if (cmd == NetworkEvent.Type.Data)
+                {
+                    pingStats[1] = (int) ((fixedTime - pendingPings[0].time) * 1000);
+                    connection.connection.Disconnect(driver);
+                    commandBuffer.DestroyEntity(entity);
+                }
+                else if (cmd == NetworkEvent.Type.Disconnect)
+                {
+                    commandBuffer.DestroyEntity(entity);
                 }
             }
+        }
+    }
+
+    struct ConnectJob : IJob
+    {
+        public UdpNetworkDriver driver;
+        public NetworkEndPoint serverEP;
+        public EntityCommandBuffer commandBuffer;
+        public void Execute()
+        {
+            var ent = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent(ent, new PingClientConnectionComponentData{connection = driver.Connect(serverEP)});
         }
     }
 
@@ -99,6 +82,11 @@ public class PingClientSystem : JobComponentSystem
     {
         m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
         m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
+        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_DriverSystem = World.GetOrCreateManager<PingDriverSystem>();
+        m_ConnectionGroup = GetComponentGroup(ComponentType.ReadWrite<PingClientConnectionComponentData>());
+        // Group used only to get dependency tracking for the driver
+        GetComponentGroup(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
 
     protected override void OnDestroyManager()
@@ -112,18 +100,30 @@ public class PingClientSystem : JobComponentSystem
         if (!m_DriverSystem.ClientDriver.IsCreated)
             return inputDep;
         PingClientUIBehaviour.UpdateStats(m_pingStats[0], m_pingStats[1]);
+        if (PingClientUIBehaviour.ServerEndPoint.IsValid && m_ConnectionGroup.IsEmptyIgnoreFilter)
+        {
+            var conJob = new ConnectJob
+            {
+                driver = m_DriverSystem.ClientDriver,
+                serverEP = PingClientUIBehaviour.ServerEndPoint,
+                commandBuffer = m_Barrier.CreateCommandBuffer()
+            };
+            inputDep = conJob.Schedule(inputDep);
+            m_Barrier.AddJobHandleForProducer(inputDep);
+            return inputDep;
+        }
         var pingJob = new PingJob
         {
             driver = m_DriverSystem.ClientDriver,
-            connections = connectionList.connections,
-            connectionEntities = connectionList.entities,
             serverEP = PingClientUIBehaviour.ServerEndPoint,
             pendingPings = m_pendingPings,
             pingStats = m_pingStats,
             fixedTime = Time.fixedTime,
             commandBuffer = m_Barrier.CreateCommandBuffer()
         };
-        return pingJob.Schedule(inputDep);
+        var handle = pingJob.ScheduleSingle(this, inputDep);
+        m_Barrier.AddJobHandleForProducer(handle);
+        return handle;
     }
 
 }

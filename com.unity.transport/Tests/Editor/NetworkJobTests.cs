@@ -1,13 +1,11 @@
 using System;
 using NUnit.Framework;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 
 namespace Unity.Networking.Transport.Tests
 {
-    using LocalNetworkDriver = BasicNetworkDriver<IPCSocket>;
-    using UdpCNetworkDriver = BasicNetworkDriver<IPv4UDPSocket>;
-
     public class NetworkJobTests
     {
         [SetUp]
@@ -33,9 +31,9 @@ namespace Unity.Networking.Transport.Tests
             clientDriver.ScheduleUpdate().Complete();
             DataStreamReader strmReader;
             // Make sure the connected message was received
-            Assert.AreEqual(NetworkEvent.Type.Connect, clientToServer.PopEvent(clientDriver, out strmReader));            
+            Assert.AreEqual(NetworkEvent.Type.Connect, clientToServer.PopEvent(clientDriver, out strmReader));
         }
-        
+
         [Test]
         public void ScheduleUpdateWorks()
         {
@@ -65,7 +63,6 @@ namespace Unity.Networking.Transport.Tests
             var strmWriter = new DataStreamWriter(4, Allocator.Temp);
             strmWriter.Write(42);
             clientToServer.Send(clientDriver, strmWriter);
-            strmWriter.Dispose();
             clientDriver.ScheduleUpdate().Complete();
             var serverToClient = serverDriver.Accept();
             serverDriver.ScheduleUpdate().Complete();
@@ -138,7 +135,6 @@ namespace Unity.Networking.Transport.Tests
             var strmWriter = new DataStreamWriter(4, Allocator.Temp);
             strmWriter.Write(42);
             clientToServer.Send(clientDriver, strmWriter);
-            strmWriter.Dispose();
             clientDriver.ScheduleUpdate().Complete();
 
             var serverToClient = new NativeArray<NetworkConnection>(1, Allocator.TempJob);
@@ -164,7 +160,6 @@ namespace Unity.Networking.Transport.Tests
                 var strmWriter = new DataStreamWriter(4, Allocator.Temp);
                 strmWriter.Write(42);
                 connection.Send(driver, strmWriter);
-                strmWriter.Dispose();
             }
         }
         [Test]
@@ -201,8 +196,7 @@ namespace Unity.Networking.Transport.Tests
                 int result = strmReader.ReadInt(ref ctx);
                 var strmWriter = new DataStreamWriter(4, Allocator.Temp);
                 strmWriter.Write(result + 1);
-                driver.Send(connections[i], strmWriter);
-                strmWriter.Dispose();
+                driver.Send(NetworkPipeline.Null, connections[i], strmWriter);
             }
         }
         [Test]
@@ -226,7 +220,6 @@ namespace Unity.Networking.Transport.Tests
             Assert.IsTrue(serverToClient[1].IsCreated);
             clientToServer0.Send(clientDriver0, strmWriter);
             clientToServer1.Send(clientDriver1, strmWriter);
-            strmWriter.Dispose();
             clientDriver0.ScheduleUpdate().Complete();
             clientDriver1.ScheduleUpdate().Complete();
 
@@ -234,7 +227,79 @@ namespace Unity.Networking.Transport.Tests
             var jobHandle = serverDriver.ScheduleUpdate();
             jobHandle = sendRecvJob.Schedule(serverToClient.Length, 1, jobHandle);
             serverDriver.ScheduleUpdate(jobHandle).Complete();
-            
+
+            DataStreamReader strmReader;
+            clientDriver0.ScheduleUpdate().Complete();
+            Assert.AreEqual(NetworkEvent.Type.Data, clientToServer0.PopEvent(clientDriver0, out strmReader));
+            var ctx = default(DataStreamReader.Context);
+            Assert.AreEqual(43, strmReader.ReadInt(ref ctx));
+            clientDriver1.ScheduleUpdate().Complete();
+            Assert.AreEqual(NetworkEvent.Type.Data, clientToServer1.PopEvent(clientDriver1, out strmReader));
+            ctx = default(DataStreamReader.Context);
+            Assert.AreEqual(43, strmReader.ReadInt(ref ctx));
+
+            serverToClient.Dispose();
+            clientDriver0.Dispose();
+            clientDriver1.Dispose();
+            serverDriver.Dispose();
+        }
+        [BurstCompile/*(CompileSynchronously = true)*/] // FIXME: sync compilation makes tests timeout
+        struct SendReceiveWithPipelineParallelJob : IJobParallelFor
+        {
+            public LocalNetworkDriver.Concurrent driver;
+            public NativeArray<NetworkConnection> connections;
+            public NetworkPipeline pipeline;
+            public void Execute(int i)
+            {
+                DataStreamReader strmReader;
+                // Data
+                if (driver.PopEventForConnection(connections[i], out strmReader) != NetworkEvent.Type.Data)
+                    throw new InvalidOperationException("Expected data: " + i);
+                var ctx = default(DataStreamReader.Context);
+                int result = strmReader.ReadInt(ref ctx);
+                var strmWriter = new DataStreamWriter(4, Allocator.Temp);
+                strmWriter.Write(result + 1);
+                driver.Send(pipeline, connections[i], strmWriter);
+            }
+        }
+        [Test]
+        public void SendReceiveWithPipelineInParallelJobWorks()
+        {
+            var timeoutParam = new NetworkConfigParameter
+            {
+                connectTimeoutMS = NetworkParameterConstants.ConnectTimeoutMS,
+                maxConnectAttempts = NetworkParameterConstants.MaxConnectAttempts,
+                disconnectTimeoutMS = 90 * 1000
+            };
+            var serverDriver = new LocalNetworkDriver(new NetworkDataStreamParameter {size = 64}, timeoutParam);
+            var serverPipeline = serverDriver.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
+            serverDriver.Bind(IPCManager.Instance.CreateEndPoint());
+            serverDriver.Listen();
+            var clientDriver0 = new LocalNetworkDriver(new NetworkDataStreamParameter {size = 64}, timeoutParam);
+            var clientDriver1 = new LocalNetworkDriver(new NetworkDataStreamParameter {size = 64}, timeoutParam);
+            var client0Pipeline = clientDriver0.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
+            var client1Pipeline = clientDriver1.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
+            var serverToClient = new NativeArray<NetworkConnection>(2, Allocator.TempJob);
+            var strmWriter = new DataStreamWriter(4, Allocator.Temp);
+            strmWriter.Write(42);
+            var clientToServer0 = clientDriver0.Connect(serverDriver.LocalEndPoint());
+            var clientToServer1 = clientDriver1.Connect(serverDriver.LocalEndPoint());
+            WaitForConnected(clientDriver0, serverDriver, clientToServer0);
+            serverToClient[0] = serverDriver.Accept();
+            Assert.IsTrue(serverToClient[0].IsCreated);
+            WaitForConnected(clientDriver1, serverDriver, clientToServer1);
+            serverToClient[1] = serverDriver.Accept();
+            Assert.IsTrue(serverToClient[1].IsCreated);
+            clientToServer0.Send(clientDriver0, client0Pipeline, strmWriter);
+            clientToServer1.Send(clientDriver1, client1Pipeline, strmWriter);
+            clientDriver0.ScheduleUpdate().Complete();
+            clientDriver1.ScheduleUpdate().Complete();
+
+            var sendRecvJob = new SendReceiveWithPipelineParallelJob {driver = serverDriver.ToConcurrent(), connections = serverToClient, pipeline = serverPipeline};
+            var jobHandle = serverDriver.ScheduleUpdate();
+            jobHandle = sendRecvJob.Schedule(serverToClient.Length, 1, jobHandle);
+            serverDriver.ScheduleUpdate(jobHandle).Complete();
+
             DataStreamReader strmReader;
             clientDriver0.ScheduleUpdate().Complete();
             Assert.AreEqual(NetworkEvent.Type.Data, clientToServer0.PopEvent(clientDriver0, out strmReader));

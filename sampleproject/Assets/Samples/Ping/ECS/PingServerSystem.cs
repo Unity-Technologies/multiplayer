@@ -1,38 +1,24 @@
-using System;
-using System.Net;
-using System.Net.Sockets;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Networking.Transport;
-using UnityEngine.Experimental.PlayerLoop;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
-[UpdateAfter(typeof(FixedUpdate))]
-[UpdateAfter(typeof(PingBarrierSystem))]
+[UpdateInGroup(typeof(SimulationSystemGroup))]
 public class PingServerSystem : JobComponentSystem
 {
-#pragma warning disable 649
-    [Inject] private PingDriverSystem m_ServerDriverSystem;
+    private PingDriverSystem m_ServerDriverSystem;
 
-    struct ConnectionList
+    [BurstCompile]
+    struct PongJob : IJobProcessComponentData<PingServerConnectionComponentData>
     {
-        public ComponentDataArray<PingServerConnectionComponentData> connections;
-    }
+        public UdpNetworkDriver.Concurrent driver;
 
-    [Inject] private ConnectionList connectionList;
-#pragma warning restore 649
-
-    struct PongJob : IJobParallelFor
-    {
-        public UdpCNetworkDriver.Concurrent driver;
-        public ComponentDataArray<PingServerConnectionComponentData> connections;
-
-        public void Execute(int i)
+        public void Execute(ref PingServerConnectionComponentData connection)
         {
             DataStreamReader strm;
             NetworkEvent.Type cmd;
-            while ((cmd = driver.PopEventForConnection(connections[i].connection, out strm)) != NetworkEvent.Type.Empty)
+            while ((cmd = driver.PopEventForConnection(connection.connection, out strm)) != NetworkEvent.Type.Empty)
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
@@ -40,24 +26,28 @@ public class PingServerSystem : JobComponentSystem
                     int id = strm.ReadInt(ref readerCtx);
                     var pongData = new DataStreamWriter(4, Allocator.Temp);
                     pongData.Write(id);
-                    driver.Send(connections[i].connection, pongData);
-                    pongData.Dispose();
+                    driver.Send(NetworkPipeline.Null, connection.connection, pongData);
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {
-                    connections[i] = new PingServerConnectionComponentData {connection = default(NetworkConnection)};
+                    connection = new PingServerConnectionComponentData {connection = default(NetworkConnection)};
                 }
             }
         }
     }
+
+    protected override void OnCreateManager()
+    {
+        m_ServerDriverSystem = World.GetOrCreateManager<PingDriverSystem>();
+    }
+
     protected override JobHandle OnUpdate(JobHandle inputDep)
     {
         var pongJob = new PongJob
         {
-            driver = m_ServerDriverSystem.ServerDriver.ToConcurrent(),
-            connections = connectionList.connections
+            driver = m_ServerDriverSystem.ConcurrentServerDriver
         };
-        inputDep = pongJob.Schedule(connectionList.connections.Length, 1, inputDep);
+        inputDep = pongJob.Schedule(this, inputDep);
 
         return inputDep;
     }

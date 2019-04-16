@@ -1,7 +1,9 @@
 {
     "name": "Unity.Networking.Transport",
     "references": [
-           "Unity.Collections"
+           "Unity.Burst",
+           "Unity.Collections",
+           "Unity.Mathematics"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

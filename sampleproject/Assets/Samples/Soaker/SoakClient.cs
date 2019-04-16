@@ -1,17 +1,15 @@
 ﻿using System;
-using System.Net;
 using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Jobs;
-
 using Random = System.Random;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
+using Unity.Networking.Transport.Utilities;
 
 public class SoakClient : IDisposable
 {
-    public UdpCNetworkDriver DriverHandle;
+    public UdpNetworkDriver DriverHandle;
+    public NetworkPipeline Pipeline;
     public NetworkEndPoint ServerEndPoint;
     public string CustomIp = "";
 
@@ -26,10 +24,12 @@ public class SoakClient : IDisposable
 
     public SoakClient(double sendInterval, int packetSize, int duration)
     {
-        DriverHandle = new UdpCNetworkDriver(new INetworkParameter[0]);
+        DriverHandle = new UdpNetworkDriver(new SimulatorUtility.Parameters {MaxPacketSize = packetSize, MaxPacketCount = 30, PacketDelayMs = 25, PacketDropPercentage = 10 /*PacketDropInterval = 100*/}, new ReliableUtility.Parameters { WindowSize = 32 });
+        //Pipeline = DriverHandle.CreatePipeline(typeof(UnreliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
+        Pipeline = DriverHandle.CreatePipeline(typeof(ReliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
         if (packetSize > NetworkParameterConstants.MTU)
         {
-            Debug.LogWarning("Trunkating packet size to MTU");
+            Debug.LogWarning("Truncating packet size to MTU");
             packetSize = NetworkParameterConstants.MTU;
         }
         else if (packetSize < SoakMessage.HeaderLength)
@@ -58,11 +58,12 @@ public class SoakClient : IDisposable
         };
         SoakJobContextsHandle[0] = context;
 
-        SoakStatisticsHandle = new NativeArray<SoakStatisticsPoint>(1, Allocator.Persistent);
+        SoakStatisticsHandle = new NativeArray<SoakStatisticsPoint>(2, Allocator.Persistent);
         SoakStatisticsHandle[0] = new SoakStatisticsPoint();
+        SoakStatisticsHandle[1] = new SoakStatisticsPoint();
     }
 
-    public void Start(EndPoint endpoint)
+    public void Start(NetworkEndPoint endpoint)
     {
         ServerEndPoint = endpoint;
     }

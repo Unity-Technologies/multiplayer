@@ -1,15 +1,14 @@
+using Unity.Burst;
 using Unity.Networking.Transport;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
-using UnityEngine;
-using UnityEngine.Assertions;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
+[BurstCompile]
 public struct SoakClientJob : IJob
 {
-    public UdpCNetworkDriver driver;
+    public UdpNetworkDriver driver;
+    public NetworkPipeline pipeline;
     public NativeArray<NetworkConnection> connection;
     public DataStreamWriter streamWriter;
     public NetworkEndPoint serverEP;
@@ -23,6 +22,7 @@ public struct SoakClientJob : IJob
     public float fixedTime;
     public double deltaTime;
     public int frameId;
+    public long timestamp;
 
     public unsafe void SendPacket(ref SoakStatisticsPoint stats, ref SoakJobContext ctx)
     {
@@ -39,11 +39,30 @@ public struct SoakClientJob : IJob
         streamWriter.WriteBytes(message.data, SoakMessage.HeaderLength);
         streamWriter.WriteBytes((byte*)packetData.GetUnsafeReadOnlyPtr(), packetData.Length);
 
-        stats.SentBytes += connection[0].Send(driver, streamWriter);
+        stats.SentBytes += connection[0].Send(driver, pipeline, streamWriter);
         stats.SentPackets++;
 
         pendingSoaks[message.id % pendingSoaks.Length] = message;
     }
+
+    public unsafe void DumpSimulatorStatistics()
+    {
+        NativeSlice<byte> receiveBuffer = default;
+        NativeSlice<byte> sendBuffer = default;
+        NativeSlice<byte> sharedBuffer = default;
+        driver.GetPipelineBuffers(pipeline, 0, connection[0], ref receiveBuffer, ref sendBuffer, ref sharedBuffer);
+        /*var simCtx = (Simulator.Context*)sharedBuffer.GetUnsafeReadOnlyPtr();
+        Debug.Log("Simulator stats\n" +
+            "PacketCount: " + simCtx->PacketCount + "\n" +
+            "PacketDropCount: " + simCtx->PacketDropCount + "\n" +
+            "MaxPacketCount: " + simCtx->MaxPacketCount + "\n" +
+            "ReadyPackets: " + simCtx->ReadyPackets + "\n" +
+            "WaitingPackets: " + simCtx->WaitingPackets + "\n" +
+            "NextPacketTime: " + simCtx->NextPacketTime + "\n" +
+            "StatsTime: " + simCtx->StatsTime);*/
+    }
+
+
 
     public unsafe void Execute()
     {
@@ -54,6 +73,7 @@ public struct SoakClientJob : IJob
 
         var ctx = jobContext[0];
         var stats = jobStatistics[0];
+        var lastStats = jobStatistics[1];
 
         if (ctx.Done == 1 || !connection[0].IsCreated)
             return;
@@ -75,12 +95,6 @@ public struct SoakClientJob : IJob
             else if (cmd == NetworkEvent.Type.Data)
             {
                 /*var state =*/ connection[0].GetState(driver);
-
-                if (!strm.IsCreated)
-                {
-                    Debug.Log("stream failed?");
-                    return;
-                }
 
                 stats.ReceivedBytes += strm.Length;
                 var readerCtx = default(DataStreamReader.Context);
@@ -108,6 +122,15 @@ public struct SoakClientJob : IJob
         {
             ctx.Done = 1;
             connection[0].Disconnect(driver);
+            Util.DumpReliabilityStatistics(driver, pipeline, connection[0]);
+            DumpSimulatorStatistics();
+        }
+
+        if (fixedTime > ctx.NextStatsPrint)
+        {
+            ctx.NextStatsPrint = fixedTime + 10;
+            //DumpSimulatorStatistics();
+            //Util.DumpReliabilityStatistics(driver, pipeline, connection[0]);
         }
 
         ctx.Accumulator += deltaTime;
@@ -119,7 +142,10 @@ public struct SoakClientJob : IJob
             SendPacket(ref stats, ref ctx);
         }
 
+        Util.GatherReliabilityStats(ref stats, ref lastStats, driver, pipeline, connection[0], timestamp);
+
         jobContext[0] = ctx;
         jobStatistics[0] = stats;
+        jobStatistics[1] = lastStats;
     }
 }

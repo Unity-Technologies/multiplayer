@@ -1,10 +1,6 @@
-﻿using System.Net;
-using UnityEngine;
+﻿using UnityEngine;
 using Unity.Networking.Transport;
 using Unity.Collections;
-using Unity.Jobs;
-using NetworkConnection = Unity.Networking.Transport.NetworkConnection;
-using UdpCNetworkDriver = Unity.Networking.Transport.BasicNetworkDriver<Unity.Networking.Transport.IPv4UDPSocket>;
 
 public class PingMainThreadClientBehaviour : MonoBehaviour
 {
@@ -14,7 +10,7 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
         public float time;
     }
 
-    private UdpCNetworkDriver m_ClientDriver;
+    private UdpNetworkDriver m_ClientDriver;
     private NetworkConnection m_clientToServerConnection;
     // pendingPing is a ping sent to the server which have not yet received a response.
     private PendingPing m_pendingPing;
@@ -26,7 +22,7 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
     {
         // Create a NetworkDriver for the client. We could bind to a specific address but in this case we rely on the
         // implicit bind since we do not need to bing to anything special
-        m_ClientDriver = new UdpCNetworkDriver(new INetworkParameter[0]);
+        m_ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
     }
 
     void OnDestroy()
@@ -67,7 +63,6 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
                 var pingData = new DataStreamWriter(4, Allocator.Temp);
                 pingData.Write(m_numPingsSent);
                 m_clientToServerConnection.Send(m_ClientDriver, pingData);
-                pingData.Dispose();
                 // Update the number of sent pings
                 ++m_numPingsSent;
             }

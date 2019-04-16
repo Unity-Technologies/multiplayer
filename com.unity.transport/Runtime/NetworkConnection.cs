@@ -1,7 +1,3 @@
-using System;
-using System.Net;
-using Unity.Collections.LowLevel.Unsafe;
-
 namespace Unity.Networking.Transport
 {
     /// <summary>
@@ -50,13 +46,18 @@ namespace Unity.Networking.Transport
         }
 
         /// <summary>
-        /// Send data to the remove endpoint.
+        /// Send data to the remote endpoint.
         /// </summary>
         /// <param name="driver">The driver that owns the virtual connection.</param>
         /// <param name="strm">A valid <see cref="DataStreamWriter"/> filled with the data you want to send.</param>
         public int Send<T>(T driver, DataStreamWriter bs) where T : struct, INetworkDriver
         {
-            return driver.Send(this, bs);
+            return driver.Send(NetworkPipeline.Null, this, bs);
+        }
+        
+        public int Send<T>(T driver, NetworkPipeline pipeline, DataStreamWriter bs) where T : struct, INetworkDriver
+        {
+            return driver.Send(pipeline, this, bs);
         }
 
         /// <summary>
