@@ -10,7 +10,7 @@ namespace Asteroids.Server
     [UpdateAfter(typeof(NetworkStreamReceiveSystem))]
     public class InputCommandSystem : JobComponentSystem
     {
-        struct PlayerInputJob : IJobProcessComponentDataWithEntity<PlayerStateComponentData>
+        struct PlayerInputJob : IJobForEachWithEntity<PlayerStateComponentData>
         {
             public ComponentDataFromEntity<PlayerInputComponentData> shipInput;
             public BufferFromEntity<IncomingCommandDataStreamBufferComponent> cmdBuffer;
@@ -50,7 +50,7 @@ namespace Asteroids.Server
         private ServerSimulationSystemGroup serverSimulationSystemGroup;
         protected override void OnCreateManager()
         {
-            serverSimulationSystemGroup = World.GetExistingManager<ServerSimulationSystemGroup>();
+            serverSimulationSystemGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

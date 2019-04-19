@@ -35,7 +35,7 @@ public class MultiplayerPlayModeWindow : EditorWindow
                     MultiplayerPlayModeControllerSystem.PresentedClient = i;
 
                 var conSystem = ClientServerBootstrap.clientWorld[i]
-                    .GetExistingManager<MultiplayerPlayModeConnectionSystem>();
+                    .GetExistingSystem<MultiplayerPlayModeConnectionSystem>();
                 if (conSystem != null)
                 {
                     if (conSystem.ClientConnectionState ==
@@ -108,12 +108,12 @@ public class MultiplayerPlayModeConnectionSystem : ComponentSystem
     }
 
     public ConnectionState ClientConnectionState;
-    private ComponentGroup m_clientConnectionGroup;
+    private EntityQuery m_clientConnectionGroup;
     private NetworkEndPoint m_prevEndPoint;
 
     protected override void OnCreateManager()
     {
-        m_clientConnectionGroup = GetComponentGroup(
+        m_clientConnectionGroup = GetEntityQuery(
             ComponentType.ReadWrite<NetworkStreamConnection>(),
             ComponentType.Exclude<NetworkStreamDisconnected>());
         ClientConnectionState = ConnectionState.Uninitialized;
@@ -126,10 +126,10 @@ public class MultiplayerPlayModeConnectionSystem : ComponentSystem
         if (ClientConnectionState == ConnectionState.TriggerDisconnect && isConnected)
         {
             var con = m_clientConnectionGroup.ToComponentDataArray<NetworkStreamConnection>(Allocator.TempJob);
-            m_prevEndPoint = World.GetExistingManager<NetworkStreamReceiveSystem>().Driver.RemoteEndPoint(con[0].Value);
+            m_prevEndPoint = World.GetExistingSystem<NetworkStreamReceiveSystem>().Driver.RemoteEndPoint(con[0].Value);
             for (int i = 0; i < con.Length; ++i)
             {
-                World.GetExistingManager<NetworkStreamReceiveSystem>().Driver.Disconnect(con[i].Value);
+                World.GetExistingSystem<NetworkStreamReceiveSystem>().Driver.Disconnect(con[i].Value);
             }
 
             con.Dispose();
@@ -141,7 +141,7 @@ public class MultiplayerPlayModeConnectionSystem : ComponentSystem
         }*/
         else if (ClientConnectionState == ConnectionState.TriggerConnect && !isConnected && m_prevEndPoint.IsValid)
         {
-            World.GetExistingManager<NetworkStreamReceiveSystem>().Connect(m_prevEndPoint);
+            World.GetExistingSystem<NetworkStreamReceiveSystem>().Connect(m_prevEndPoint);
         }
         // Update connection status
         ClientConnectionState = isConnected ? ConnectionState.Connected : (m_prevEndPoint.IsValid ? ConnectionState.NotConnected : ConnectionState.Uninitialized);
@@ -163,7 +163,7 @@ public class MultiplayerPlayModeControllerSystem : ComponentSystem
         {
             for (int i = 1; i < ClientServerBootstrap.clientWorld.Length; ++i)
             {
-                ClientServerBootstrap.clientWorld[i].GetExistingManager<ClientPresentationSystemGroup>().Enabled = false;
+                ClientServerBootstrap.clientWorld[i].GetExistingSystem<ClientPresentationSystemGroup>().Enabled = false;
             }
         }
     }
@@ -173,8 +173,8 @@ public class MultiplayerPlayModeControllerSystem : ComponentSystem
         if (PresentedClient != m_currentPresentedClient)
         {
             // Change active client for presentation
-            ClientServerBootstrap.clientWorld[m_currentPresentedClient].GetExistingManager<ClientPresentationSystemGroup>().Enabled = false;
-            ClientServerBootstrap.clientWorld[PresentedClient].GetExistingManager<ClientPresentationSystemGroup>().Enabled = true;
+            ClientServerBootstrap.clientWorld[m_currentPresentedClient].GetExistingSystem<ClientPresentationSystemGroup>().Enabled = false;
+            ClientServerBootstrap.clientWorld[PresentedClient].GetExistingSystem<ClientPresentationSystemGroup>().Enabled = true;
             m_currentPresentedClient = PresentedClient;
         }
     }

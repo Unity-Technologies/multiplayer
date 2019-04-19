@@ -243,10 +243,10 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
         m_UnreliablePipeline = NetworkPipeline.Null;
         m_ReliablePipeline = NetworkPipeline.Null;
         m_DriverListening = false;
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         numNetworkIds = new NativeArray<int>(1, Allocator.Persistent);
         freeNetworkIds = new NativeQueue<int>(Allocator.Persistent);
-        rpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcSetNetworkId>();
+        rpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcSetNetworkId>();
     }
 
     protected override void OnDestroyManager()
@@ -288,7 +288,7 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
     }
 
     [ExcludeComponent(typeof(NetworkIdComponent))]
-    struct AssignNetworkIdJob : IJobProcessComponentDataWithEntity<NetworkStreamConnection>
+    struct AssignNetworkIdJob : IJobForEachWithEntity<NetworkStreamConnection>
     {
         public EntityCommandBuffer commandBuffer;
         public NativeArray<int> numNetworkId;
@@ -313,7 +313,7 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
     }
 
     [ExcludeComponent(typeof(NetworkStreamDisconnected))]
-    struct ConnectionReceiveJob : IJobProcessComponentDataWithEntity<NetworkStreamConnection, NetworkSnapshotAck>
+    struct ConnectionReceiveJob : IJobForEachWithEntity<NetworkStreamConnection, NetworkSnapshotAck>
     {
         public EntityCommandBuffer.Concurrent commandBuffer;
         public UdpNetworkDriver.Concurrent driver;
@@ -460,7 +460,7 @@ public class NetworkStreamCloseSystem : JobComponentSystem
 {
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     [RequireComponentTag(typeof(NetworkStreamDisconnected))]
-    struct CloseJob : IJobProcessComponentDataWithEntity<NetworkStreamConnection>
+    struct CloseJob : IJobForEachWithEntity<NetworkStreamConnection>
     {
         public EntityCommandBuffer commandBuffer;
         public void Execute(Entity entity, int index, [ReadOnly] ref NetworkStreamConnection con)
@@ -471,7 +471,7 @@ public class NetworkStreamCloseSystem : JobComponentSystem
 
     protected override void OnCreateManager()
     {
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
     }
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)

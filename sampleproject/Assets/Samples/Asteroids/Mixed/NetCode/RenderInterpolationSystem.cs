@@ -18,16 +18,16 @@ public class RenderInterpolationSystem : JobComponentSystem
 {
     // FIXME: should use singleton component
     public static RenderInterpolationParameters parameters;
-    private ComponentGroup posInterpolationGroup;
-    private ComponentGroup rotInterpolationGroup;
+    private EntityQuery posInterpolationGroup;
+    private EntityQuery rotInterpolationGroup;
     private uint lastInterpolationVersion;
     protected override void OnCreateManager()
     {
-        posInterpolationGroup = GetComponentGroup(
+        posInterpolationGroup = GetEntityQuery(
             ComponentType.ReadWrite<Translation>(),
             ComponentType.ReadOnly<CurrentSimulatedPosition>(),
             ComponentType.ReadOnly<PreviousSimulatedPosition>());
-        rotInterpolationGroup = GetComponentGroup(
+        rotInterpolationGroup = GetEntityQuery(
             ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadOnly<CurrentSimulatedRotation>(),
             ComponentType.ReadOnly<PreviousSimulatedRotation>());
@@ -107,13 +107,13 @@ public class RenderInterpolationSystem : JobComponentSystem
 [UpdateBefore(typeof(NetworkStreamReceiveSystem))]
 public class BeforeSimulationInterpolationSystem : JobComponentSystem
 {
-    private ComponentGroup positionInterpolationGroup;
-    private ComponentGroup rotationInterpolationGroup;
+    private EntityQuery positionInterpolationGroup;
+    private EntityQuery rotationInterpolationGroup;
     protected override void OnCreateManager()
     {
-        positionInterpolationGroup = GetComponentGroup(ComponentType.ReadOnly<CurrentSimulatedPosition>(),
+        positionInterpolationGroup = GetEntityQuery(ComponentType.ReadOnly<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<PreviousSimulatedPosition>(), ComponentType.ReadWrite<Translation>());
-        rotationInterpolationGroup = GetComponentGroup(ComponentType.ReadOnly<CurrentSimulatedRotation>(),
+        rotationInterpolationGroup = GetEntityQuery(ComponentType.ReadOnly<CurrentSimulatedRotation>(),
             ComponentType.ReadWrite<PreviousSimulatedRotation>(), ComponentType.ReadWrite<Rotation>());
     }
 
@@ -233,29 +233,29 @@ public class AfterSimulationInterpolationSystem : JobComponentSystem
     private BeforeSimulationInterpolationSystem beforeSystem;
     // Commands needs to be applied before next simulation is run
     private BeginSimulationEntityCommandBufferSystem barrier;
-    private ComponentGroup positionInterpolationGroup;
-    private ComponentGroup rotationInterpolationGroup;
-    private ComponentGroup newPositionInterpolationGroup;
-    private ComponentGroup newRotationInterpolationGroup;
+    private EntityQuery positionInterpolationGroup;
+    private EntityQuery rotationInterpolationGroup;
+    private EntityQuery newPositionInterpolationGroup;
+    private EntityQuery newRotationInterpolationGroup;
     protected override void OnCreateManager()
     {
-        positionInterpolationGroup = GetComponentGroup(ComponentType.ReadOnly<CurrentSimulatedPosition>(),
+        positionInterpolationGroup = GetEntityQuery(ComponentType.ReadOnly<CurrentSimulatedPosition>(),
             ComponentType.ReadOnly<PreviousSimulatedPosition>(), ComponentType.ReadWrite<Translation>());
-        rotationInterpolationGroup = GetComponentGroup(ComponentType.ReadOnly<CurrentSimulatedRotation>(),
+        rotationInterpolationGroup = GetEntityQuery(ComponentType.ReadOnly<CurrentSimulatedRotation>(),
             ComponentType.ReadOnly<PreviousSimulatedRotation>(), ComponentType.ReadWrite<Rotation>());
-        newPositionInterpolationGroup = GetComponentGroup(new EntityArchetypeQuery
+        newPositionInterpolationGroup = GetEntityQuery(new EntityQueryDesc
         {
             All = new[] {ComponentType.ReadWrite<Translation>(), ComponentType.ReadOnly<CurrentSimulatedPosition>()},
             None = new[] {ComponentType.ReadWrite<PreviousSimulatedPosition>()}
         });
-        newRotationInterpolationGroup = GetComponentGroup(new EntityArchetypeQuery
+        newRotationInterpolationGroup = GetEntityQuery(new EntityQueryDesc
         {
             All = new[] {ComponentType.ReadWrite<Rotation>(), ComponentType.ReadOnly<CurrentSimulatedRotation>()},
             None = new[] {ComponentType.ReadWrite<PreviousSimulatedRotation>()}
         });
 
-        barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        beforeSystem = World.GetOrCreateManager<BeforeSimulationInterpolationSystem>();
+        barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        beforeSystem = World.GetOrCreateSystem<BeforeSimulationInterpolationSystem>();
     }
 
     [BurstCompile]

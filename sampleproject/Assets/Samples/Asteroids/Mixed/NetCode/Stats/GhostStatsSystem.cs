@@ -265,16 +265,16 @@ class GhostStatsSystem : ComponentSystem
 {
     private GhostReceiveSystem m_ReceiveSys;
     private uint lastFrame;
-    private ComponentGroup connectionGroup;
+    private EntityQuery connectionGroup;
     private DebugWebSocket socket;
     private string ghostList;
     private byte[] ghostStatData;
     protected override void OnCreateManager()
     {
-        m_ReceiveSys = World.GetOrCreateManager<GhostReceiveSystem>();
+        m_ReceiveSys = World.GetOrCreateSystem<GhostReceiveSystem>();
         lastFrame = 0;
-        connectionGroup = GetComponentGroup(ComponentType.ReadWrite<NetworkSnapshotAck>());
-        socket = new DebugWebSocket(World.GetExistingManager<ClientSimulationSystemGroup>().ClientWorldIndex);
+        connectionGroup = GetEntityQuery(ComponentType.ReadWrite<NetworkSnapshotAck>());
+        socket = new DebugWebSocket(World.GetExistingSystem<ClientSimulationSystemGroup>().ClientWorldIndex);
 
         ghostList = "Destroy";
         var list = GhostDeserializerCollection.CreateSerializerNameList();

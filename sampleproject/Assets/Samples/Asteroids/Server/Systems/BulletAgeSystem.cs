@@ -9,7 +9,7 @@ namespace Asteroids.Server
     public class BulletAgeSystem : JobComponentSystem
     {
         [BurstCompile]
-        struct BulletJob : IJobProcessComponentDataWithEntity<BulletAgeComponentData>
+        struct BulletJob : IJobForEachWithEntity<BulletAgeComponentData>
         {
             public EntityCommandBuffer.Concurrent commandBuffer;
             public float deltaTime;
@@ -26,7 +26,7 @@ namespace Asteroids.Server
 
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

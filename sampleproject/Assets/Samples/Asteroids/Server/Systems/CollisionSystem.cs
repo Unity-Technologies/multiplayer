@@ -16,30 +16,30 @@ namespace Asteroids.Server
     [UpdateBefore(typeof(GhostSendSystem))]
     public class CollisionSystem : JobComponentSystem
     {
-        private ComponentGroup shipGroup;
-        private ComponentGroup bulletGroup;
-        private ComponentGroup asteroidGroup;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery shipGroup;
+        private EntityQuery bulletGroup;
+        private EntityQuery asteroidGroup;
+        private EntityQuery m_LevelGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
         private NativeQueue<Entity> playerClearQueue;
-        private ComponentGroup settingsGroup;
+        private EntityQuery settingsGroup;
 
         protected override void OnCreateManager()
         {
-            shipGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            shipGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<ShipTagComponentData>());
-            bulletGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            bulletGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<BulletTagComponentData>(),
                 ComponentType.ReadOnly<BulletAgeComponentData>());
-            asteroidGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            asteroidGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<AsteroidTagComponentData>());
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             playerClearQueue = new NativeQueue<Entity>(Allocator.Persistent);
 
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
 
-            settingsGroup = GetComponentGroup(ComponentType.ReadOnly<ServerSettings>());
+            settingsGroup = GetEntityQuery(ComponentType.ReadOnly<ServerSettings>());
         }
 
         protected override void OnDestroyManager()

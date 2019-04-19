@@ -9,7 +9,7 @@ namespace Asteroids.Server
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         [RequireComponentTag(typeof(NetworkStreamDisconnected))]
-        struct DisconnectJob : IJobProcessComponentData<PlayerStateComponentData>
+        struct DisconnectJob : IJobForEach<PlayerStateComponentData>
         {
             public EntityCommandBuffer commandBuffer;
             public void Execute(ref PlayerStateComponentData state)
@@ -24,7 +24,7 @@ namespace Asteroids.Server
 
         protected override void OnCreateManager()
         {
-            m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

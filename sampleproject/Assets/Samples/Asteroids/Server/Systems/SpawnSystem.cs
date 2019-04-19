@@ -70,12 +70,12 @@ namespace Asteroids.Server
         protected override void OnCreateManager()
         {
             count = new NativeArray<int>(1, Allocator.Persistent);
-            asteroidGroup = GetComponentGroup(ComponentType.ReadWrite<AsteroidTagComponentData>());
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            asteroidGroup = GetEntityQuery(ComponentType.ReadWrite<AsteroidTagComponentData>());
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
 
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
-            m_connectionGroup = GetComponentGroup(ComponentType.ReadWrite<NetworkStreamConnection>());
+            m_connectionGroup = GetEntityQuery(ComponentType.ReadWrite<NetworkStreamConnection>());
         }
 
         protected override void OnDestroyManager()
@@ -84,17 +84,17 @@ namespace Asteroids.Server
         }
 
         private NativeArray<int> count;
-        private ComponentGroup asteroidGroup;
+        private EntityQuery asteroidGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
-        private ComponentGroup m_LevelGroup;
-        private ComponentGroup m_connectionGroup;
+        private EntityQuery m_LevelGroup;
+        private EntityQuery m_connectionGroup;
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             if (m_connectionGroup.IsEmptyIgnoreFilter)
             {
                 // No connected players, just destroy all asteroids to save CPU
                 inputDeps.Complete();
-                World.GetExistingManager<EntityManager>().DestroyEntity(asteroidGroup);
+                World.EntityManager.DestroyEntity(asteroidGroup);
                 return default(JobHandle);
             }
             var settings = GetSingleton<ServerSettings>();
@@ -136,15 +136,15 @@ namespace Asteroids.Server
     {
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 
         private BeginSimulationEntityCommandBufferSystem barrier;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
 
-        struct SpawnJob : IJobProcessComponentDataWithEntity<PlayerSpawnRequest>
+        struct SpawnJob : IJobForEachWithEntity<PlayerSpawnRequest>
         {
             public EntityCommandBuffer commandBuffer;
             public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;
@@ -209,13 +209,13 @@ namespace Asteroids.Server
     {
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
         private BeginSimulationEntityCommandBufferSystem barrier;
 
         [RequireComponentTag(typeof(ShipSpawnInProgressTag))]
-        struct SpawnJob : IJobProcessComponentDataWithEntity<PlayerIdComponentData>
+        struct SpawnJob : IJobForEachWithEntity<PlayerIdComponentData>
         {
             public EntityCommandBuffer commandBuffer;
             public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;

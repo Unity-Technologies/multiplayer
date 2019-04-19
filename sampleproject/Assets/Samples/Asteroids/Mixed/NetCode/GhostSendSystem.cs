@@ -55,11 +55,11 @@ public class GhostSendSystem : JobComponentSystem
         public NativeHashMap<ArchetypeChunk, SerializationState> SerializationState;
     }
 
-    private ComponentGroup ghostGroup;
-    private ComponentGroup ghostSpawnGroup;
-    private ComponentGroup ghostDespawnGroup;
+    private EntityQuery ghostGroup;
+    private EntityQuery ghostSpawnGroup;
+    private EntityQuery ghostDespawnGroup;
 
-    private ComponentGroup connectionGroup;
+    private EntityQuery connectionGroup;
 
     private GhostSerializerCollection serializers;
 
@@ -80,30 +80,30 @@ public class GhostSendSystem : JobComponentSystem
     protected override void OnCreateManager()
     {
         m_DataStream = new DataStreamWriter(2048, Allocator.Persistent);
-        ghostGroup = GetComponentGroup(typeof(GhostComponent), typeof(GhostSystemStateComponent));
-        var filterSpawn = new EntityArchetypeQuery
+        ghostGroup = GetEntityQuery(typeof(GhostComponent), typeof(GhostSystemStateComponent));
+        EntityQueryDesc filterSpawn = new EntityQueryDesc
         {
             All = new ComponentType[] {typeof(GhostComponent)},
             None = new ComponentType[] {typeof(GhostSystemStateComponent)}
         };
-        var filterDespawn = new EntityArchetypeQuery
+        EntityQueryDesc filterDespawn = new EntityQueryDesc
         {
             All = new ComponentType[] {typeof(GhostSystemStateComponent)},
             None = new ComponentType[] {typeof(GhostComponent)}
         };
-        ghostSpawnGroup = GetComponentGroup(filterSpawn);
-        ghostDespawnGroup = GetComponentGroup(filterDespawn);
+        ghostSpawnGroup = GetEntityQuery(filterSpawn);
+        ghostDespawnGroup = GetEntityQuery(filterDespawn);
 
         m_FreeGhostIds = new NativeQueue<int>(Allocator.Persistent);
         m_AllocatedGhostIds = new NativeArray<int>(1, Allocator.Persistent);
         m_AllocatedGhostIds[0] = 1; // To make sure 0 is invalid
 
-        connectionGroup = GetComponentGroup(
+        connectionGroup = GetEntityQuery(
             ComponentType.ReadWrite<NetworkStreamConnection>(),
             ComponentType.ReadOnly<PlayerStateComponentData>());
 
-        m_ServerSimulation = World.GetExistingManager<ServerSimulationSystemGroup>();
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_ServerSimulation = World.GetExistingSystem<ServerSimulationSystemGroup>();
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
 
         m_ConnectionStates = new List<ConnectionStateData>(256);
         m_ConnectionStateLookup = new NativeHashMap<Entity, int>(256, Allocator.Persistent);
@@ -128,7 +128,7 @@ public class GhostSendSystem : JobComponentSystem
     }
 
     [BurstCompile]
-    struct FindAckedByAllJob : IJobProcessComponentData<NetworkSnapshotAck>
+    struct FindAckedByAllJob : IJobForEach<NetworkSnapshotAck>
     {
         public NativeArray<uint> tick;
         public void Execute([ReadOnly] ref NetworkSnapshotAck ack)
@@ -145,7 +145,7 @@ public class GhostSendSystem : JobComponentSystem
 
     [BurstCompile]
     [ExcludeComponent(typeof(GhostComponent))]
-    struct CleanupGhostJob : IJobProcessComponentDataWithEntity<GhostSystemStateComponent>
+    struct CleanupGhostJob : IJobForEachWithEntity<GhostSystemStateComponent>
     {
         public uint currentTick;
         [DeallocateOnJobCompletion][ReadOnly] public NativeArray<uint> tick;
@@ -747,7 +747,7 @@ public class GhostSendSystem : JobComponentSystem
 public class AddNetworkIdSystem : JobComponentSystem
 {
     [ExcludeComponent(typeof(GhostSendSystem.GhostSystemStateComponent))]
-    struct AddJob : IJobProcessComponentDataWithEntity<GhostComponent>
+    struct AddJob : IJobForEachWithEntity<GhostComponent>
     {
         public EntityCommandBuffer.Concurrent commandBuffer;
         public void Execute(Entity entity, int entityIndex, [ReadOnly] ref GhostComponent ghost)
@@ -759,7 +759,7 @@ public class AddNetworkIdSystem : JobComponentSystem
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     protected override void OnCreateManager()
     {
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
     }
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)

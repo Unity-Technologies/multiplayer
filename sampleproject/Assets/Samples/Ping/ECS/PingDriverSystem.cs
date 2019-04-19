@@ -24,18 +24,18 @@ public class PingDriverSystem : JobComponentSystem
     public UdpNetworkDriver.Concurrent ConcurrentClientDriver { get; private set; }
 
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
-    private ComponentGroup m_NewDriverGroup;
-    private ComponentGroup m_DestroyedDriverGroup;
-    private ComponentGroup m_ServerConnectionGroup;
+    private EntityQuery m_NewDriverGroup;
+    private EntityQuery m_DestroyedDriverGroup;
+    private EntityQuery m_ServerConnectionGroup;
 
     protected override void OnCreateManager()
     {
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        m_NewDriverGroup = GetComponentGroup(ComponentType.ReadOnly<PingDriverComponentData>(),
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_NewDriverGroup = GetEntityQuery(ComponentType.ReadOnly<PingDriverComponentData>(),
             ComponentType.Exclude<PingDriverStateComponent>());
-        m_DestroyedDriverGroup = GetComponentGroup(ComponentType.Exclude<PingDriverComponentData>(),
+        m_DestroyedDriverGroup = GetEntityQuery(ComponentType.Exclude<PingDriverComponentData>(),
             ComponentType.ReadOnly<PingDriverStateComponent>());
-        m_ServerConnectionGroup = GetComponentGroup(ComponentType.ReadWrite<PingServerConnectionComponentData>());
+        m_ServerConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
 
     protected override void OnDestroyManager()
@@ -68,7 +68,7 @@ public class PingDriverSystem : JobComponentSystem
         }
     }
     [BurstCompile]
-    struct DriverCleanupJob : IJobProcessComponentDataWithEntity<PingServerConnectionComponentData>
+    struct DriverCleanupJob : IJobForEachWithEntity<PingServerConnectionComponentData>
     {
         public EntityCommandBuffer.Concurrent commandBuffer;
 

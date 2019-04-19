@@ -11,12 +11,12 @@ public class NetworkStreamSendSystem : JobComponentSystem
     private NetworkStreamReceiveSystem m_ReceiveSystem;
     protected override void OnCreateManager()
     {
-        m_ReceiveSystem = World.GetOrCreateManager<NetworkStreamReceiveSystem>();
+        m_ReceiveSystem = World.GetOrCreateSystem<NetworkStreamReceiveSystem>();
     }
 
     [BurstCompile]
     [ExcludeComponent(typeof(NetworkStreamDisconnected))]
-    struct SendJob : IJobProcessComponentDataWithEntity<NetworkStreamConnection>
+    struct SendJob : IJobForEachWithEntity<NetworkStreamConnection>
     {
         public UdpNetworkDriver.Concurrent driver;
         public NetworkPipeline unreliablePipeline;

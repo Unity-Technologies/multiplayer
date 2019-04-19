@@ -146,7 +146,7 @@ public class BulletGhostUpdateSystem : JobComponentSystem
 {
     [BurstCompile]
     [RequireComponentTag(typeof(BulletSnapshotData))]
-    struct UpdateJob : IJobProcessComponentDataWithEntity<Translation, Rotation>
+    struct UpdateJob : IJobForEachWithEntity<Translation, Rotation>
     {
         [NativeDisableParallelForRestriction] public BufferFromEntity<BulletSnapshotData> snapshotFromEntity;
         public uint targetTick;

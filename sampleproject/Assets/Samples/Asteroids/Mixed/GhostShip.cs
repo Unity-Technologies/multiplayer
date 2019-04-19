@@ -151,11 +151,11 @@ public struct ShipGhostSerializer : IGhostSerializer<ShipSnapshotData>
 
 public class ShipGhostSpawnSystem : DefaultGhostSpawnSystem<ShipSnapshotData>
 {
-    private ComponentGroup m_PlayerGroup;
+    private EntityQuery m_PlayerGroup;
     protected override void OnCreateManager()
     {
         base.OnCreateManager();
-        m_PlayerGroup = GetComponentGroup(ComponentType.ReadOnly<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
+        m_PlayerGroup = GetEntityQuery(ComponentType.ReadOnly<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
     }
 
     protected override EntityArchetype GetGhostArchetype()
@@ -227,8 +227,8 @@ public class ShipGhostSpawnSystem : DefaultGhostSpawnSystem<ShipSnapshotData>
 [UpdateInGroup(typeof(GhostReceiveSystemGroup))]
 public class ShipGhostUpdateSystem : JobComponentSystem
 {
-    private ComponentGroup destroyGroup;
-    private ComponentGroup playerGroup;
+    private EntityQuery destroyGroup;
+    private EntityQuery playerGroup;
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
 
     public struct GhostShipState : ISystemStateComponentData
@@ -237,15 +237,15 @@ public class ShipGhostUpdateSystem : JobComponentSystem
 
     protected override void OnCreateManager()
     {
-        destroyGroup = GetComponentGroup(ComponentType.ReadWrite<GhostShipState>(),
+        destroyGroup = GetEntityQuery(ComponentType.ReadWrite<GhostShipState>(),
             ComponentType.Exclude<ShipSnapshotData>()); // FIXME: should keep until there is no more available snapshot data in the case of interpolation
 
-        playerGroup = GetComponentGroup(ComponentType.ReadWrite<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
-        m_Barrier = World.GetExistingManager<BeginSimulationEntityCommandBufferSystem>();
+        playerGroup = GetEntityQuery(ComponentType.ReadWrite<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
+        m_Barrier = World.GetExistingSystem<BeginSimulationEntityCommandBufferSystem>();
     }
     [BurstCompile]
     [RequireComponentTag(typeof(ShipSnapshotData))]
-    struct UpdateJob : IJobProcessComponentDataWithEntity<ShipStateComponentData, Translation, Rotation>
+    struct UpdateJob : IJobForEachWithEntity<ShipStateComponentData, Translation, Rotation>
     {
         [NativeDisableParallelForRestriction] public BufferFromEntity<ShipSnapshotData> snapshotFromEntity;
         public uint targetTick;

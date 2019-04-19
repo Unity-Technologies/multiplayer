@@ -17,7 +17,7 @@ namespace Asteroids.Server
         private BeginSimulationEntityCommandBufferSystem barrier;
         //[BurstCompile]
         [RequireComponentTag(typeof(ShipTagComponentData))]
-        struct SteeringJob : IJobProcessComponentDataWithEntity<Translation, Rotation, Velocity, ShipStateComponentData,
+        struct SteeringJob : IJobForEachWithEntity<Translation, Rotation, Velocity, ShipStateComponentData,
             PlayerInputComponentData>
         {
             public EntityCommandBuffer.Concurrent commandBuffer;
@@ -106,8 +106,8 @@ namespace Asteroids.Server
         private ServerSimulationSystemGroup serverSimulationSystemGroup;
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            serverSimulationSystemGroup = World.GetOrCreateManager<ServerSimulationSystemGroup>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            serverSimulationSystemGroup = World.GetOrCreateSystem<ServerSimulationSystemGroup>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

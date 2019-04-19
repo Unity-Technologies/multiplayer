@@ -17,7 +17,7 @@ public class GhostReceiveSystemGroup : ComponentSystemGroup
     private GhostReceiveSystem m_recvSystem;
     protected override void OnCreateManager()
     {
-        m_recvSystem = World.GetOrCreateManager<GhostReceiveSystem>();
+        m_recvSystem = World.GetOrCreateSystem<GhostReceiveSystem>();
     }
 
     protected override void OnUpdate()
@@ -36,7 +36,7 @@ public class GhostSpawnSystemGroup : ComponentSystemGroup
 [DisableAutoCreation]
 public class GhostReceiveSystem : JobComponentSystem
 {
-    private ComponentGroup playerGroup;
+    private EntityQuery playerGroup;
 
     private GhostDeserializerCollection serializers;
 
@@ -63,12 +63,12 @@ public class GhostReceiveSystem : JobComponentSystem
     {
         m_ghostEntityMap = new NativeHashMap<int, GhostEntity>(2048, Allocator.Persistent);
 
-        playerGroup = GetComponentGroup(
+        playerGroup = GetEntityQuery(
             ComponentType.ReadWrite<NetworkStreamConnection>(),
             ComponentType.ReadOnly<PlayerStateComponentData>(),
             ComponentType.Exclude<NetworkStreamDisconnected>());
 
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         m_CompressionModel = new NetworkCompressionModel(Allocator.Persistent);
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
         m_NetStats = new NativeArray<uint>(serializers.Length * 3 + 3, Allocator.Persistent);
@@ -95,7 +95,7 @@ public class GhostReceiveSystem : JobComponentSystem
         m_DelayedDespawnQueue.Dispose();
     }
 
-    struct ClearGhostsJob : IJobProcessComponentDataWithEntity<ReplicatedEntity>
+    struct ClearGhostsJob : IJobForEachWithEntity<ReplicatedEntity>
     {
         public EntityCommandBuffer.Concurrent commandBuffer;
         public void Execute(Entity entity, int index, [ReadOnly] ref ReplicatedEntity repl)
@@ -384,7 +384,7 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem where T: s
     private EntityArchetype m_InitialArchetype;
     private NativeHashMap<int, GhostReceiveSystem.GhostEntity> m_GhostMap;
     private NativeHashMap<int, GhostReceiveSystem.GhostEntity>.Concurrent m_ConcurrentGhostMap;
-    private ComponentGroup m_DestroyGroup;
+    private EntityQuery m_DestroyGroup;
 
     private NativeList<Entity> m_InvalidGhosts;
 
@@ -413,9 +413,9 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem where T: s
         m_Archetype = GetGhostArchetype();
         m_InitialArchetype = EntityManager.CreateArchetype(ComponentType.ReadWrite<T>(), ComponentType.ReadWrite<ReplicatedEntity>());
 
-        m_GhostMap = World.GetOrCreateManager<GhostReceiveSystem>().GhostEntityMap;
+        m_GhostMap = World.GetOrCreateSystem<GhostReceiveSystem>().GhostEntityMap;
         m_ConcurrentGhostMap = m_GhostMap.ToConcurrent();
-        m_DestroyGroup = GetComponentGroup(ComponentType.ReadOnly<T>(),
+        m_DestroyGroup = GetEntityQuery(ComponentType.ReadOnly<T>(),
             ComponentType.Exclude<ReplicatedEntity>());
 
         m_InvalidGhosts = new NativeList<Entity>(1024, Allocator.Persistent);

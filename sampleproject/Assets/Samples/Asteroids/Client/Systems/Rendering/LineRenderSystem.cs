@@ -36,7 +36,7 @@ namespace Asteroids.Client
             public float width;
         }
 
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
         private Entity m_SingletonEntity;
 
         private NativeList<Line> m_LineList;
@@ -52,7 +52,7 @@ namespace Asteroids.Client
         const int MaxLines = 1024 * 1024;
 
         [BurstCompile]
-        struct CopyToListJob : IJobProcessComponentData<LineRendererComponentData>
+        struct CopyToListJob : IJobForEach<LineRendererComponentData>
         {
             public NativeList<Line> list;
             public NativeQueue<Line> queue;
@@ -164,7 +164,7 @@ namespace Asteroids.Client
 
             m_RenderOffset = new NativeArray<float2>(2, Allocator.Persistent);
 
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
         }
 
         protected override void OnDestroyManager()

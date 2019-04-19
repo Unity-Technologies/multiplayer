@@ -18,17 +18,17 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
     public class ParticleRenderSystem : JobComponentSystem
     {
-        private ComponentGroup lineGroup;
+        private EntityQuery lineGroup;
         private NativeQueue<LineRenderSystem.Line>.Concurrent lineQueue;
         protected override void OnCreateManager()
         {
-            lineGroup = GetComponentGroup(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateManager<LineRenderSystem>().LineQueue;
+            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
             RequireForUpdate(lineGroup);
         }
 
         [BurstCompile]
-        struct ParticleRenderJob : IJobProcessComponentData<ParticleComponentData, Translation, Rotation>
+        struct ParticleRenderJob : IJobForEach<ParticleComponentData, Translation, Rotation>
         {
             public NativeQueue<LineRenderSystem.Line>.Concurrent lines;
             public void Execute([ReadOnly] ref ParticleComponentData particle, [ReadOnly] ref Translation position, [ReadOnly] ref Rotation rotation)
@@ -56,11 +56,11 @@ namespace Asteroids.Client
 
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginPresentationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
         }
 
         [BurstCompile]
-        struct ParticleAgeJob : IJobProcessComponentDataWithEntity<ParticleAgeComponentData>
+        struct ParticleAgeJob : IJobForEachWithEntity<ParticleAgeComponentData>
         {
             public float deltaTime;
             public EntityCommandBuffer.Concurrent commandBuffer;
@@ -92,7 +92,7 @@ namespace Asteroids.Client
     public class ParticleMoveSystem : JobComponentSystem
     {
         [BurstCompile]
-        struct ParticleMoveJob : IJobProcessComponentData<Translation, ParticleVelocityComponentData>
+        struct ParticleMoveJob : IJobForEach<Translation, ParticleVelocityComponentData>
         {
             public float deltaTime;
 
@@ -117,7 +117,7 @@ namespace Asteroids.Client
     public class ParticleColorTransitionSystem : JobComponentSystem
     {
         [BurstCompile]
-        struct ParticleColorJob : IJobProcessComponentData<ParticleComponentData, ParticleColorTransitionComponentData, ParticleAgeComponentData>
+        struct ParticleColorJob : IJobForEach<ParticleComponentData, ParticleColorTransitionComponentData, ParticleAgeComponentData>
         {
             public void Execute(ref ParticleComponentData particle, [ReadOnly] ref ParticleColorTransitionComponentData color, [ReadOnly] ref ParticleAgeComponentData age)
             {
@@ -139,7 +139,7 @@ namespace Asteroids.Client
     public class ParticleSizeTransitionSystem : JobComponentSystem
     {
         [BurstCompile]
-        struct SizeJob : IJobProcessComponentData<ParticleComponentData, ParticleSizeTransitionComponentData, ParticleAgeComponentData>
+        struct SizeJob : IJobForEach<ParticleComponentData, ParticleSizeTransitionComponentData, ParticleAgeComponentData>
         {
             public void Execute(ref ParticleComponentData particle, [ReadOnly] ref ParticleSizeTransitionComponentData size, [ReadOnly] ref ParticleAgeComponentData age)
             {

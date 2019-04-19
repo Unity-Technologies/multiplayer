@@ -10,7 +10,7 @@ public class PingServerSystem : JobComponentSystem
     private PingDriverSystem m_ServerDriverSystem;
 
     [BurstCompile]
-    struct PongJob : IJobProcessComponentData<PingServerConnectionComponentData>
+    struct PongJob : IJobForEach<PingServerConnectionComponentData>
     {
         public UdpNetworkDriver.Concurrent driver;
 
@@ -38,7 +38,7 @@ public class PingServerSystem : JobComponentSystem
 
     protected override void OnCreateManager()
     {
-        m_ServerDriverSystem = World.GetOrCreateManager<PingDriverSystem>();
+        m_ServerDriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
     }
 
     protected override JobHandle OnUpdate(JobHandle inputDep)

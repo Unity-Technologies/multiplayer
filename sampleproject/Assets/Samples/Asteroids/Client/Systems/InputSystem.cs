@@ -39,11 +39,11 @@ namespace Asteroids.Client
         private RpcQueue<RpcSpawn> m_RpcQueue;
         protected override void OnCreateManager()
         {
-            m_RpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcSpawn>();
+            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcSpawn>();
         }
 
         [ExcludeComponent(typeof(NetworkStreamDisconnected))]
-        struct PlayerInputJob : IJobProcessComponentDataWithEntity<PlayerStateComponentData>
+        struct PlayerInputJob : IJobForEachWithEntity<PlayerStateComponentData>
         {
             public byte left;
             public byte right;
@@ -109,7 +109,7 @@ namespace Asteroids.Client
             playerJob.localTime = NetworkTimeSystem.TimestampMS;
             playerJob.inputTargetTick = NetworkTimeSystem.predictTargetTick;
 
-            if (World.GetExistingManager<ClientPresentationSystemGroup>().Enabled)
+            if (World.GetExistingSystem<ClientPresentationSystemGroup>().Enabled)
             {
                 if (Input.GetKey("left"))
                     playerJob.left = 1;

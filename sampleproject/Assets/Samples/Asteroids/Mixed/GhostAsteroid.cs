@@ -146,7 +146,7 @@ public class AsteroidGhostUpdateSystem : JobComponentSystem
 {
     [BurstCompile]
     [RequireComponentTag(typeof(AsteroidSnapshotData))]
-    struct UpdateJob : IJobProcessComponentDataWithEntity<Translation, Rotation>
+    struct UpdateJob : IJobForEachWithEntity<Translation, Rotation>
     {
         [NativeDisableParallelForRestriction] public BufferFromEntity<AsteroidSnapshotData> snapshotFromEntity;
         public uint targetTick;

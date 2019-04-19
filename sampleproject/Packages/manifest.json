@@ -1,6 +1,9 @@
 {
   "dependencies": {
-    "com.unity.entities": "0.0.12-preview.26",
+    "com.unity.burst": "1.0.0",
+    "com.unity.entities": "0.0.12-preview.30",
+    "com.unity.mathematics": "1.0.1",
+    "com.unity.package-manager-ui": "2.1.2",
     "com.unity.transport": "file:../../com.unity.transport",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.animation": "1.0.0",

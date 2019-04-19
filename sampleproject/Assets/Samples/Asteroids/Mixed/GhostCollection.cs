@@ -128,9 +128,9 @@ public struct GhostDeserializerCollection
 #endif
     public void Initialize(World world)
     {
-        var shipSpawner = world.GetOrCreateManager<ShipGhostSpawnSystem>();
-        var asteroidSpawner = world.GetOrCreateManager<AsteroidGhostSpawnSystem>();
-        var bulletSpawner = world.GetOrCreateManager<BulletGhostSpawnSystem>();
+        var shipSpawner = world.GetOrCreateSystem<ShipGhostSpawnSystem>();
+        var asteroidSpawner = world.GetOrCreateSystem<AsteroidGhostSpawnSystem>();
+        var bulletSpawner = world.GetOrCreateSystem<BulletGhostSpawnSystem>();
         shipNewGhostIds = shipSpawner.NewGhostIds;
         shipNewGhosts = shipSpawner.NewGhosts;
         shipSpawner.GhostType = (int) GhostSerializerCollection.SerializerType.Ship;

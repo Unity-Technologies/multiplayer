@@ -45,7 +45,7 @@ public struct IncomingRpcDataStreamBufferComponent : IBufferElementData
 public class RpcSystem : JobComponentSystem
 {
     private Type[] m_RpcTypes;
-    private ComponentGroup m_RpcBufferGroup;
+    private EntityQuery m_RpcBufferGroup;
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     protected override void OnCreateManager()
     {
@@ -54,8 +54,8 @@ public class RpcSystem : JobComponentSystem
         Debug.Assert(UnsafeUtility.SizeOf<OutgoingRpcDataStreamBufferComponent>() == 1);
         Debug.Assert(UnsafeUtility.SizeOf<IncomingRpcDataStreamBufferComponent>() == 1);
         #endif
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        m_RpcBufferGroup = GetComponentGroup(ComponentType.ReadWrite<IncomingRpcDataStreamBufferComponent>());
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_RpcBufferGroup = GetEntityQuery(ComponentType.ReadWrite<IncomingRpcDataStreamBufferComponent>());
     }
 
     struct RpcExecJob : IJobChunk

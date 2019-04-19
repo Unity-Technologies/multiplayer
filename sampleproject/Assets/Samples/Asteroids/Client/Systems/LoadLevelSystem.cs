@@ -10,9 +10,9 @@ namespace Asteroids.Client
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLevelLoaded> m_RpcQueue;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
-        struct LoadJob : IJobProcessComponentDataWithEntity<LevelLoadRequest>
+        struct LoadJob : IJobForEachWithEntity<LevelLoadRequest>
         {
             public EntityCommandBuffer.Concurrent commandBuffer;
             public RpcQueue<RpcLevelLoaded> rpcQueue;
@@ -34,13 +34,13 @@ namespace Asteroids.Client
 
         protected override void OnCreateManager()
         {
-            m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            m_RpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcLevelLoaded>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLevelLoaded>();
 
             // The level always exist, "loading" just resizes it
             m_LevelSingleton = EntityManager.CreateEntity();
             EntityManager.AddComponentData(m_LevelSingleton, new LevelComponent {width = 0, height = 0});
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 

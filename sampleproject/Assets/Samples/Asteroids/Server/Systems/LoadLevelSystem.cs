@@ -15,10 +15,10 @@ namespace Asteroids.Server
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLoadLevel> m_RpcQueue;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
 
         [ExcludeComponent(typeof(LevelRequestedTag))]
-        struct RequestLoadJob : IJobProcessComponentDataWithEntity<NetworkIdComponent>
+        struct RequestLoadJob : IJobForEachWithEntity<NetworkIdComponent>
         {
             public EntityCommandBuffer commandBuffer;
             public RpcQueue<RpcLoadLevel> rpcQueue;
@@ -33,9 +33,9 @@ namespace Asteroids.Server
 
         protected override void OnCreateManager()
         {
-            m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            m_RpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcLoadLevel>();
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLoadLevel>();
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

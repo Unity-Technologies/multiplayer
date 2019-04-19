@@ -14,7 +14,7 @@ public class NetworkTimeSystem : ComponentSystem
     private int interpolateDelta;
 
 
-    private ComponentGroup connectionGroup;
+    private EntityQuery connectionGroup;
     private NativeArray<uint> receiveHistory;
     private NativeArray<uint> rttHistory;
     private int receiveHistoryPos;
@@ -32,7 +32,7 @@ public class NetworkTimeSystem : ComponentSystem
     private const int KRTTHistoryMedianDiscard = 2;
     protected override void OnCreateManager()
     {
-        connectionGroup = GetComponentGroup(ComponentType.ReadOnly<NetworkSnapshotAck>());
+        connectionGroup = GetEntityQuery(ComponentType.ReadOnly<NetworkSnapshotAck>());
         receiveHistory = new NativeArray<uint>(KSnapshotHistorySize, Allocator.Persistent);
         rttHistory = new NativeArray<uint>(KRTTHistorySize, Allocator.Persistent);
         resetHistory = true;

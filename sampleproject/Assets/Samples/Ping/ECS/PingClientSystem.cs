@@ -11,7 +11,7 @@ public class PingClientSystem : JobComponentSystem
 {
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     private PingDriverSystem m_DriverSystem;
-    private ComponentGroup m_ConnectionGroup;
+    private EntityQuery m_ConnectionGroup;
 
     struct PendingPing
     {
@@ -20,7 +20,7 @@ public class PingClientSystem : JobComponentSystem
     }
     // Adding and removing components with EntityCommandBuffer is not burst compatible
     //[BurstCompile]
-    struct PingJob : IJobProcessComponentDataWithEntity<PingClientConnectionComponentData>
+    struct PingJob : IJobForEachWithEntity<PingClientConnectionComponentData>
     {
         public UdpNetworkDriver driver;
         public NetworkEndPoint serverEP;
@@ -82,11 +82,11 @@ public class PingClientSystem : JobComponentSystem
     {
         m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
         m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
-        m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        m_DriverSystem = World.GetOrCreateManager<PingDriverSystem>();
-        m_ConnectionGroup = GetComponentGroup(ComponentType.ReadWrite<PingClientConnectionComponentData>());
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_DriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
+        m_ConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingClientConnectionComponentData>());
         // Group used only to get dependency tracking for the driver
-        GetComponentGroup(ComponentType.ReadWrite<PingServerConnectionComponentData>());
+        GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
 
     protected override void OnDestroyManager()

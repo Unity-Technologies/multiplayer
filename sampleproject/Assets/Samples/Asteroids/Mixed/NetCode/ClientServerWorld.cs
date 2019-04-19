@@ -14,8 +14,8 @@ public class ServerSimulationSystemGroup : ComponentSystemGroup
 
     protected override void OnCreateManager()
     {
-        m_beginBarrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        m_endBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
+        m_beginBarrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_endBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         m_ServerTick = 1;
     }
 
@@ -56,9 +56,9 @@ public class ClientSimulationSystemGroup : ComponentSystemGroup
 
     protected override void OnCreateManager()
     {
-        m_beginBarrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-        m_endBarrier = World.GetOrCreateManager<EndSimulationEntityCommandBufferSystem>();
-        m_ghostSpawnGroup = World.GetOrCreateManager<GhostSpawnSystemGroup>();
+        m_beginBarrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_endBarrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        m_ghostSpawnGroup = World.GetOrCreateSystem<GhostSpawnSystemGroup>();
     }
 
     protected List<ComponentSystemBase> m_systemsInGroup = new List<ComponentSystemBase>();
@@ -93,8 +93,8 @@ public class ClientPresentationSystemGroup : ComponentSystemGroup
 
     protected override void OnCreateManager()
     {
-        m_beginBarrier = World.GetOrCreateManager<BeginPresentationEntityCommandBufferSystem>();
-        m_endBarrier = World.GetOrCreateManager<EndPresentationEntityCommandBufferSystem>();
+        m_beginBarrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
+        m_endBarrier = World.GetOrCreateSystem<EndPresentationEntityCommandBufferSystem>();
     }
 
     protected List<ComponentSystemBase> m_systemsInGroup = new List<ComponentSystemBase>();
@@ -198,11 +198,11 @@ public class ClientServerBootstrap : ICustomBootstrap
             for (int i = 0; i < clientWorld.Length; ++i)
             {
                 clientWorld[i] = new World("ClientWorld" + i);
-                clientSimulationSystemGroup[i] = clientWorld[i].GetOrCreateManager<ClientSimulationSystemGroup>();
+                clientSimulationSystemGroup[i] = clientWorld[i].GetOrCreateSystem<ClientSimulationSystemGroup>();
 #if UNITY_EDITOR
                 clientSimulationSystemGroup[i].ClientWorldIndex = i;
 #endif
-                clientPresentationSystemGroup[i] = clientWorld[i].GetOrCreateManager<ClientPresentationSystemGroup>();
+                clientPresentationSystemGroup[i] = clientWorld[i].GetOrCreateSystem<ClientPresentationSystemGroup>();
             }
         }
 #endif
@@ -214,7 +214,7 @@ public class ClientServerBootstrap : ICustomBootstrap
 #endif
         {
             serverWorld = new World("ServerWorld");
-            serverSimulationSystemGroup = serverWorld.GetOrCreateManager<ServerSimulationSystemGroup>();
+            serverSimulationSystemGroup = serverWorld.GetOrCreateSystem<ServerSimulationSystemGroup>();
         }
 #endif
         foreach (var type in systems)
@@ -232,14 +232,14 @@ public class ClientServerBootstrap : ICustomBootstrap
                 {
 #if !UNITY_CLIENT
                     if (serverWorld != null)
-                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateManager(type) as ComponentSystemBase);
+                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
 #endif
 #if !UNITY_SERVER
                     if (clientWorld != null)
                     {
                         for (int i = 0; i < clientSimulationSystemGroup.Length; ++i)
                             clientSimulationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateManager(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
                     }
 #endif
                 }
@@ -247,7 +247,7 @@ public class ClientServerBootstrap : ICustomBootstrap
                 {
 #if !UNITY_CLIENT
                     if (serverWorld != null)
-                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateManager(type) as ComponentSystemBase);
+                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
 #endif
                 }
                 else if (group.GroupType == typeof(ClientSimulationSystemGroup))
@@ -257,7 +257,7 @@ public class ClientServerBootstrap : ICustomBootstrap
                     {
                         for (int i = 0; i < clientSimulationSystemGroup.Length; ++i)
                             clientSimulationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateManager(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
                     }
 #endif
                 }
@@ -268,7 +268,7 @@ public class ClientServerBootstrap : ICustomBootstrap
                     {
                         for (int i = 0; i < clientPresentationSystemGroup.Length; ++i)
                             clientPresentationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateManager(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
                     }
 #endif
                 }
@@ -282,16 +282,16 @@ public class ClientServerBootstrap : ICustomBootstrap
                     {
                         for (int i = 0; i < clientWorld.Length; ++i)
                         {
-                            var groupSys = clientWorld[i].GetOrCreateManager(group.GroupType) as ComponentSystemGroup;
-                            groupSys.AddSystemToUpdateList(clientWorld[i].GetOrCreateManager(type) as ComponentSystemBase);
+                            var groupSys = clientWorld[i].GetOrCreateSystem(group.GroupType) as ComponentSystemGroup;
+                            groupSys.AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
                         }
                     }
 #endif
 #if !UNITY_CLIENT
                     if ((mask & WorldType.ServerWorld) != 0 && serverWorld != null)
                     {
-                        var groupSys = serverWorld.GetOrCreateManager(group.GroupType) as ComponentSystemGroup;
-                        groupSys.AddSystemToUpdateList(serverWorld.GetOrCreateManager(type) as ComponentSystemBase);
+                        var groupSys = serverWorld.GetOrCreateSystem(group.GroupType) as ComponentSystemGroup;
+                        groupSys.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
                     }
 #endif
                 }
@@ -301,7 +301,7 @@ public class ClientServerBootstrap : ICustomBootstrap
         if (serverWorld != null)
         {
             serverSimulationSystemGroup.SortSystemUpdateList();
-            World.Active.GetOrCreateManager<TickServerSimulationSystem>().AddSystemToUpdateList(serverSimulationSystemGroup);
+            World.Active.GetOrCreateSystem<TickServerSimulationSystem>().AddSystemToUpdateList(serverSimulationSystemGroup);
         }
 #endif
 #if !UNITY_SERVER
@@ -311,8 +311,8 @@ public class ClientServerBootstrap : ICustomBootstrap
             {
                 clientSimulationSystemGroup[i].SortSystemUpdateList();
                 clientPresentationSystemGroup[i].SortSystemUpdateList();
-                World.Active.GetOrCreateManager<TickClientSimulationSystem>().AddSystemToUpdateList(clientSimulationSystemGroup[i]);
-                World.Active.GetOrCreateManager<TickClientPresentationSystem>().AddSystemToUpdateList(clientPresentationSystemGroup[i]);
+                World.Active.GetOrCreateSystem<TickClientSimulationSystem>().AddSystemToUpdateList(clientSimulationSystemGroup[i]);
+                World.Active.GetOrCreateSystem<TickClientPresentationSystem>().AddSystemToUpdateList(clientPresentationSystemGroup[i]);
             }
         }
 #endif

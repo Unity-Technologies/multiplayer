@@ -12,7 +12,7 @@ namespace Asteroids.Server
     {
         [BurstCompile]
         [RequireComponentTag(typeof(BulletTagComponentData))]
-        struct BulletJob : IJobProcessComponentData<Velocity, Translation>
+        struct BulletJob : IJobForEach<Velocity, Translation>
         {
             public float deltaTime;
             public void Execute([ReadOnly] ref Velocity velocity, ref Translation position)
