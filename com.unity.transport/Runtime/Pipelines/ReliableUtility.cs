@@ -351,7 +351,7 @@ namespace Unity.Networking.Transport.Utilities
         /// </summary>
         /// <param name="context">Pipeline context, contains the buffer slices this pipeline connection owns.</param>
         /// <returns></returns>
-        public static unsafe bool AckPackets(NetworkPipelineContext context)
+        public static unsafe bool ReleaseOrResumePackets(NetworkPipelineContext context)
         {
             SharedContext* reliable = (SharedContext*) context.internalSharedProcessBuffer.GetUnsafePtr();
             Context* ctx = (Context*) context.internalProcessBuffer.GetUnsafePtr();

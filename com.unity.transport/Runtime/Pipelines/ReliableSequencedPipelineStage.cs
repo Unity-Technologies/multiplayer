@@ -78,10 +78,11 @@ namespace Unity.Networking.Transport
             {
                 var reliable = (ReliableUtility.Context*) ctx.internalProcessBuffer.GetUnsafePtr();
 
+                needsResume = ReliableUtility.ReleaseOrResumePackets(ctx);
+
                 if (inboundBuffer.buffer1.Length > 0)
                 {
                     reliable->LastSentTime = ctx.timestamp;
-                    needsResume = ReliableUtility.AckPackets(ctx);
 
                     ReliableUtility.Write(ctx, inboundBuffer, ref header);
                     ctx.header.WriteBytes((byte*)&header, UnsafeUtility.SizeOf<ReliableUtility.PacketHeader>());
@@ -107,7 +108,6 @@ namespace Unity.Networking.Transport
                 if (ReliableUtility.ShouldSendAck(ctx))
                 {
                     reliable->LastSentTime = ctx.timestamp;
-                    needsResume = ReliableUtility.AckPackets(ctx);
 
                     ReliableUtility.WriteAckPacket(ctx, ref header);
                     ctx.header.WriteBytes((byte*)&header, UnsafeUtility.SizeOf<ReliableUtility.PacketHeader>());

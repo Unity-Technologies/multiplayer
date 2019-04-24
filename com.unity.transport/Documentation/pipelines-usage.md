@@ -9,7 +9,7 @@ For example the first stage might compress a packet and a second stage could add
 
 ![PipelineStagesDiagram](images/Pipeline-stages-diagram.png)
 
-The pipeline stages are gathered together in a collection. This is the interface between the pipeline processor in the driver to the pipeline stages you might be using. Here the pipeline stages are initialized and so on. There is a default collection provided in the driver which has all the built in pipeline stages already configured. It's possible to just use that and use a custom colletion if you have your own pipeline stage you need to add to the collection.
+The pipeline stages are gathered together in a collection. This is the interface between the pipeline processor in the driver to the pipeline stages you might be using. Here the pipeline stages are initialized and so on. There is a default collection provided in the driver which has all the built in pipeline stages already configured. It's possible to just use that and use a custom collection if you have your own pipeline stage you need to add to the collection.
 
 ## Example usage
 
@@ -67,7 +67,7 @@ This would create a simulator pipeline stage which can delay up to 30 packets of
 
 ### Debug information
 
-To get information about how internal state in the simulator you can check the SimulatorUtility.Context structure, stored in the pipeline stage shared buffer. This tracks how many packets have been seen, PacketCount, and how many of those were dropped, PacketDropCount. ReadyPackets and WaitingPackets shows what packets are now ready to be sent (delay time expired) and how many are stored by the simulator. StatsTime and NextPacketTime show the last time the simulator ran and when the next packet is due to be released.
+To get information about internal state in the simulator you can check the SimulatorUtility.Context structure, stored in the pipeline stage shared buffer. This tracks how many packets have been seet, PacketCount, and how many of those were dropped, PacketDropCount. ReadyPackets and WaitingPackets shows what packets are now ready to be sent (delay time expired) and how many are stored by the simulator. StatsTime and NextPacketTime show the last time the simulator ran and when the next packet is due to be released.
 
 ```c#
 public unsafe void DumpSimulatorStatistics()
@@ -92,7 +92,7 @@ public unsafe void DumpSimulatorStatistics()
 The reliability pipeline makes sure all packets are delivered and in order. It adds header information to all packets sent and tracks their state internally to make this happen. Whenever a packet is sent, it is given a sequence ID and then stored in the send processing buffer along with timing information (send time). The packet is then sent with that sequence ID added to the packet header. All packet headers also include information about what remote sequence IDs have been seen, so the receiver of the packet can know the delivery state of the packets it sent. This way there is always information about delivery state flowing between the two endpoints who make up a connection. If a certain time interval expires without an acknowledgement for a particular sequence ID the packet is resent and the timers reset.
 
 Reliability packet header looks like this:
-```
+```c#
 public struct PacketHeader
 {
     public ushort Type;
@@ -108,15 +108,15 @@ The ack packet type is used when a certain amount of time has passed and nothing
 
 ### Using the reliability pipeline
 
-```
-m_ServerDriver = new UdpNetworkDriver(new ReliableUtility.Parameters { Capacity = 32, WindowSize = 32 });
+```c#
+m_ServerDriver = new UdpNetworkDriver(new ReliableUtility.Parameters { WindowSize = 32 });
 m_Pipeline = m_ServerDriver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
 ```
 This would create a pipeline with just the reliability pipeline stage present, and initialize it to a window size of 32 (so it can keep track of 32 reliable packets at a one time). The maximum value for this is 32.
 
 Because only 32 packets can be tracked at a time there can't be more than 32 packets in flight at any one time, trying to send a 33rd packet will result in an error and it will not be reliable (no guarantee of delivery). It's possible to check for such errors by checking the error code in the reliability internal state:
 
-```
+```c#
 // Get a reference to the internal state or shared context of the reliability
 NativeSlice<byte> tmpReceiveBuffer = default;
 NativeSlice<byte> tmpSendBuffer = default;

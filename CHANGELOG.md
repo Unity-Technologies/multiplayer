@@ -1,7 +1,7 @@
 # 2019-04-16
 ## New features
 * Added network pipelines to enable processing of outgoing and incomming packets. The available pipeline stages are `ReliableSequencedPipelineStage` for reliable UDP messages and `SimulatorPipelineStage` for emulating network conditions such as high latency and packet loss. See [the pipeline documentation](com.unity.transport/Documentation/pipelines-usage.md) for more information.
-* Added reading and writing of packed signed and unsigned integers to `DataStream`. These new methods uses huffman encoding to reduce the size of transfered data for small numbers.
+* Added reading and writing of packed signed and unsigned integers to `DataStream`. These new methods use huffman encoding to reduce the size of transfered data for small numbers.
 * Added a new sample asteroids game which we will be using to develop the new netcode.
 ## Changes
 * Update to Unity.Entities preview 26
