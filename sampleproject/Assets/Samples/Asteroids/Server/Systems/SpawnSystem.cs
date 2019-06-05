@@ -54,7 +54,7 @@ namespace Asteroids.Server
                         rand.NextFloat(padding, level[0].height-padding), 0)};
                     var rot = new Rotation{Value = quaternion.RotateZ(math.radians(rand.NextFloat(-0.0f, 359.0f)))};
 
-                    var vel = new Velocity {Value = math.mul(rot.Value, new float3(0, asteroidVelocity, 0))};
+                    var vel = new Velocity {Value = math.mul(rot.Value, new float3(0, asteroidVelocity, 0)).xy};
 
                     var e = commandBuffer.CreateEntity(asteroidArchetype);
 
@@ -70,12 +70,12 @@ namespace Asteroids.Server
         protected override void OnCreateManager()
         {
             count = new NativeArray<int>(1, Allocator.Persistent);
-            asteroidGroup = GetComponentGroup(ComponentType.ReadWrite<AsteroidTagComponentData>());
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            asteroidGroup = GetEntityQuery(ComponentType.ReadWrite<AsteroidTagComponentData>());
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
 
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
-            m_connectionGroup = GetComponentGroup(ComponentType.ReadWrite<NetworkStreamConnection>());
+            m_connectionGroup = GetEntityQuery(ComponentType.ReadWrite<NetworkStreamConnection>());
         }
 
         protected override void OnDestroyManager()
@@ -84,17 +84,17 @@ namespace Asteroids.Server
         }
 
         private NativeArray<int> count;
-        private ComponentGroup asteroidGroup;
+        private EntityQuery asteroidGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
-        private ComponentGroup m_LevelGroup;
-        private ComponentGroup m_connectionGroup;
+        private EntityQuery m_LevelGroup;
+        private EntityQuery m_connectionGroup;
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             if (m_connectionGroup.IsEmptyIgnoreFilter)
             {
                 // No connected players, just destroy all asteroids to save CPU
                 inputDeps.Complete();
-                World.GetExistingManager<EntityManager>().DestroyEntity(asteroidGroup);
+                World.EntityManager.DestroyEntity(asteroidGroup);
                 return default(JobHandle);
             }
             var settings = GetSingleton<ServerSettings>();
@@ -136,18 +136,19 @@ namespace Asteroids.Server
     {
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 
         private BeginSimulationEntityCommandBufferSystem barrier;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
 
-        struct SpawnJob : IJobProcessComponentDataWithEntity<PlayerSpawnRequest>
+        struct SpawnJob : IJobForEachWithEntity<PlayerSpawnRequest>
         {
             public EntityCommandBuffer commandBuffer;
             public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;
+            public ComponentDataFromEntity<CommandTargetComponent> commandTargetFromEntity;
             public ComponentDataFromEntity<NetworkIdComponent> networkIdFromEntity;
             public EntityArchetype shipArchetype;
             public float playerRadius;
@@ -160,7 +161,8 @@ namespace Asteroids.Server
                 // Destroy the request
                 commandBuffer.DestroyEntity(entity);
                 if (!playerStateFromEntity.Exists(request.connection) ||
-                    playerStateFromEntity[request.connection].PlayerShip != Entity.Null ||
+                    !commandTargetFromEntity.Exists(request.connection) ||
+                    commandTargetFromEntity[request.connection].targetEntity != Entity.Null ||
                     playerStateFromEntity[request.connection].IsSpawning != 0)
                     return;
                 var ship = commandBuffer.CreateEntity(shipArchetype);
@@ -180,7 +182,7 @@ namespace Asteroids.Server
                 commandBuffer.AddComponent(ship, new ShipSpawnInProgressTag());
 
                 // Mark the player as currently spawning
-                playerStateFromEntity[request.connection] = new PlayerStateComponentData { PlayerShip = Entity.Null, IsSpawning = 1};
+                playerStateFromEntity[request.connection] = new PlayerStateComponentData { IsSpawning = 1};
             }
         }
         protected override JobHandle OnUpdate(JobHandle inputDeps)
@@ -191,6 +193,7 @@ namespace Asteroids.Server
             {
                 commandBuffer = barrier.CreateCommandBuffer(),
                 playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>(),
+                commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(),
                 networkIdFromEntity = GetComponentDataFromEntity<NetworkIdComponent>(),
                 shipArchetype = settings.shipArchetype,
                 playerRadius = settings.playerRadius,
@@ -204,21 +207,22 @@ namespace Asteroids.Server
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateBefore(typeof(GhostSendSystem))]
+    [UpdateBefore(typeof(MultiplayerSampleGhostSendSystem))]
     public class PlayerCompleteSpawnSystem : JobComponentSystem
     {
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
         private BeginSimulationEntityCommandBufferSystem barrier;
 
         [RequireComponentTag(typeof(ShipSpawnInProgressTag))]
-        struct SpawnJob : IJobProcessComponentDataWithEntity<PlayerIdComponentData>
+        struct SpawnJob : IJobForEachWithEntity<PlayerIdComponentData>
         {
             public EntityCommandBuffer commandBuffer;
             public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;
+            public ComponentDataFromEntity<CommandTargetComponent> commandTargetFromEntity;
             public ComponentDataFromEntity<NetworkStreamConnection> connectionFromEntity;
 
             public void Execute(Entity entity, int index, [ReadOnly] ref PlayerIdComponentData player)
@@ -230,7 +234,8 @@ namespace Asteroids.Server
                     return;
                 }
                 commandBuffer.RemoveComponent<ShipSpawnInProgressTag>(entity);
-                playerStateFromEntity[player.PlayerEntity] = new PlayerStateComponentData {PlayerShip = entity, IsSpawning = 0};
+                commandTargetFromEntity[player.PlayerEntity] = new CommandTargetComponent {targetEntity = entity};
+                playerStateFromEntity[player.PlayerEntity] = new PlayerStateComponentData {IsSpawning = 0};
             }
         }
 
@@ -240,6 +245,7 @@ namespace Asteroids.Server
             {
                 commandBuffer = barrier.CreateCommandBuffer(),
                 playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>(),
+                commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(),
                 connectionFromEntity = GetComponentDataFromEntity<NetworkStreamConnection>()
             };
             var handle = spawnJob.ScheduleSingle(this, inputDeps);

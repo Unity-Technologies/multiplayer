@@ -5,7 +5,7 @@ public struct PlayerSpawnRequest : IComponentData
 {
     public Entity connection;
 }
-public struct RpcSpawn : RpcCommand
+public struct RpcSpawn : IRpcCommand
 {
     public void Execute(Entity connection, EntityCommandBuffer.Concurrent commandBuffer, int jobIndex)
     {

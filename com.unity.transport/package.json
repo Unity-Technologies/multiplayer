@@ -4,8 +4,8 @@
 	"unity": "2019.1",
 	"description": "Unity network transport layer - the low-level interface for sending UDP data.",
 	"dependencies": {
-        "com.unity.burst": "0.2.4-preview.48",
-        "com.unity.collections": "0.0.9-preview.13",
-        "com.unity.mathematics": "0.0.12-preview.20"
+        "com.unity.burst": "1.0.4",
+        "com.unity.collections": "0.0.9-preview.20",
+        "com.unity.mathematics": "1.0.1"
 	}
 }

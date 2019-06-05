@@ -1,0 +1,117 @@
+{
+    "snapshotDataPath": "Mixed/Generated/ShipSnapshotData.cs",
+    "spawnSystemPath": "Client/Generated/ShipGhostSpawnSystem.cs",
+    "updateSystemPath": "Client/Generated/ShipGhostUpdateSystem.cs",
+    "serializerPath": "Server/Generated/ShipGhostSerializer.cs",
+    "importance": "200",
+    "transform2d": true,
+    "components": [
+        {
+            "name": "Translation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "Value",
+                    "quantization": 10,
+                    "interpolate": true
+                }
+            ]
+        },
+        {
+            "name": "Rotation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "Value",
+                    "quantization": 1000,
+                    "interpolate": true
+                }
+            ]
+        },
+        {
+            "name": "Velocity",
+            "interpolatedClient": false,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "Value",
+                    "quantization": 10,
+                    "interpolate": true
+                }
+            ]
+        },
+        {
+            "name": "ShipStateComponentData",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "State",
+                    "quantization": 1,
+                    "interpolate": false
+                }
+            ]
+        },
+        {
+            "name": "PlayerIdComponentData",
+            "interpolatedClient": false,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "PlayerId",
+                    "quantization": 1,
+                    "interpolate": false
+                }
+            ]
+        },
+        {
+            "name": "ShipTagComponentData",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": []
+        },
+        {
+            "name": "ParticleEmitterComponentData",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "CurrentSimulatedPosition",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "CurrentSimulatedRotation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "ShipCommandData",
+            "interpolatedClient": false,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "GhostShipState",
+            "interpolatedClient": false,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        }
+    ]
+}

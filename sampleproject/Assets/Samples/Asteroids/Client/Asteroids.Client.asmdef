@@ -1,0 +1,15 @@
+{
+  "name": "Asteroids.Client",
+  "references": [
+    "Unity.Burst",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Transforms",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.Networking.Transport",
+    "Unity.NetCode",
+    "Asteroids.Mixed"
+  ],
+  "allowUnsafeCode": true
+}

@@ -14,7 +14,7 @@ namespace Asteroids.Client
     public class ShipThrustParticleSystem : JobComponentSystem
     {
         [BurstCompile]
-        struct ThrustJob : IJobProcessComponentData<ParticleEmitterComponentData, ShipStateComponentData>
+        struct ThrustJob : IJobForEach<ParticleEmitterComponentData, ShipStateComponentData>
         {
             public void Execute(ref ParticleEmitterComponentData emitter, [ReadOnly] ref ShipStateComponentData state)
             {
@@ -34,19 +34,19 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ShipTrackingSystem : JobComponentSystem
     {
-        private ComponentGroup shipGroup;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery shipGroup;
+        private EntityQuery m_LevelGroup;
         private NativeArray<int> teleport;
         protected override void OnCreateManager()
         {
-            shipGroup = GetComponentGroup(
+            shipGroup = GetEntityQuery(
                 ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<Rotation>(),
                 ComponentType.ReadOnly<ShipStateComponentData>(),
                 ComponentType.ReadOnly<ShipTagComponentData>());
             teleport = new NativeArray<int>(1, Allocator.Persistent);
             teleport[0] = 1;
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 
@@ -56,7 +56,7 @@ namespace Asteroids.Client
         }
 
         [BurstCompile]
-        struct ChunkTrackJob : IJobProcessComponentData<LineRendererComponentData>
+        struct ChunkTrackJob : IJobForEach<LineRendererComponentData>
         {
             [DeallocateOnJobCompletion] public NativeArray<ArchetypeChunk> shipChunks;
             [ReadOnly] public ArchetypeChunkComponentType<Translation> positionType;
@@ -123,17 +123,17 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ShipRenderSystem : JobComponentSystem
     {
-        private ComponentGroup lineGroup;
+        private EntityQuery lineGroup;
         private NativeQueue<LineRenderSystem.Line>.Concurrent lineQueue;
         protected override void OnCreateManager()
         {
-            lineGroup = GetComponentGroup(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateManager<LineRenderSystem>().LineQueue;
+            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
         }
 
         [BurstCompile]
         [RequireComponentTag(typeof(ShipTagComponentData))]
-        struct ChunkRenderJob : IJobProcessComponentData<Translation, Rotation>
+        struct ChunkRenderJob : IJobForEach<Translation, Rotation>
         {
             public NativeQueue<LineRenderSystem.Line>.Concurrent lines;
             public float4 shipColor;

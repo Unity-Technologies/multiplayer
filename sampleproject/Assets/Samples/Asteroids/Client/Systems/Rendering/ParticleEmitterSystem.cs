@@ -25,7 +25,7 @@ namespace Asteroids.Client
 
         //[BurstCompile]
         [ExcludeComponent(typeof(ParticleComponentData))]
-        struct ParticleSpawnJob : IJobProcessComponentDataWithEntity<ParticleEmitterComponentData, Translation, Rotation>
+        struct ParticleSpawnJob : IJobForEachWithEntity<ParticleEmitterComponentData, Translation, Rotation>
         {
             public NativeQueue<int>.Concurrent spawnCountQueue;
             public EntityCommandBuffer.Concurrent commandBuffer;
@@ -113,7 +113,7 @@ namespace Asteroids.Client
                 typeof(ParticleAgeComponentData), typeof(ParticleVelocityComponentData),
                 typeof(Translation), typeof(Rotation));
 
-            barrier = World.GetOrCreateManager<BeginPresentationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
             spawnCountQueue = new NativeQueue<int>(Allocator.Persistent);
 
             EntityManager.CreateEntity(typeof(ParticleSpawnCountComponent));
@@ -155,7 +155,7 @@ namespace Asteroids.Client
         private BeginPresentationEntityCommandBufferSystem barrier;
 
         [BurstCompile]
-        struct ParticleInitializeJob : IJobProcessComponentDataWithEntity<ParticleComponentData,
+        struct ParticleInitializeJob : IJobForEachWithEntity<ParticleComponentData,
             Translation, Rotation, ParticleVelocityComponentData, ParticleAgeComponentData,
             ParticleEmitterComponentData>
         {
@@ -201,7 +201,7 @@ namespace Asteroids.Client
                 randomData[i] = Random.Range(0.0f, 1.0f);
             randomDataBase = 0;
 
-            barrier = World.GetOrCreateManager<BeginPresentationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
         }
 
         NativeArray<float> randomData;

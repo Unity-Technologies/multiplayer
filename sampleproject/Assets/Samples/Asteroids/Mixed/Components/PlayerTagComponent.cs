@@ -10,8 +10,10 @@ public struct ShipStateComponentData : IComponentData
     {
         State = state;
         IsLocalPlayer = local ? 1 : 0;
+        WeaponCooldown = 0;
     }
 
     public int State;
     public int IsLocalPlayer;
+    public int WeaponCooldown;
 }

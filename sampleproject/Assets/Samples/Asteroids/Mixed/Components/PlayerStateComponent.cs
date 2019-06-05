@@ -2,7 +2,6 @@ using Unity.Entities;
 
 public struct PlayerStateComponentData : IComponentData
 {
-    public Entity PlayerShip;
     public int IsSpawning;
 }
 

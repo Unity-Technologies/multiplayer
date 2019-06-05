@@ -1,0 +1,14 @@
+{
+  "name": "Unity.NetCode.Editor",
+  "references": [
+    "Unity.NetCode",
+    "Unity.Entities",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.Networking.Transport"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "allowUnsafeCode": true
+}

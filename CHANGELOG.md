@@ -1,6 +1,21 @@
+# 2019-06-05
+## New features
+* Added support systems for prediction and spawn prediction in the NetCode. These can be used to implement client-side prediction for networked objects.
+* Added some support for generating the code required for replicated objects in the NetCode.
+* Generalized input handling in the NetCode.
+* New fixed timestep code custom for multiplayer worlds.
+## Changes
+* Split the NetCode into a separate assembly and improved the folder structure to make it easier to use it in other projects.
+* Split the Asteroids sample into separate assemblies for client, server and mixed so it is easier to build dedicated servers without any client-side code.
+* Moved MatchMaking to a package and supporting code to a separate folder.
+* Upgraded Entities to preview 33.
+## Fixes
+* Fixed an issue with the reliable pipeline not resending when completely idle.
+## Upgrade guide
+
 # 2019-04-16
 ## New features
-* Added network pipelines to enable processing of outgoing and incomming packets. The available pipeline stages are `ReliableSequencedPipelineStage` for reliable UDP messages and `SimulatorPipelineStage` for emulating network conditions such as high latency and packet loss. See [the pipeline documentation](com.unity.transport/Documentation/pipelines-usage.md) for more information.
+* Added network pipelines to enable processing of outgoing and incomming packets. The available pipeline stages are `ReliableSequencedPipelineStage` for reliable UDP messages and `SimulatorPipelineStage` for emulating network conditions such as high latency and packet loss. See [the pipeline documentation](com.unity.transport/Documentation~/pipelines-usage.md) for more information.
 * Added reading and writing of packed signed and unsigned integers to `DataStream`. These new methods use huffman encoding to reduce the size of transfered data for small numbers.
 * Added a new sample asteroids game which we will be using to develop the new netcode.
 ## Changes

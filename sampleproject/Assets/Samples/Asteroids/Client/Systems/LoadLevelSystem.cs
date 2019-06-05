@@ -5,14 +5,14 @@ using Unity.Collections;
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    [UpdateBefore(typeof(NetworkStreamSendSystem))]
+    [UpdateBefore(typeof(RpcSendSystem))]
     public class LoadLevelSystem : JobComponentSystem
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLevelLoaded> m_RpcQueue;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
-        struct LoadJob : IJobProcessComponentDataWithEntity<LevelLoadRequest>
+        struct LoadJob : IJobForEachWithEntity<LevelLoadRequest>
         {
             public EntityCommandBuffer.Concurrent commandBuffer;
             public RpcQueue<RpcLevelLoaded> rpcQueue;
@@ -28,19 +28,20 @@ namespace Asteroids.Client
                 // set the level size - fake loading of level
                 levelFromEntity[levelSingleton] = new LevelComponent {width = request.width, height = request.height};
                 commandBuffer.AddComponent(index, request.connection, new PlayerStateComponentData());
+                commandBuffer.AddComponent(index, request.connection, default(NetworkStreamInGame));
                 rpcQueue.Schedule(rpcFromEntity[request.connection], new RpcLevelLoaded());
             }
         }
 
         protected override void OnCreateManager()
         {
-            m_Barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            m_RpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcLevelLoaded>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcLevelLoaded>();
 
             // The level always exist, "loading" just resizes it
             m_LevelSingleton = EntityManager.CreateEntity();
             EntityManager.AddComponentData(m_LevelSingleton, new LevelComponent {width = 0, height = 0});
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 

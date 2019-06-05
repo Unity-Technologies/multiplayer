@@ -38,7 +38,7 @@ struct SoakServerAcceptJob : IJob
 }
 
 [BurstCompile]
-struct SoakServerUpdateClientsJob : IJobParallelFor
+struct SoakServerUpdateClientsJob : IJobParallelForDefer
 {
     public UdpNetworkDriver.Concurrent driver;
     public NetworkPipeline pipeline;

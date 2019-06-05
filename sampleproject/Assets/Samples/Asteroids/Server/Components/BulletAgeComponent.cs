@@ -1,4 +1,3 @@
-using UnityEngine;
 using Unity.Entities;
 
 public struct BulletAgeComponentData : IComponentData

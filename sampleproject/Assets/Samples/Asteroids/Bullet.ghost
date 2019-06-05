@@ -1,0 +1,77 @@
+{
+    "snapshotDataPath": "Mixed/Generated/BulletSnapshotData.cs",
+    "spawnSystemPath": "Client/Generated/BulletGhostSpawnSystem.cs",
+    "updateSystemPath": "Client/Generated/BulletGhostUpdateSystem.cs",
+    "serializerPath": "Server/Generated/BulletGhostSerializer.cs",
+    "importance": "200",
+    "transform2d": true,
+    "components": [
+        {
+            "name": "BulletTagComponentData",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": []
+        },
+        {
+            "name": "Translation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "Value",
+                    "quantization": 10,
+                    "interpolate": true
+                }
+            ]
+        },
+        {
+            "name": "Rotation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": true,
+            "fields": [
+                {
+                    "name": "Value",
+                    "quantization": 1000,
+                    "interpolate": true
+                }
+            ]
+        },
+        {
+            "name": "PlayerIdComponentData",
+            "interpolatedClient": false,
+            "predictedClient": false,
+            "server": true,
+            "fields": [
+                {
+                    "name": "PlayerId",
+                    "quantization": 1,
+                    "interpolate": false
+                }
+            ]
+        },
+        {
+            "name": "CurrentSimulatedPosition",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "CurrentSimulatedRotation",
+            "interpolatedClient": true,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        },
+        {
+            "name": "Velocity",
+            "interpolatedClient": false,
+            "predictedClient": true,
+            "server": false,
+            "fields": []
+        }
+    ]
+}

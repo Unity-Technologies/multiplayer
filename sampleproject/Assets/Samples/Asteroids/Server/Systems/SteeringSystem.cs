@@ -1,25 +1,22 @@
-using Asteroids.Client;
-using Unity.Burst;
-using UnityEngine;
 using Unity.Entities;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Networking.Transport.Utilities;
 using Unity.Transforms;
 
 namespace Asteroids.Server
 {
-    [UpdateAfter(typeof(InputCommandSystem))]
+    [UpdateAfter(typeof(AsteroidsCommandReceiveSystem))]
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     public class SteeringSystem : JobComponentSystem
     {
         private BeginSimulationEntityCommandBufferSystem barrier;
+
         //[BurstCompile]
-        [RequireComponentTag(typeof(ShipTagComponentData))]
-        struct SteeringJob : IJobProcessComponentDataWithEntity<Translation, Rotation, Velocity, ShipStateComponentData,
-            PlayerInputComponentData>
+        [RequireComponentTag(typeof(ShipTagComponentData), typeof(ShipCommandData))]
+        struct SteeringJob : IJobForEachWithEntity<Translation, Rotation, Velocity, ShipStateComponentData, PlayerIdComponentData>
         {
+            private const int k_CoolDownTicksCount = 10;
             public EntityCommandBuffer.Concurrent commandBuffer;
             public float deltaTime;
             public float displacement;
@@ -28,64 +25,38 @@ namespace Asteroids.Server
             public float bulletVelocity;
             public float bulletRadius;
             public uint currentTick;
+            [ReadOnly] public BufferFromEntity<ShipCommandData> inputFromEntity;
             public unsafe void Execute(Entity entity, int index, ref Translation position, ref Rotation rotation, ref Velocity velocity,
-                ref ShipStateComponentData state, [ReadOnly] ref PlayerInputComponentData input)
+                ref ShipStateComponentData state, [ReadOnly] ref PlayerIdComponentData playerIdData)
             {
-                int idx = 0;
-                int closestIdxBefore = 0;
-                uint closestTickBefore = 0;
-                while (idx < 32)
-                {
-                    if (input.tick[idx] == currentTick)
-                        break;
-                    if (input.tick[idx] != 0 && SequenceHelpers.IsNewer(currentTick, input.tick[idx]))
-                    {
-                        if (closestTickBefore == 0 || SequenceHelpers.IsNewer(input.tick[idx], closestTickBefore))
-                        {
-                            closestTickBefore = input.tick[idx];
-                            closestIdxBefore = idx;
-                        }
-                    }
-                    ++idx;
-                }
+                var input = inputFromEntity[entity];
+                ShipCommandData inputData;
+                if (!input.GetDataAtTick(currentTick, out inputData))
+                    inputData.shoot = 0;
 
-                byte left = 0;
-                byte right = 0;
-                byte thrust = 0;
-                byte shoot = 0;
-                // Only trigger shots on proper input, not repeats
-                if (idx < 32)
-                    shoot = input.shoot[idx];
-                if (idx >= 32 && closestTickBefore != 0)
-                    idx = closestIdxBefore;
-                if (idx < 32)
-                {
-                    left = input.left[idx];
-                    right = input.right[idx];
-                    thrust = input.thrust[idx];
-                }
-                
-                state.State = thrust;
+                state.State = inputData.thrust;
 
-                if (left == 1)
+                if (inputData.left == 1)
                 {
                     rotation.Value = math.mul(rotation.Value, quaternion.RotateZ(math.radians(-displacement * deltaTime)));
                 }
 
-                if (right == 1)
+                if (inputData.right == 1)
                 {
                     rotation.Value = math.mul(rotation.Value, quaternion.RotateZ(math.radians(displacement * deltaTime)));
                 }
 
-                if (thrust == 1)
+                if (inputData.thrust == 1)
                 {
                     float3 fwd = new float3(0, playerForce * deltaTime, 0);
-                    velocity.Value += math.mul(rotation.Value, fwd);
+                    velocity.Value += math.mul(rotation.Value, fwd).xy;
                 }
 
-                position.Value += velocity.Value * deltaTime;
+                position.Value.xy += velocity.Value * deltaTime;
 
-                if (shoot != 0)
+                if (state.WeaponCooldown > 0)
+                    --state.WeaponCooldown;
+                if (inputData.shoot != 0 && state.WeaponCooldown == 0)
                 {
                     var e = commandBuffer.CreateEntity(index, bulletArchetype);
 
@@ -93,12 +64,15 @@ namespace Asteroids.Server
                     commandBuffer.SetComponent(index, e, rotation);
 
                     var vel = new Velocity
-                        {Value = math.mul(rotation.Value, new float3(0, bulletVelocity, 0))};
+                        {Value = math.mul(rotation.Value, new float3(0, bulletVelocity, 0)).xy};
 
                     commandBuffer.SetComponent(index, e, new BulletAgeComponentData(1.5f));
+                    commandBuffer.SetComponent(index, e, new PlayerIdComponentData(){ PlayerId = playerIdData.PlayerId });
                     commandBuffer.SetComponent(index, e, vel);
                     commandBuffer.SetComponent(index, e,
                         new CollisionSphereComponentData(bulletRadius));
+
+                    state.WeaponCooldown = k_CoolDownTicksCount;
                 }
             }
         }
@@ -106,23 +80,25 @@ namespace Asteroids.Server
         private ServerSimulationSystemGroup serverSimulationSystemGroup;
         protected override void OnCreateManager()
         {
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
-            serverSimulationSystemGroup = World.GetOrCreateManager<ServerSimulationSystemGroup>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            serverSimulationSystemGroup = World.GetOrCreateSystem<ServerSimulationSystemGroup>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
+            var topGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
             var settings = GetSingleton<ServerSettings>();
             var steerJob = new SteeringJob
             {
                 commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
-                deltaTime = Time.deltaTime,
+                deltaTime = topGroup.UpdateDeltaTime,
                 displacement = 100.0f,
                 playerForce = settings.playerForce,
                 bulletArchetype = settings.bulletArchetype,
                 bulletVelocity = settings.bulletVelocity,
                 bulletRadius = settings.bulletRadius,
-                currentTick = serverSimulationSystemGroup.ServerTick
+                currentTick = serverSimulationSystemGroup.ServerTick,
+                inputFromEntity = GetBufferFromEntity<ShipCommandData>(true)
             };
             var handle = steerJob.Schedule(this, inputDeps);
             barrier.AddJobHandleForProducer(handle);

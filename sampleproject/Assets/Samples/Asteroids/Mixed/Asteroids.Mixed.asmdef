@@ -1,0 +1,13 @@
+{
+  "name": "Asteroids.Mixed",
+  "references": [
+    "Unity.Burst",
+    "Unity.Entities",
+    "Unity.Transforms",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.Networking.Transport",
+    "Unity.NetCode"
+  ],
+  "allowUnsafeCode": true
+}

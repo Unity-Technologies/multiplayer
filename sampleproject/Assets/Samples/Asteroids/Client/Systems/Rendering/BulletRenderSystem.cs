@@ -13,17 +13,17 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class BulletRenderSystem : JobComponentSystem
     {
-        private ComponentGroup lineGroup;
+        private EntityQuery lineGroup;
         private NativeQueue<LineRenderSystem.Line>.Concurrent lineQueue;
         protected override void OnCreateManager()
         {
-            lineGroup = GetComponentGroup(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateManager<LineRenderSystem>().LineQueue;
+            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
         }
 
         [BurstCompile]
         [RequireComponentTag(typeof(BulletTagComponentData))]
-        struct ChunkRenderJob : IJobProcessComponentData<Translation, Rotation>
+        struct ChunkRenderJob : IJobForEach<Translation, Rotation>
         {
             public NativeQueue<LineRenderSystem.Line>.Concurrent lines;
             public float4 bulletColor;

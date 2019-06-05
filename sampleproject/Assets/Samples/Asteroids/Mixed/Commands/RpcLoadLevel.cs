@@ -7,7 +7,7 @@ public struct LevelLoadRequest : IComponentData
     public int height;
     public Entity connection;
 }
-public struct RpcLoadLevel : RpcCommand
+public struct RpcLoadLevel : IRpcCommand
 {
     public int width;
     public int height;
@@ -31,11 +31,12 @@ public struct RpcLoadLevel : RpcCommand
     }
 }
 
-public struct RpcLevelLoaded : RpcCommand
+public struct RpcLevelLoaded : IRpcCommand
 {
     public void Execute(Entity connection, EntityCommandBuffer.Concurrent commandBuffer, int jobIndex)
     {
         commandBuffer.AddComponent(jobIndex, connection, new PlayerStateComponentData());
+        commandBuffer.AddComponent(jobIndex, connection, default(NetworkStreamInGame));
     }
 
     public void Serialize(DataStreamWriter writer)

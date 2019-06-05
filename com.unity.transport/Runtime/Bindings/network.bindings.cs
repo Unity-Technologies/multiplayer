@@ -73,6 +73,10 @@ namespace Unity.Networking.Transport
     {
 #if UNITY_IOS && !UNITY_EDITOR
         const string m_DllName = "__Internal";
+#elif UNITY_EDITOR_WIN && UNITY_2019_2_OR_NEWER
+        const string m_DllName = "network.bindings.dll";
+#elif UNITY_EDITOR_OSX && UNITY_2019_2_OR_NEWER
+        const string m_DllName = "network.bindings.bundle";
 #else
         const string m_DllName = "network.bindings";
 #endif
@@ -90,13 +94,13 @@ namespace Unity.Networking.Transport
 
         [DllImport(m_DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int network_set_nonblocking(long socket_handle);
-        
+
         [DllImport(m_DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int network_set_send_buffer_size(long socket_handle, int size);
-        
+
         [DllImport(m_DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int network_set_receive_buffer_size(long socket_handle, int size);
-        
+
         [DllImport(m_DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern int network_set_connection_reset(long socket_handle, int value);
 

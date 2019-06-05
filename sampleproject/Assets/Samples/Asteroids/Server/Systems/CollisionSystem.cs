@@ -13,33 +13,33 @@ namespace Asteroids.Server
     [UpdateAfter(typeof(BulletSystem))]
     [UpdateAfter(typeof(BulletAgeSystem))]
     [UpdateAfter(typeof(SteeringSystem))]
-    [UpdateBefore(typeof(GhostSendSystem))]
+    [UpdateBefore(typeof(MultiplayerSampleGhostSendSystem))]
     public class CollisionSystem : JobComponentSystem
     {
-        private ComponentGroup shipGroup;
-        private ComponentGroup bulletGroup;
-        private ComponentGroup asteroidGroup;
-        private ComponentGroup m_LevelGroup;
+        private EntityQuery shipGroup;
+        private EntityQuery bulletGroup;
+        private EntityQuery asteroidGroup;
+        private EntityQuery m_LevelGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
         private NativeQueue<Entity> playerClearQueue;
-        private ComponentGroup settingsGroup;
+        private EntityQuery settingsGroup;
 
         protected override void OnCreateManager()
         {
-            shipGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            shipGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<ShipTagComponentData>());
-            bulletGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            bulletGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<BulletTagComponentData>(),
                 ComponentType.ReadOnly<BulletAgeComponentData>());
-            asteroidGroup = GetComponentGroup(ComponentType.ReadOnly<Translation>(),
+            asteroidGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponentData>(), ComponentType.ReadOnly<AsteroidTagComponentData>());
-            barrier = World.GetOrCreateManager<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             playerClearQueue = new NativeQueue<Entity>(Allocator.Persistent);
 
-            m_LevelGroup = GetComponentGroup(ComponentType.ReadWrite<LevelComponent>());
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
 
-            settingsGroup = GetComponentGroup(ComponentType.ReadOnly<ServerSettings>());
+            settingsGroup = GetEntityQuery(ComponentType.ReadOnly<ServerSettings>());
         }
 
         protected override void OnDestroyManager()
@@ -181,18 +181,18 @@ namespace Asteroids.Server
         struct ClearShipPointerJob : IJob
         {
             public NativeQueue<Entity> playerClearQueue;
-            public ComponentDataFromEntity<PlayerStateComponentData> playerState;
+            public ComponentDataFromEntity<CommandTargetComponent> commandTarget;
 
             public void Execute()
             {
                 Entity ent;
                 while (playerClearQueue.TryDequeue(out ent))
                 {
-                    if (playerState.Exists(ent))
+                    if (commandTarget.Exists(ent))
                     {
-                        var state = playerState[ent];
-                        state.PlayerShip = Entity.Null;
-                        playerState[ent] = state;
+                        var state = commandTarget[ent];
+                        state.targetEntity = Entity.Null;
+                        commandTarget[ent] = state;
                     }
                 }
             }
@@ -251,7 +251,7 @@ namespace Asteroids.Server
             var cleanupShipJob = new ClearShipPointerJob
             {
                 playerClearQueue = playerClearQueue,
-                playerState = GetComponentDataFromEntity<PlayerStateComponentData>()
+                commandTarget = GetComponentDataFromEntity<CommandTargetComponent>()
             };
             var cleanupChunkJob = new ChunkCleanupJob
             {

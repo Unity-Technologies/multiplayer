@@ -5,9 +5,9 @@ Welcome to the Unity Real-time Multiplayer Alpha repository!
 Here you can find all the resources you need to start prototyping
 your own real-time multiplayer games.
 
-[Manual - Table Of Contents](com.unity.transport/Documentation/TableOfContents.md)  
-  
-[Click here to visit the forum](https://forum.unity.com/forums/connected-games.26/)  
+[Manual - Table Of Contents](com.unity.transport/Documentation~/TableOfContents.md)
+
+[Click here to visit the forum](https://forum.unity.com/forums/connected-games.26/)
 
 ## Included content
 
@@ -26,7 +26,7 @@ over the network.
 The native bindings for the transport package are available in `network.bindings/` .
 You normally do not need to build the bindings yourself, but if you do
 instructions are included in the installation guide.
-For more information about the transport package, please see the [Unity Transport Documentation](com.unity.transport/Documentation/index.md)
+For more information about the transport package, please see the [Unity Transport Documentation](com.unity.transport/Documentation~/index.md)
 
 ### Matchmaking
 The Unity matchmaking library is available in `sampleproject/Assets/Matchmaking/` .

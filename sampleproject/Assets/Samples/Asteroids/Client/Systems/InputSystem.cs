@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Unity.Entities;
 using Unity.Jobs;
@@ -31,19 +32,19 @@ namespace Asteroids.Client
     }
 
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    [UpdateBefore(typeof(NetworkStreamSendSystem))]
-    // FIXME: dependency just for acking
+    [UpdateBefore(typeof(AsteroidsCommandSendSystem))]
+    // Try to sample input as late as possible
     [UpdateAfter(typeof(GhostReceiveSystemGroup))]
     public class InputSystem : JobComponentSystem
     {
         private RpcQueue<RpcSpawn> m_RpcQueue;
         protected override void OnCreateManager()
         {
-            m_RpcQueue = World.GetOrCreateManager<RpcSystem>().GetRpcQueue<RpcSpawn>();
+            m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcSpawn>();
         }
 
         [ExcludeComponent(typeof(NetworkStreamDisconnected))]
-        struct PlayerInputJob : IJobProcessComponentDataWithEntity<PlayerStateComponentData>
+        struct PlayerInputJob : IJobForEachWithEntity<CommandTargetComponent>
         {
             public byte left;
             public byte right;
@@ -52,22 +53,11 @@ namespace Asteroids.Client
             public ComponentDataFromEntity<ShipStateComponentData> shipState;
             public RpcQueue<RpcSpawn> rpcQueue;
             public BufferFromEntity<OutgoingRpcDataStreamBufferComponent> rpcBuffer;
-            public BufferFromEntity<OutgoingCommandDataStreamBufferComponent> cmdBuffer;
-            public ComponentDataFromEntity<NetworkSnapshotAck> ackSnapshot;
-            public uint localTime;
+            public BufferFromEntity<ShipCommandData> inputFromEntity;
             public uint inputTargetTick;
-            public unsafe void Execute(Entity entity, int index, [ReadOnly] ref PlayerStateComponentData state)
+            public void Execute(Entity entity, int index, [ReadOnly] ref CommandTargetComponent state)
             {
-                // FIXME: ack and sending command stream should be handled by a different system
-                DataStreamWriter writer = new DataStreamWriter(128, Allocator.Temp);
-                var buffer = cmdBuffer[entity];
-                var ack = ackSnapshot[entity];
-                writer.Write((byte)NetworkStreamProtocol.Command);
-                writer.Write(ack.LastReceivedSnapshotByLocal);
-                writer.Write(ack.ReceivedSnapshotByLocalMask);
-                writer.Write(localTime);
-                writer.Write(ack.LastReceivedRemoteTime - (localTime - ack.LastReceiveTimestamp));
-                if (state.PlayerShip == Entity.Null)
+                if (state.targetEntity == Entity.Null)
                 {
                     if (shoot != 0)
                     {
@@ -76,21 +66,16 @@ namespace Asteroids.Client
                 }
                 else
                 {
-                    writer.Write(inputTargetTick);
-                    writer.Write(left);
-                    writer.Write(right);
-                    writer.Write(thrust);
-                    writer.Write(shoot);
-
                     // If ship, store commands in network command buffer
-                    /*input = new PlayerInputComponentData(left, right, thrust, shoot);*/
                     // FIXME: when destroying the ship is in a command buffer this no longer works
-                    if (shipState.Exists(state.PlayerShip)) // There might be a pending set to null
-                        shipState[state.PlayerShip] = new ShipStateComponentData(thrust, true);
+                    if (shipState.Exists(state.targetEntity)) // There might be a pending set to null
+                        shipState[state.targetEntity] = new ShipStateComponentData(thrust, true);
+                    if (inputFromEntity.Exists(state.targetEntity))
+                    {
+                        var input = inputFromEntity[state.targetEntity];
+                        input.AddCommandData(new ShipCommandData{tick = inputTargetTick, left = left, right = right, thrust = thrust, shoot = shoot});
+                    }
                 }
-                buffer.ResizeUninitialized(writer.Length);
-                byte* ptr = (byte*) buffer.GetUnsafePtr();
-                UnsafeUtility.MemCpy(buffer.GetUnsafePtr(), writer.GetUnsafeReadOnlyPtr(), writer.Length);
             }
         }
 
@@ -104,12 +89,10 @@ namespace Asteroids.Client
             playerJob.shipState = GetComponentDataFromEntity<ShipStateComponentData>();
             playerJob.rpcQueue = m_RpcQueue;
             playerJob.rpcBuffer = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
-            playerJob.cmdBuffer = GetBufferFromEntity<OutgoingCommandDataStreamBufferComponent>();
-            playerJob.ackSnapshot = GetComponentDataFromEntity<NetworkSnapshotAck>();
-            playerJob.localTime = NetworkTimeSystem.TimestampMS;
+            playerJob.inputFromEntity = GetBufferFromEntity<ShipCommandData>();
             playerJob.inputTargetTick = NetworkTimeSystem.predictTargetTick;
 
-            if (World.GetExistingManager<ClientPresentationSystemGroup>().Enabled)
+            if (World.GetExistingSystem<ClientPresentationSystemGroup>().Enabled)
             {
                 if (Input.GetKey("left"))
                     playerJob.left = 1;
@@ -117,14 +100,15 @@ namespace Asteroids.Client
                     playerJob.right = 1;
                 if (Input.GetKey("up"))
                     playerJob.thrust = 1;
-                if (InputSamplerSystem.spacePresses > 0)
-                    //if (Input.GetKey("space"))
+                //if (InputSamplerSystem.spacePresses > 0)
+                if (Input.GetKey("space"))
                     playerJob.shoot = 1;
             }
             else
             {
+                var topGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
                 // Spawn and generate some random inputs
-                var state = (int) Time.fixedTime % 3;
+                var state = (int) topGroup.UpdateTime % 3;
                 if (state == 0)
                     playerJob.left = 1;
                 else

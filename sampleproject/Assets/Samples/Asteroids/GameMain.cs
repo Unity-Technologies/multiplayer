@@ -15,21 +15,21 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
     protected override void OnCreateManager()
     {
         var initEntity = EntityManager.CreateEntity();
-        var group = GetComponentGroup(ComponentType.ReadWrite<GameMainComponent>());
+        var group = GetEntityQuery(ComponentType.ReadWrite<GameMainComponent>());
         RequireForUpdate(group);
         m_initializeClientServer = true;
 
 #if !UNITY_CLIENT
         if (ClientServerBootstrap.serverWorld != null)
         {
-            World.GetOrCreateManager<TickServerSimulationSystem>().Enabled = false;
+            World.GetOrCreateSystem<TickServerSimulationSystem>().Enabled = false;
         }
 #endif
 #if !UNITY_SERVER
         if (ClientServerBootstrap.clientWorld != null)
         {
-            World.GetOrCreateManager<TickClientSimulationSystem>().Enabled = false;
-            World.GetOrCreateManager<TickClientPresentationSystem>().Enabled = false;
+            World.GetOrCreateSystem<TickClientSimulationSystem>().Enabled = false;
+            World.GetOrCreateSystem<TickClientPresentationSystem>().Enabled = false;
         }
 #endif
     }
@@ -44,34 +44,34 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
         var serverWorld = ClientServerBootstrap.serverWorld;
         if (serverWorld != null)
         {
-            World.GetExistingManager<TickServerSimulationSystem>().Enabled = true;
-            var entityManager = serverWorld.GetExistingManager<EntityManager>();
+            World.GetExistingSystem<TickServerSimulationSystem>().Enabled = true;
+            var entityManager = serverWorld.EntityManager;
             var settings = entityManager.CreateEntity();
             var settingsData = GetSingleton<ServerSettings>();
             settingsData.InitArchetypes(entityManager);
             entityManager.AddComponentData(settings, settingsData);
             NetworkEndPoint ep = NetworkEndPoint.AnyIpv4;
             ep.Port = networkPort;
-            serverWorld.GetExistingManager<NetworkStreamReceiveSystem>().Listen(ep);
+            serverWorld.GetExistingSystem<NetworkStreamReceiveSystem>().Listen(ep);
         }
 #endif
 #if !UNITY_SERVER
         // Auto connect all clients to the server
         if (ClientServerBootstrap.clientWorld != null)
         {
-            World.GetExistingManager<TickClientSimulationSystem>().Enabled = true;
-            World.GetExistingManager<TickClientPresentationSystem>().Enabled = true;
+            World.GetExistingSystem<TickClientSimulationSystem>().Enabled = true;
+            World.GetExistingSystem<TickClientPresentationSystem>().Enabled = true;
             for (int i = 0; i < ClientServerBootstrap.clientWorld.Length; ++i)
             {
                 var clientWorld = ClientServerBootstrap.clientWorld[i];
-                var entityManager = clientWorld.GetOrCreateManager<EntityManager>();
+                var entityManager = clientWorld.EntityManager;
                 var settings = new ClientSettings(entityManager);
                 var settingsEnt = entityManager.CreateEntity();
                 entityManager.AddComponentData(settingsEnt, settings);
 
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = networkPort;
-                clientWorld.GetExistingManager<NetworkStreamReceiveSystem>().Connect(ep);
+                clientWorld.GetExistingSystem<NetworkStreamReceiveSystem>().Connect(ep);
             }
         }
 #endif

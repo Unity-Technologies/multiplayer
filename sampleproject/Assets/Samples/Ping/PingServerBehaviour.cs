@@ -115,7 +115,7 @@ public class PingServerBehaviour : MonoBehaviour
     }
 #else
     [BurstCompile]
-    struct PongJob : IJobParallelFor
+    struct PongJob : IJobParallelForDefer
     {
         public UdpNetworkDriver.Concurrent driver;
         public NativeArray<NetworkConnection> connections;
