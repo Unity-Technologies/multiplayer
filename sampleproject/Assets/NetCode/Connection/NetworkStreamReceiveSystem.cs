@@ -26,10 +26,9 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
     private NativeQueue<int> freeNetworkIds;
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     private RpcQueue<RpcSetNetworkId> rpcQueue;
-    #if UNITY_EDITOR
     private int m_ClientPacketDelay;
     private int m_ClientPacketDrop;
-    #endif
+
     public bool Listen(NetworkEndPoint endpoint)
     {
         if (m_UnreliablePipeline == NetworkPipeline.Null)
@@ -51,25 +50,17 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
     {
         if (m_UnreliablePipeline == NetworkPipeline.Null)
         {
-            #if UNITY_EDITOR
             if (m_ClientPacketDelay > 0 || m_ClientPacketDrop > 0)
                 m_UnreliablePipeline = m_Driver.CreatePipeline(typeof(SimulatorPipelineStage), typeof(SimulatorPipelineStageInSend));
             else
-            #endif
-            {
                 m_UnreliablePipeline = m_Driver.CreatePipeline(typeof(NullPipelineStage));
-            }
         }
         if (m_ReliablePipeline == NetworkPipeline.Null)
         {
-            #if UNITY_EDITOR
             if (m_ClientPacketDelay > 0 || m_ClientPacketDrop > 0)
                 m_ReliablePipeline = m_Driver.CreatePipeline(typeof(SimulatorPipelineStageInSend), typeof(ReliableSequencedPipelineStage), typeof(SimulatorPipelineStage));
             else
-            #endif
-            {
                 m_ReliablePipeline = m_Driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
-            }
         }
         var ent = EntityManager.CreateEntity();
         EntityManager.AddComponentData(ent, new NetworkStreamConnection {Value = m_Driver.Connect(endpoint)});
@@ -86,18 +77,20 @@ public class NetworkStreamReceiveSystem : JobComponentSystem
     {
         var reliabilityParams = new ReliableUtility.Parameters {WindowSize = 32};
 
-        #if UNITY_EDITOR
-        m_ClientPacketDelay = UnityEditor.EditorPrefs.GetInt("MultiplayerPlayMode_" + UnityEngine.Application.productName + "_ClientDelay");
-        m_ClientPacketDrop = UnityEditor.EditorPrefs.GetInt("MultiplayerPlayMode_" + UnityEngine.Application.productName + "_ClientDropRate");
-        int networkRate = 60; // TODO: read from some better place
-        // All 3 packet types every frame stored for maximum delay, doubled for safety margin
-        int maxPackets = 2*(networkRate * 3 * m_ClientPacketDelay + 999) / 1000;
-        var simulatorParams = new SimulatorUtility.Parameters
-            {MaxPacketSize = NetworkParameterConstants.MTU, MaxPacketCount = maxPackets, PacketDelayMs = m_ClientPacketDelay, PacketDropPercentage = m_ClientPacketDrop};
-        m_Driver = new UdpNetworkDriver(simulatorParams, reliabilityParams);
-        #else
-        m_Driver = new UdpNetworkDriver(reliabilityParams);
-        #endif
+        if (UnityEngine.Debug.isDebugBuild)
+        {
+            m_ClientPacketDelay = UnityEngine.PlayerPrefs.GetInt("MultiplayerPlayMode_" + UnityEngine.Application.productName + "_ClientDelay");
+            m_ClientPacketDrop = UnityEngine.PlayerPrefs.GetInt("MultiplayerPlayMode_" + UnityEngine.Application.productName + "_ClientDropRate");
+            int networkRate = 60; // TODO: read from some better place
+            // All 3 packet types every frame stored for maximum delay, doubled for safety margin
+            int maxPackets = 2*(networkRate * 3 * m_ClientPacketDelay + 999) / 1000;
+            var simulatorParams = new SimulatorUtility.Parameters
+                {MaxPacketSize = NetworkParameterConstants.MTU, MaxPacketCount = maxPackets, PacketDelayMs = m_ClientPacketDelay, PacketDropPercentage = m_ClientPacketDrop};
+            m_Driver = new UdpNetworkDriver(simulatorParams, reliabilityParams);
+            UnityEngine.Debug.Log("Using simulator with latency=" + m_ClientPacketDelay + " packet drop=" + m_ClientPacketDrop);
+        }
+        else
+            m_Driver = new UdpNetworkDriver(reliabilityParams);
 
         m_ConcurrentDriver = m_Driver.ToConcurrent();
         m_UnreliablePipeline = NetworkPipeline.Null;

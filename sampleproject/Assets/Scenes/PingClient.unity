@@ -230,9 +230,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4bda9ee5df484a9f8ae940884ff77b65, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  MatchmakingServer: 
+  m_Name:
+  m_EditorClassIdentifier:
+  MatchmakingServer:
 --- !u!4 &651224973
 Transform:
   m_ObjectHideFlags: 0
@@ -274,8 +274,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3a4040c861f4736845518d94414020b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!4 &1542729949
 Transform:
   m_ObjectHideFlags: 0

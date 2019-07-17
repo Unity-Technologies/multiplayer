@@ -1,8 +1,10 @@
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Transforms;
 
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
 [UpdateAfter(typeof(NetworkStreamReceiveSystem))]
+[UpdateBefore(typeof(TransformSystemGroup))]
 public class GhostReceiveSystemGroup : ComponentSystemGroup
 {
     // having the group own the ghost map is a bit of a hack to solve a problem with accessing the receiver system from the default spawn system (because it is generic)

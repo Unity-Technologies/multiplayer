@@ -27,8 +27,6 @@ public class PingServerBehaviour : MonoBehaviour
             m_ServerDriver.Listen();
 
         m_connections = new NativeList<NetworkConnection>(16, Allocator.Persistent);
-
-        SQPDriver.ServerPort = serverPort;
     }
 
     void OnDestroy()
@@ -104,7 +102,7 @@ public class PingServerBehaviour : MonoBehaviour
     [BurstCompile]
     struct PongJob : IJob
     {
-        public UdpCNetworkDriver.Concurrent driver;
+        public UdpNetworkDriver.Concurrent driver;
         public NativeList<NetworkConnection> connections;
 
         public void Execute()

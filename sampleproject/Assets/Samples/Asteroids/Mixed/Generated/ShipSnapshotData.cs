@@ -4,24 +4,23 @@ using Unity.Networking.Transport;
 public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
 {
     public uint tick;
+    int PlayerIdComponentDataPlayerId;
+    int RotationValue;
+    int ShipStateComponentDataState;
     int TranslationValueX;
     int TranslationValueY;
-    int RotationValue;
     int VelocityValueX;
     int VelocityValueY;
-    int ShipStateComponentDataState;
-    int PlayerIdComponentDataPlayerId;
 
 
     public uint Tick => tick;
-    public float3 GetTranslationValue()
+    public int GetPlayerIdComponentDataPlayerId()
     {
-        return new float3(TranslationValueX, TranslationValueY, 0) * 0.1f;
+        return PlayerIdComponentDataPlayerId;
     }
-    public void SetTranslationValue(float3 val)
+    public void SetPlayerIdComponentDataPlayerId(int val)
     {
-        TranslationValueX = (int)(val.x * 10);
-        TranslationValueY = (int)(val.y * 10);
+        PlayerIdComponentDataPlayerId = val;
     }
     public quaternion GetRotationValue()
     {
@@ -32,6 +31,23 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
     {
         RotationValue = (int) ((q.value.z >= 0 ? q.value.w : -q.value.w) * 1000);
     }
+    public int GetShipStateComponentDataState()
+    {
+        return ShipStateComponentDataState;
+    }
+    public void SetShipStateComponentDataState(int val)
+    {
+        ShipStateComponentDataState = val;
+    }
+    public float3 GetTranslationValue()
+    {
+        return new float3(TranslationValueX, TranslationValueY, 0) * 0.1f;
+    }
+    public void SetTranslationValue(float3 val)
+    {
+        TranslationValueX = (int)(val.x * 10);
+        TranslationValueY = (int)(val.y * 10);
+    }
     public float2 GetVelocityValue()
     {
         return new float2(VelocityValueX, VelocityValueY) * 0.1f;
@@ -41,46 +57,30 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         VelocityValueX = (int)(val.x * 10);
         VelocityValueY = (int)(val.y * 10);
     }
-    public int GetShipStateComponentDataState()
-    {
-        return ShipStateComponentDataState;
-    }
-    public void SetShipStateComponentDataState(int val)
-    {
-        ShipStateComponentDataState = val;
-    }
-    public int GetPlayerIdComponentDataPlayerId()
-    {
-        return PlayerIdComponentDataPlayerId;
-    }
-    public void SetPlayerIdComponentDataPlayerId(int val)
-    {
-        PlayerIdComponentDataPlayerId = val;
-    }
 
 
     public void PredictDelta(uint tick, ref ShipSnapshotData baseline1, ref ShipSnapshotData baseline2)
     {
         var predictor = new GhostDeltaPredictor(tick, this.tick, baseline1.tick, baseline2.tick);
+        PlayerIdComponentDataPlayerId = predictor.PredictInt(PlayerIdComponentDataPlayerId, baseline1.PlayerIdComponentDataPlayerId, baseline2.PlayerIdComponentDataPlayerId);
+        RotationValue = predictor.PredictInt(RotationValue, baseline1.RotationValue, baseline2.RotationValue);
+        ShipStateComponentDataState = predictor.PredictInt(ShipStateComponentDataState, baseline1.ShipStateComponentDataState, baseline2.ShipStateComponentDataState);
         TranslationValueX = predictor.PredictInt(TranslationValueX, baseline1.TranslationValueX, baseline2.TranslationValueX);
         TranslationValueY = predictor.PredictInt(TranslationValueY, baseline1.TranslationValueY, baseline2.TranslationValueY);
-        RotationValue = predictor.PredictInt(RotationValue, baseline1.RotationValue, baseline2.RotationValue);
         VelocityValueX = predictor.PredictInt(VelocityValueX, baseline1.VelocityValueX, baseline2.VelocityValueX);
         VelocityValueY = predictor.PredictInt(VelocityValueY, baseline1.VelocityValueY, baseline2.VelocityValueY);
-        ShipStateComponentDataState = predictor.PredictInt(ShipStateComponentDataState, baseline1.ShipStateComponentDataState, baseline2.ShipStateComponentDataState);
-        PlayerIdComponentDataPlayerId = predictor.PredictInt(PlayerIdComponentDataPlayerId, baseline1.PlayerIdComponentDataPlayerId, baseline2.PlayerIdComponentDataPlayerId);
 
     }
 
     public void Serialize(ref ShipSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
+        writer.WritePackedIntDelta(PlayerIdComponentDataPlayerId, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+        writer.WritePackedIntDelta(RotationValue, baseline.RotationValue, compressionModel);
+        writer.WritePackedIntDelta(ShipStateComponentDataState, baseline.ShipStateComponentDataState, compressionModel);
         writer.WritePackedIntDelta(TranslationValueX, baseline.TranslationValueX, compressionModel);
         writer.WritePackedIntDelta(TranslationValueY, baseline.TranslationValueY, compressionModel);
-        writer.WritePackedIntDelta(RotationValue, baseline.RotationValue, compressionModel);
         writer.WritePackedIntDelta(VelocityValueX, baseline.VelocityValueX, compressionModel);
         writer.WritePackedIntDelta(VelocityValueY, baseline.VelocityValueY, compressionModel);
-        writer.WritePackedIntDelta(ShipStateComponentDataState, baseline.ShipStateComponentDataState, compressionModel);
-        writer.WritePackedIntDelta(PlayerIdComponentDataPlayerId, baseline.PlayerIdComponentDataPlayerId, compressionModel);
 
     }
 
@@ -88,19 +88,19 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         NetworkCompressionModel compressionModel)
     {
         this.tick = tick;
+        PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+        RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
+        ShipStateComponentDataState = reader.ReadPackedIntDelta(ref ctx, baseline.ShipStateComponentDataState, compressionModel);
         TranslationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueX, compressionModel);
         TranslationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueY, compressionModel);
-        RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
         VelocityValueX = reader.ReadPackedIntDelta(ref ctx, baseline.VelocityValueX, compressionModel);
         VelocityValueY = reader.ReadPackedIntDelta(ref ctx, baseline.VelocityValueY, compressionModel);
-        ShipStateComponentDataState = reader.ReadPackedIntDelta(ref ctx, baseline.ShipStateComponentDataState, compressionModel);
-        PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
 
     }
     public void Interpolate(ref ShipSnapshotData target, float factor)
     {
-        SetTranslationValue(math.lerp(GetTranslationValue(), target.GetTranslationValue(), factor));
         SetRotationValue(math.slerp(GetRotationValue(), target.GetRotationValue(), factor));
+        SetTranslationValue(math.lerp(GetTranslationValue(), target.GetTranslationValue(), factor));
         SetVelocityValue(math.lerp(GetVelocityValue(), target.GetVelocityValue(), factor));
 
     }

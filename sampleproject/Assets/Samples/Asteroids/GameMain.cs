@@ -1,12 +1,13 @@
 using Unity.Entities;
 using Unity.Networking.Transport;
 
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
 [UpdateBefore(typeof(TickServerSimulationSystem))]
 #endif
 #if !UNITY_SERVER
 [UpdateBefore(typeof(TickClientSimulationSystem))]
 #endif
+[NotClientServerSystem]
 public class AsteroidsClientServerControlSystem : ComponentSystem
 {
     private const ushort networkPort = 50001;
@@ -18,20 +19,6 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
         var group = GetEntityQuery(ComponentType.ReadWrite<GameMainComponent>());
         RequireForUpdate(group);
         m_initializeClientServer = true;
-
-#if !UNITY_CLIENT
-        if (ClientServerBootstrap.serverWorld != null)
-        {
-            World.GetOrCreateSystem<TickServerSimulationSystem>().Enabled = false;
-        }
-#endif
-#if !UNITY_SERVER
-        if (ClientServerBootstrap.clientWorld != null)
-        {
-            World.GetOrCreateSystem<TickClientSimulationSystem>().Enabled = false;
-            World.GetOrCreateSystem<TickClientPresentationSystem>().Enabled = false;
-        }
-#endif
     }
 
     protected override void OnUpdate()
@@ -40,11 +27,10 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
             return;
         m_initializeClientServer = false;
         // Bind the server and start listening for connections
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         var serverWorld = ClientServerBootstrap.serverWorld;
         if (serverWorld != null)
         {
-            World.GetExistingSystem<TickServerSimulationSystem>().Enabled = true;
             var entityManager = serverWorld.EntityManager;
             var settings = entityManager.CreateEntity();
             var settingsData = GetSingleton<ServerSettings>();
@@ -59,8 +45,6 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
         // Auto connect all clients to the server
         if (ClientServerBootstrap.clientWorld != null)
         {
-            World.GetExistingSystem<TickClientSimulationSystem>().Enabled = true;
-            World.GetExistingSystem<TickClientPresentationSystem>().Enabled = true;
             for (int i = 0; i < ClientServerBootstrap.clientWorld.Length; ++i)
             {
                 var clientWorld = ClientServerBootstrap.clientWorld[i];
@@ -100,6 +84,7 @@ public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
     {
         var data = new GameMainComponent();
         dstManager.AddComponentData(entity, data);
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         var settings = default(ServerSettings);
         settings.asteroidRadius = asteroidRadius;
         settings.playerRadius = playerRadius;
@@ -114,5 +99,6 @@ public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
         settings.levelHeight = levelHeight;
         settings.damageShips = damageShips;
         dstManager.AddComponentData(entity, settings);
+#endif
     }
 }

@@ -10,7 +10,6 @@ namespace Asteroids.Server
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateBefore(typeof(RpcSendSystem))]
-    [AlwaysUpdateSystem]
     public class LoadLevelSystem : JobComponentSystem
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
@@ -36,6 +35,7 @@ namespace Asteroids.Server
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcLoadLevel>();
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
+            RequireSingletonForUpdate<ServerSettings>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)

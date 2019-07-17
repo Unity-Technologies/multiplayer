@@ -4,21 +4,20 @@ using Unity.Networking.Transport;
 public struct BulletSnapshotData : ISnapshotData<BulletSnapshotData>
 {
     public uint tick;
+    int PlayerIdComponentDataPlayerId;
+    int RotationValue;
     int TranslationValueX;
     int TranslationValueY;
-    int RotationValue;
-    int PlayerIdComponentDataPlayerId;
 
 
     public uint Tick => tick;
-    public float3 GetTranslationValue()
+    public int GetPlayerIdComponentDataPlayerId()
     {
-        return new float3(TranslationValueX, TranslationValueY, 0) * 0.1f;
+        return PlayerIdComponentDataPlayerId;
     }
-    public void SetTranslationValue(float3 val)
+    public void SetPlayerIdComponentDataPlayerId(int val)
     {
-        TranslationValueX = (int)(val.x * 10);
-        TranslationValueY = (int)(val.y * 10);
+        PlayerIdComponentDataPlayerId = val;
     }
     public quaternion GetRotationValue()
     {
@@ -29,32 +28,33 @@ public struct BulletSnapshotData : ISnapshotData<BulletSnapshotData>
     {
         RotationValue = (int) ((q.value.z >= 0 ? q.value.w : -q.value.w) * 1000);
     }
-    public int GetPlayerIdComponentDataPlayerId()
+    public float3 GetTranslationValue()
     {
-        return PlayerIdComponentDataPlayerId;
+        return new float3(TranslationValueX, TranslationValueY, 0) * 0.1f;
     }
-    public void SetPlayerIdComponentDataPlayerId(int val)
+    public void SetTranslationValue(float3 val)
     {
-        PlayerIdComponentDataPlayerId = val;
+        TranslationValueX = (int)(val.x * 10);
+        TranslationValueY = (int)(val.y * 10);
     }
 
 
     public void PredictDelta(uint tick, ref BulletSnapshotData baseline1, ref BulletSnapshotData baseline2)
     {
         var predictor = new GhostDeltaPredictor(tick, this.tick, baseline1.tick, baseline2.tick);
+        PlayerIdComponentDataPlayerId = predictor.PredictInt(PlayerIdComponentDataPlayerId, baseline1.PlayerIdComponentDataPlayerId, baseline2.PlayerIdComponentDataPlayerId);
+        RotationValue = predictor.PredictInt(RotationValue, baseline1.RotationValue, baseline2.RotationValue);
         TranslationValueX = predictor.PredictInt(TranslationValueX, baseline1.TranslationValueX, baseline2.TranslationValueX);
         TranslationValueY = predictor.PredictInt(TranslationValueY, baseline1.TranslationValueY, baseline2.TranslationValueY);
-        RotationValue = predictor.PredictInt(RotationValue, baseline1.RotationValue, baseline2.RotationValue);
-        PlayerIdComponentDataPlayerId = predictor.PredictInt(PlayerIdComponentDataPlayerId, baseline1.PlayerIdComponentDataPlayerId, baseline2.PlayerIdComponentDataPlayerId);
 
     }
 
     public void Serialize(ref BulletSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
+        writer.WritePackedIntDelta(PlayerIdComponentDataPlayerId, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+        writer.WritePackedIntDelta(RotationValue, baseline.RotationValue, compressionModel);
         writer.WritePackedIntDelta(TranslationValueX, baseline.TranslationValueX, compressionModel);
         writer.WritePackedIntDelta(TranslationValueY, baseline.TranslationValueY, compressionModel);
-        writer.WritePackedIntDelta(RotationValue, baseline.RotationValue, compressionModel);
-        writer.WritePackedIntDelta(PlayerIdComponentDataPlayerId, baseline.PlayerIdComponentDataPlayerId, compressionModel);
 
     }
 
@@ -62,16 +62,16 @@ public struct BulletSnapshotData : ISnapshotData<BulletSnapshotData>
         NetworkCompressionModel compressionModel)
     {
         this.tick = tick;
+        PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+        RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
         TranslationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueX, compressionModel);
         TranslationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueY, compressionModel);
-        RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
-        PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
 
     }
     public void Interpolate(ref BulletSnapshotData target, float factor)
     {
-        SetTranslationValue(math.lerp(GetTranslationValue(), target.GetTranslationValue(), factor));
         SetRotationValue(math.slerp(GetRotationValue(), target.GetRotationValue(), factor));
+        SetTranslationValue(math.lerp(GetTranslationValue(), target.GetTranslationValue(), factor));
 
     }
 }

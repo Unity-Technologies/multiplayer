@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1179405006722280534
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 405061397939786722}
+  - component: {fileID: 2495728771080875079}
+  - component: {fileID: -4511429949734935422}
+  - component: {fileID: 6118769756459075749}
+  - component: {fileID: 613457668621408085}
+  m_Layer: 0
+  m_Name: Asteroid
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &405061397939786722
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2495728771080875079
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ClientInstantiateTarget: 0
+  SnapshotDataPath: Mixed/Generated/AsteroidSnapshotData.cs
+  SpawnSystemPath: Client/Generated/AsteroidGhostSpawnSystem.cs
+  UpdateSystemPath: Client/Generated/AsteroidGhostUpdateSystem.cs
+  SerializerPath: Server/Generated/AsteroidGhostSerializer.cs
+  Importance: 1
+  Components:
+  - name: AsteroidTagComponentData
+    interpolatedClient: 1
+    predictedClient: 1
+    server: 1
+    fields: []
+    isManual: 0
+  - name: CurrentSimulatedPosition
+    interpolatedClient: 1
+    predictedClient: 1
+    server: 0
+    fields: []
+    isManual: 0
+  - name: CurrentSimulatedRotation
+    interpolatedClient: 1
+    predictedClient: 1
+    server: 0
+    fields: []
+    isManual: 0
+  - name: LocalToWorld
+    interpolatedClient: 0
+    predictedClient: 0
+    server: 0
+    fields: []
+    isManual: 0
+  - name: Rotation
+    interpolatedClient: 1
+    predictedClient: 1
+    server: 1
+    fields:
+    - name: Value
+      quantization: 1000
+      interpolate: 1
+    isManual: 0
+  - name: Translation
+    interpolatedClient: 1
+    predictedClient: 1
+    server: 1
+    fields:
+    - name: Value
+      quantization: 10
+      interpolate: 1
+    isManual: 0
+--- !u!114 &-4511429949734935422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 669fd71e04604190ba81e79527294ad9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &6118769756459075749
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd8c631add7341c28cd8ff08ab179177, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &613457668621408085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b40a686630c0401fb889a766e1b99ad2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

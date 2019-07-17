@@ -22,6 +22,7 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
     private NativeHashMap<int, GhostEntity>.Concurrent m_ConcurrentGhostMap;
     private EntityQuery m_DestroyGroup;
     private EntityQuery m_SpawnRequestGroup;
+    private EntityQuery m_PrefabGroup;
 
     private NativeList<Entity> m_InvalidGhosts;
 
@@ -48,6 +49,7 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
     // The entities which need to wait to be spawned on the right tick (interpolated)
     private NativeList<DelayedSpawnGhost> m_CurrentPredictedSpawnList;
     private EndSimulationEntityCommandBufferSystem m_Barrier;
+    private NetworkTimeSystem m_TimeSystem;
 
     protected abstract EntityArchetype GetGhostArchetype();
     protected abstract EntityArchetype GetPredictedGhostArchetype();
@@ -78,9 +80,12 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
         m_GhostMap = World.GetOrCreateSystem<GhostReceiveSystemGroup>().GhostEntityMap;
         m_ConcurrentGhostMap = m_GhostMap.ToConcurrent();
         m_DestroyGroup = GetEntityQuery(ComponentType.ReadOnly<T>(),
-            ComponentType.Exclude<ReplicatedEntityComponent>(), ComponentType.Exclude<PredictedSpawnRequestComponent>());
+            ComponentType.Exclude<ReplicatedEntityComponent>(), ComponentType.Exclude<PredictedSpawnRequestComponent>(),
+            ComponentType.Exclude<GhostClientPrefabComponent>());
         m_SpawnRequestGroup = GetEntityQuery(ComponentType.ReadOnly<T>(),
             ComponentType.ReadOnly<PredictedSpawnRequestComponent>());
+        m_PrefabGroup = GetEntityQuery(ComponentType.ReadOnly<T>(),
+            ComponentType.ReadOnly<GhostClientPrefabComponent>());
 
         m_InvalidGhosts = new NativeList<Entity>(1024, Allocator.Persistent);
         m_DelayedSpawnQueue = new NativeQueue<DelayedSpawnGhost>(Allocator.Persistent);
@@ -90,9 +95,11 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
         m_CurrentPredictedSpawnList = new NativeList<DelayedSpawnGhost>(1024, Allocator.Persistent);
         m_ConcurrentPredictedSpawnQueue = m_PredictedSpawnQueue.ToConcurrent();
         m_Barrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
-        
+
         m_PredictSpawnGhosts = new NativeList<PredictSpawnGhost>(16, Allocator.Persistent);
         m_PredictionSpawnCleanupMap = new NativeHashMap<int, int>(16, Allocator.Persistent);
+
+        m_TimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
     }
 
     protected override void OnDestroyManager()
@@ -258,7 +265,7 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
         EntityManager.DestroyEntity(m_InvalidGhosts);
         m_InvalidGhosts.Clear();
 
-        var targetTick = NetworkTimeSystem.interpolateTargetTick;
+        var targetTick = m_TimeSystem.interpolateTargetTick;
         m_CurrentDelayedSpawnList.Clear();
         while (m_DelayedSpawnQueue.Count > 0 &&
                !SequenceHelpers.IsNewer(m_DelayedSpawnQueue.Peek().spawnTick, targetTick))
@@ -283,20 +290,39 @@ public abstract class DefaultGhostSpawnSystem<T> : JobComponentSystem
             }
         }
 
+        var prefabs = m_PrefabGroup.ToComponentDataArray<GhostClientPrefabComponent>(Allocator.TempJob);
+
         var delayedEntities = default(NativeArray<Entity>);
         delayedEntities = new NativeArray<Entity>(m_CurrentDelayedSpawnList.Length, Allocator.TempJob);
         if (m_CurrentDelayedSpawnList.Length > 0)
-            EntityManager.CreateEntity(m_Archetype, delayedEntities);
+        {
+            if (prefabs.Length == 1)
+                EntityManager.Instantiate(prefabs[0].interpolatedPrefab, delayedEntities);
+            else
+                EntityManager.CreateEntity(m_Archetype, delayedEntities);
+        }
 
         var predictedEntities = default(NativeArray<Entity>);
         predictedEntities = new NativeArray<Entity>(m_CurrentPredictedSpawnList.Length, Allocator.TempJob);
         if (m_CurrentPredictedSpawnList.Length > 0)
-            EntityManager.CreateEntity(m_PredictedArchetype, predictedEntities);
+        {
+            if (prefabs.Length == 1)
+                EntityManager.Instantiate(prefabs[0].predictedPrefab, predictedEntities);
+            else
+                EntityManager.CreateEntity(m_PredictedArchetype, predictedEntities);
+        }
 
         var predictSpawnRequests = m_SpawnRequestGroup.ToEntityArray(Allocator.TempJob);
         var predictSpawnEntities = new NativeArray<Entity>(predictSpawnRequests.Length, Allocator.TempJob);
         if (predictSpawnEntities.Length > 0)
-            EntityManager.CreateEntity(m_PredictedArchetype, predictSpawnEntities);
+        {
+            if (prefabs.Length == 1)
+                EntityManager.Instantiate(prefabs[0].predictedPrefab, predictSpawnEntities);
+            else
+                EntityManager.CreateEntity(m_PredictedArchetype, predictSpawnEntities);
+        }
+
+        prefabs.Dispose();
 
         var newEntities = default(NativeArray<Entity>);
         newEntities = new NativeArray<Entity>(m_NewGhosts.Length, Allocator.TempJob);

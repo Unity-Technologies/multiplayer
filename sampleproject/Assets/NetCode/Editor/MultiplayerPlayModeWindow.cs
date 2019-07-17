@@ -19,9 +19,9 @@ public class MultiplayerPlayModeWindow : EditorWindow
         var playModeType = EditorPopup("PlayMode Type", new[] {"Client & Server", "Client", "Server"}, "Type");
         if (playModeType != 2)
         {
-            var numClients = EditorInt("Num Clients", "NumClients", 1, 8);
-            EditorInt("Client send/recv delay (ms)", "ClientDelay", 0);
-            EditorInt("Client packet drop (percentage)", "ClientDropRate", 0, 100);
+            EditorInt("Num Clients", "NumClients", 1, 8);
+            EditorInt("Client send/recv delay (ms)", "ClientDelay", 0, 2000, true);
+            EditorInt("Client packet drop (percentage)", "ClientDropRate", 0, 100, true);
         }
 
         if (EditorApplication.isPlaying && ClientServerBootstrap.clientWorld != null)
@@ -73,10 +73,15 @@ public class MultiplayerPlayModeWindow : EditorWindow
         EditorPrefs.SetInt(prefsKey, index);
         return index;
     }
-    int EditorInt(string label, string key = null, int minValue = Int32.MinValue, int maxValue = Int32.MaxValue)
+    int EditorInt(string label, string key = null, int minValue = Int32.MinValue, int maxValue = Int32.MaxValue, bool playerPrefs = false)
     {
         string prefsKey = (string.IsNullOrEmpty(key) ? GetKey(label) : GetKey(key));
-        int value = EditorPrefs.GetInt(prefsKey);
+        int value;
+        if (playerPrefs)
+            value = PlayerPrefs.GetInt(prefsKey);
+        else
+            value = EditorPrefs.GetInt(prefsKey);
+
         if (value < minValue)
             value = minValue;
         if (value > maxValue)
@@ -86,7 +91,13 @@ public class MultiplayerPlayModeWindow : EditorWindow
             value = minValue;
         if (value > maxValue)
             value = maxValue;
-        EditorPrefs.SetInt(prefsKey, value);
+        if (playerPrefs)
+        {
+            PlayerPrefs.SetInt(prefsKey, value);
+            PlayerPrefs.Save();
+        }
+        else
+            EditorPrefs.SetInt(prefsKey, value);
         return value;
     }
 }
@@ -147,8 +158,13 @@ public class MultiplayerPlayModeConnectionSystem : ComponentSystem
     }
 }
 
+#if !UNITY_SERVER
 [UpdateBefore(typeof(TickClientSimulationSystem))]
+#endif
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
 [UpdateBefore(typeof(TickServerSimulationSystem))]
+#endif
+[NotClientServerSystem]
 public class MultiplayerPlayModeControllerSystem : ComponentSystem
 {
     public static int PresentedClient;

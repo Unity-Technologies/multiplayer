@@ -1,3 +1,35 @@
+# 2019-07-17
+## New features
+* Added a prefab based workflow for specifying ghosts. A prefab can contain a `GhostAuthoringComponent` which is used to generate code for a ghost. A `GhostPrefabAuthoringComponent` can be used to instantiate the prefab when spawning ghosts on the client. This replaces the .ghost files, all projects need to be updated to the new ghost definitions.
+* Added `ConvertToClientServerEntity` which can be used instead of `ConvertToEntity` to target the client / server worlds in the conversion workflow.
+* Added a `ClientServerSubScene` component which can be used together with `SubScene` to trigger sub-scene streaming in the client/ server worlds.
+* Added a new *Ping-Multiplay* sample based on the *Ping* sample
+    * Created to be the main sample for demonstrating Multiplay compatibility and best practices (SQP usage, IP binding, etc.)
+    * Contains both client and server code.  Additional details in readme in `/Assets/Samples/Ping-Multiplay/`.
+* **DedicatedServerConfig**: added arguments for `-fps` and `-timeout`
+* **NetworkEndPoint**: Added a `TryParse()` method which returns false if parsing fails
+    * Note: The `Parse()` method returns a default IP / Endpoint if parsing fails, but a method that could report failure was needed for the Multiplay sample
+* **CommandLine**:
+    * Added a `HasArgument()` method which returns true if an argument is present
+    * Added a `PrintArgsToLog()` method which is a simple way to print launch args to logs
+    * Added a `TryUpdateVariableWithArgValue()` method which updates a ref var only if an arg was found and successfully parsed
+
+## Changes
+* Changed the default behavior for systems in the default groups to be included in the client and server worlds unless they are marked with `[NotClientServerSystem]`. This makes built-in systems work in multiplayer projects.
+* Deleted existing SQP code and added reference to SQP Package (now in staging)
+* Removed SQP server usage from basic *Ping* sample
+    * Note: The SQP server was only needed for Multiplay compatibility, so the addition of *Ping-Multiplay* allowed us to remove SQP from *Ping*
+* Made standalone player use the same network simulator settings as the editor when running a development player
+* Made the Server Build option (UNITY_SERVER define) properly set up the right worlds for a dedicated server setup. Setting UNITY_CLIENT in the player settings define results in a client only build being made.
+* Debugger now shows all running servers and clients.
+
+## Fixes
+* Change `World.Active` to the executing world when updating systems.
+* Improve time calculations between client and server.
+* **DedicatedServerConfig**: Vsync is now disabled programmatically if requesting an FPS different from the current screen refresh rate
+## Upgrade guide
+All ghost definitions specified in .ghost files needs to be converted to prefabs. Create a prefab containing a `GhostAuthoringComponent` and authoring components for all required components. Use the `GhostAuthoringComponent` to update the component list and generate code.
+
 # 2019-06-05
 ## New features
 * Added support systems for prediction and spawn prediction in the NetCode. These can be used to implement client-side prediction for networked objects.

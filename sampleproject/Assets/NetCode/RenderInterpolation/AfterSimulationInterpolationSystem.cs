@@ -7,6 +7,7 @@ using Unity.Transforms;
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
 [UpdateAfter(typeof(RpcSendSystem))]
 [UpdateAfter(typeof(GhostReceiveSystemGroup))]
+[UpdateAfter(typeof(TransformSystemGroup))]
 public class AfterSimulationInterpolationSystem : JobComponentSystem
 {
     private BeforeSimulationInterpolationSystem beforeSystem;

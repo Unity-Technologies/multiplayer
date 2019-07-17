@@ -3,10 +3,16 @@
 <head>
 <script src="netdbg.js"></script>
 <style>
-#legendOverlay {
+.LegendOverlay {
 	position:absolute;
 	max-height:200px;
 	overflow-y: auto;
+}
+.ConnectionTitle {
+	background: #aaa;
+	font-size: 1.2em;
+	padding: 5px;
+	margin-top: 5px;
 }
 #connectDlg {
 	position: fixed;
@@ -36,9 +42,7 @@
 </head>
 <body>
 <div id="controlPanel"><input type="checkbox" id="liveUpdate" onchange="g_debugger.toggleLiveUpdate(this.checked);"><label for="liveUpdate">Live update</label></div>
-<div id="legendOverlay"></div>
-<canvas id="canvas"></canvas>
-<div id="descr"></div>
+<div id="connectionContainer"></div>
 <div id="connectDlg" class="NetDbgDisconnected">
 <div id="connectUI">
 <input type="text" value="localhost:8787">

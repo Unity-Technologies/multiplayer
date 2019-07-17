@@ -10,61 +10,66 @@ public class ShipGhostUpdateSystem : JobComponentSystem
     [BurstCompile]
     [RequireComponentTag(typeof(ShipSnapshotData))]
     [ExcludeComponent(typeof(PredictedEntityComponent))]
-    struct UpdateInterpolatedJob : IJobForEachWithEntity<Translation, Rotation, ShipStateComponentData>
+    struct UpdateInterpolatedJob : IJobForEachWithEntity<Rotation, ShipStateComponentData, Translation>
     {
         [NativeDisableParallelForRestriction] public BufferFromEntity<ShipSnapshotData> snapshotFromEntity;
         public uint targetTick;
         public void Execute(Entity entity, int index,
-            ref Translation ghostTranslation,
             ref Rotation ghostRotation,
-            ref ShipStateComponentData ghostShipStateComponentData)
+            ref ShipStateComponentData ghostShipStateComponentData,
+            ref Translation ghostTranslation)
         {
             var snapshot = snapshotFromEntity[entity];
             ShipSnapshotData snapshotData;
             snapshot.GetDataAtTick(targetTick, out snapshotData);
 
-            ghostTranslation.Value = snapshotData.GetTranslationValue();
             ghostRotation.Value = snapshotData.GetRotationValue();
             ghostShipStateComponentData.State = snapshotData.GetShipStateComponentDataState();
+            ghostTranslation.Value = snapshotData.GetTranslationValue();
 
         }
     }
     [BurstCompile]
     [RequireComponentTag(typeof(ShipSnapshotData), typeof(PredictedEntityComponent))]
-    struct UpdatePredictedJob : IJobForEachWithEntity<Translation, Rotation, Velocity, ShipStateComponentData, PlayerIdComponentData>
+    struct UpdatePredictedJob : IJobForEachWithEntity<PlayerIdComponentData, Rotation, ShipStateComponentData, Translation, Velocity>
     {
         [NativeDisableParallelForRestriction] public BufferFromEntity<ShipSnapshotData> snapshotFromEntity;
         public uint targetTick;
         public void Execute(Entity entity, int index,
-            ref Translation ghostTranslation,
+            ref PlayerIdComponentData ghostPlayerIdComponentData,
             ref Rotation ghostRotation,
-            ref Velocity ghostVelocity,
             ref ShipStateComponentData ghostShipStateComponentData,
-            ref PlayerIdComponentData ghostPlayerIdComponentData)
+            ref Translation ghostTranslation,
+            ref Velocity ghostVelocity)
         {
             var snapshot = snapshotFromEntity[entity];
             ShipSnapshotData snapshotData;
             snapshot.GetDataAtTick(targetTick, out snapshotData);
 
-            ghostTranslation.Value = snapshotData.GetTranslationValue();
-            ghostRotation.Value = snapshotData.GetRotationValue();
-            ghostVelocity.Value = snapshotData.GetVelocityValue();
-            ghostShipStateComponentData.State = snapshotData.GetShipStateComponentDataState();
             ghostPlayerIdComponentData.PlayerId = snapshotData.GetPlayerIdComponentDataPlayerId();
+            ghostRotation.Value = snapshotData.GetRotationValue();
+            ghostShipStateComponentData.State = snapshotData.GetShipStateComponentDataState();
+            ghostTranslation.Value = snapshotData.GetTranslationValue();
+            ghostVelocity.Value = snapshotData.GetVelocityValue();
 
         }
+    }
+    private NetworkTimeSystem m_NetworkTimeSystem;
+    protected override void OnCreateManager()
+    {
+        m_NetworkTimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
     }
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
         var updateInterpolatedJob = new UpdateInterpolatedJob
         {
             snapshotFromEntity = GetBufferFromEntity<ShipSnapshotData>(),
-            targetTick = NetworkTimeSystem.interpolateTargetTick
+            targetTick = m_NetworkTimeSystem.interpolateTargetTick
         };
         var updatePredictedJob = new UpdatePredictedJob
         {
             snapshotFromEntity = GetBufferFromEntity<ShipSnapshotData>(),
-            targetTick = NetworkTimeSystem.predictTargetTick
+            targetTick = m_NetworkTimeSystem.predictTargetTick
         };
         inputDeps = updateInterpolatedJob.Schedule(this, inputDeps);
         return updatePredictedJob.Schedule(this, inputDeps);

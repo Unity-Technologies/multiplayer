@@ -6,7 +6,9 @@
     "Unity.Entities.Hybrid",
     "Unity.Transforms",
     "Unity.Collections",
+    "Unity.Scenes.Hybrid",
     "Unity.Mathematics",
+    "Unity.Mathematics.Extensions",
     "Unity.Networking.Transport"
   ],
   "allowUnsafeCode": true

@@ -7,13 +7,13 @@ public partial class ShipGhostSpawnSystem : DefaultGhostSpawnSystem<ShipSnapshot
     {
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<ShipSnapshotData>(),
-            ComponentType.ReadWrite<Translation>(),
+            ComponentType.ReadWrite<CurrentSimulatedPosition>(),
+            ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<ParticleEmitterComponentData>(),
             ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<ShipStateComponentData>(),
             ComponentType.ReadWrite<ShipTagComponentData>(),
-            ComponentType.ReadWrite<ParticleEmitterComponentData>(),
-            ComponentType.ReadWrite<CurrentSimulatedPosition>(),
-            ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<Translation>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>()
         );
@@ -22,17 +22,16 @@ public partial class ShipGhostSpawnSystem : DefaultGhostSpawnSystem<ShipSnapshot
     {
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<ShipSnapshotData>(),
-            ComponentType.ReadWrite<Translation>(),
-            ComponentType.ReadWrite<Rotation>(),
-            ComponentType.ReadWrite<Velocity>(),
-            ComponentType.ReadWrite<ShipStateComponentData>(),
-            ComponentType.ReadWrite<PlayerIdComponentData>(),
-            ComponentType.ReadWrite<ShipTagComponentData>(),
-            ComponentType.ReadWrite<ParticleEmitterComponentData>(),
             ComponentType.ReadWrite<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<ParticleEmitterComponentData>(),
+            ComponentType.ReadWrite<PlayerIdComponentData>(),
+            ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<ShipCommandData>(),
-            ComponentType.ReadWrite<GhostShipState>(),
+            ComponentType.ReadWrite<ShipStateComponentData>(),
+            ComponentType.ReadWrite<ShipTagComponentData>(),
+            ComponentType.ReadWrite<Translation>(),
+            ComponentType.ReadWrite<Velocity>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>(),
             ComponentType.ReadWrite<PredictedEntityComponent>()

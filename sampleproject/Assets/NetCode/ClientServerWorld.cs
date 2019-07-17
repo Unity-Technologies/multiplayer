@@ -55,6 +55,8 @@ public class ServerSimulationSystemGroup : ComponentSystemGroup
 
     protected override void OnUpdate()
     {
+        var defaultWorld = World.Active;
+        World.Active = World;
         m_fixedTimeLoop.BeginUpdate();
         while (m_fixedTimeLoop.ShouldUpdate())
         {
@@ -65,6 +67,8 @@ public class ServerSimulationSystemGroup : ComponentSystemGroup
             if (m_ServerTick == 0)
                 ++m_ServerTick;
         }
+
+        World.Active = defaultWorld;
     }
 
     public override void SortSystemUpdateList()
@@ -104,6 +108,8 @@ public class ClientSimulationSystemGroup : ComponentSystemGroup
 
     protected override void OnUpdate()
     {
+        var defaultWorld = World.Active;
+        World.Active = World;
         m_fixedTimeLoop.BeginUpdate();
         while (m_fixedTimeLoop.ShouldUpdate())
         {
@@ -112,6 +118,8 @@ public class ClientSimulationSystemGroup : ComponentSystemGroup
             base.OnUpdate();
             m_endBarrier.Update();
         }
+
+        World.Active = defaultWorld;
     }
 
     public override void SortSystemUpdateList()
@@ -144,9 +152,86 @@ public class ClientPresentationSystemGroup : ComponentSystemGroup
 
     protected override void OnUpdate()
     {
+        var defaultWorld = World.Active;
+        World.Active = World;
         m_beginBarrier.Update();
         base.OnUpdate();
         m_endBarrier.Update();
+        World.Active = defaultWorld;
+    }
+
+    public override void SortSystemUpdateList()
+    {
+        base.SortSystemUpdateList();
+        m_systemsInGroup = new List<ComponentSystemBase>(1 + m_systemsToUpdate.Count + 1);
+        m_systemsInGroup.Add(m_beginBarrier);
+        m_systemsInGroup.AddRange(m_systemsToUpdate);
+        m_systemsInGroup.Add(m_endBarrier);
+    }
+}
+
+[DisableAutoCreation]
+[AlwaysUpdateSystem]
+public class ClientInitializationSystemGroup : ComponentSystemGroup
+{
+    private BeginInitializationEntityCommandBufferSystem m_beginBarrier;
+    private EndInitializationEntityCommandBufferSystem m_endBarrier;
+
+    protected override void OnCreateManager()
+    {
+        m_beginBarrier = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+        m_endBarrier = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+    }
+
+    protected List<ComponentSystemBase> m_systemsInGroup = new List<ComponentSystemBase>();
+
+    public override IEnumerable<ComponentSystemBase> Systems => m_systemsInGroup;
+
+    protected override void OnUpdate()
+    {
+        var defaultWorld = World.Active;
+        World.Active = World;
+        m_beginBarrier.Update();
+        base.OnUpdate();
+        m_endBarrier.Update();
+        World.Active = defaultWorld;
+    }
+
+    public override void SortSystemUpdateList()
+    {
+        base.SortSystemUpdateList();
+        m_systemsInGroup = new List<ComponentSystemBase>(1 + m_systemsToUpdate.Count + 1);
+        m_systemsInGroup.Add(m_beginBarrier);
+        m_systemsInGroup.AddRange(m_systemsToUpdate);
+        m_systemsInGroup.Add(m_endBarrier);
+    }
+}
+
+[DisableAutoCreation]
+[AlwaysUpdateSystem]
+public class ServerInitializationSystemGroup : ComponentSystemGroup
+{
+    private BeginInitializationEntityCommandBufferSystem m_beginBarrier;
+    private EndInitializationEntityCommandBufferSystem m_endBarrier;
+
+    protected override void OnCreateManager()
+    {
+        m_beginBarrier = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
+        m_endBarrier = World.GetOrCreateSystem<EndInitializationEntityCommandBufferSystem>();
+    }
+
+    protected List<ComponentSystemBase> m_systemsInGroup = new List<ComponentSystemBase>();
+
+    public override IEnumerable<ComponentSystemBase> Systems => m_systemsInGroup;
+
+    protected override void OnUpdate()
+    {
+        var defaultWorld = World.Active;
+        World.Active = World;
+        m_beginBarrier.Update();
+        base.OnUpdate();
+        m_endBarrier.Update();
+        World.Active = defaultWorld;
     }
 
     public override void SortSystemUpdateList()
@@ -165,10 +250,26 @@ public class ClientAndServerSimulationSystemGroup : ComponentSystemGroup
 {
 }
 
-// Ticking of client and server worlds from the main world
-#if !UNITY_CLIENT
+[DisableAutoCreation]
 [AlwaysUpdateSystem]
+public class ClientAndServerInitializationSystemGroup : ComponentSystemGroup
+{
+}
+
+// Ticking of client and server worlds from the main world
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
+[AlwaysUpdateSystem]
+[NotClientServerSystem]
 public class TickServerSimulationSystem : ComponentSystemGroup
+{
+    public override void SortSystemUpdateList()
+    {
+    }
+}
+[UpdateInGroup(typeof(InitializationSystemGroup))]
+[AlwaysUpdateSystem]
+[NotClientServerSystem]
+public class TickServerInitializationSystem : ComponentSystemGroup
 {
     public override void SortSystemUpdateList()
     {
@@ -176,10 +277,11 @@ public class TickServerSimulationSystem : ComponentSystemGroup
 }
 #endif
 #if !UNITY_SERVER
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
 [UpdateAfter(typeof(TickServerSimulationSystem))]
 #endif
 [AlwaysUpdateSystem]
+[NotClientServerSystem]
 public class TickClientSimulationSystem : ComponentSystemGroup
 {
     public override void SortSystemUpdateList()
@@ -188,13 +290,27 @@ public class TickClientSimulationSystem : ComponentSystemGroup
 }
 [UpdateInGroup(typeof(PresentationSystemGroup))]
 [AlwaysUpdateSystem]
+[NotClientServerSystem]
 public class TickClientPresentationSystem : ComponentSystemGroup
 {
     public override void SortSystemUpdateList()
     {
     }
 }
+[UpdateInGroup(typeof(InitializationSystemGroup))]
+[AlwaysUpdateSystem]
+[NotClientServerSystem]
+public class TickClientInitializationSystem : ComponentSystemGroup
+{
+    public override void SortSystemUpdateList()
+    {
+    }
+}
 #endif
+
+public class NotClientServerSystemAttribute : Attribute
+{
+}
 
 // Bootstrap of client and server worlds
 public class ClientServerBootstrap : ICustomBootstrap
@@ -206,7 +322,7 @@ public class ClientServerBootstrap : ICustomBootstrap
         if (clientWorld != null)
             return systems;
 #endif
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         if (serverWorld != null)
             return systems;
 #endif
@@ -227,6 +343,7 @@ public class ClientServerBootstrap : ICustomBootstrap
         var defaultBootstrap = new List<Type>();
 #if !UNITY_SERVER
         clientWorld = null;
+        ClientInitializationSystemGroup[] clientInitializationSystemGroup = null;
         ClientSimulationSystemGroup[] clientSimulationSystemGroup = null;
         ClientPresentationSystemGroup[] clientPresentationSystemGroup = null;
 #if UNITY_EDITOR
@@ -234,11 +351,13 @@ public class ClientServerBootstrap : ICustomBootstrap
 #endif
         {
             clientWorld = new World[numClientWorlds];
+            clientInitializationSystemGroup = new ClientInitializationSystemGroup[clientWorld.Length];
             clientSimulationSystemGroup = new ClientSimulationSystemGroup[clientWorld.Length];
             clientPresentationSystemGroup = new ClientPresentationSystemGroup[clientWorld.Length];
             for (int i = 0; i < clientWorld.Length; ++i)
             {
                 clientWorld[i] = new World("ClientWorld" + i);
+                clientInitializationSystemGroup[i] = clientWorld[i].GetOrCreateSystem<ClientInitializationSystemGroup>();
                 clientSimulationSystemGroup[i] = clientWorld[i].GetOrCreateSystem<ClientSimulationSystemGroup>();
 #if UNITY_EDITOR
                 clientSimulationSystemGroup[i].ClientWorldIndex = i;
@@ -247,48 +366,136 @@ public class ClientServerBootstrap : ICustomBootstrap
             }
         }
 #endif
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         serverWorld = null;
+        ServerInitializationSystemGroup serverInitializationSystemGroup = null;
         ServerSimulationSystemGroup serverSimulationSystemGroup = null;
 #if UNITY_EDITOR
         if (playModeType != 1)
 #endif
         {
             serverWorld = new World("ServerWorld");
+            serverInitializationSystemGroup = serverWorld.GetOrCreateSystem<ServerInitializationSystemGroup>();
             serverSimulationSystemGroup = serverWorld.GetOrCreateSystem<ServerSimulationSystemGroup>();
         }
 #endif
         foreach (var type in systems)
         {
+            if (type.GetCustomAttributes(typeof(NotClientServerSystemAttribute), true).Length > 0 ||
+                type == typeof(InitializationSystemGroup) ||
+                type == typeof(SimulationSystemGroup) ||
+                type == typeof(PresentationSystemGroup))
+            {
+                defaultBootstrap.Add(type);
+                continue;
+            }
             var groups = type.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
             if (groups.Length == 0)
             {
                 defaultBootstrap.Add(type);
+                // Treat the default group as both client and server
+                groups = new object[]{new UpdateInGroupAttribute(typeof(ClientAndServerSimulationSystemGroup)) };
             }
 
             foreach (var grp in groups)
             {
                 var group = grp as UpdateInGroupAttribute;
-                if (group.GroupType == typeof(ClientAndServerSimulationSystemGroup))
+                if (group.GroupType == typeof(ClientAndServerSimulationSystemGroup) || group.GroupType == typeof(SimulationSystemGroup))
                 {
-#if !UNITY_CLIENT
+                    if (group.GroupType == typeof(SimulationSystemGroup))
+                        defaultBootstrap.Add(type);
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
                     if (serverWorld != null)
-                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
+                    {
+                        var defaultWorld = World.Active;
+                        World.Active = serverWorld;
+                        serverSimulationSystemGroup.AddSystemToUpdateList(
+                            serverWorld.GetOrCreateSystem(type));
+                        World.Active = defaultWorld;
+                    }
 #endif
 #if !UNITY_SERVER
                     if (clientWorld != null)
                     {
+                        var defaultWorld = World.Active;
                         for (int i = 0; i < clientSimulationSystemGroup.Length; ++i)
+                        {
+                            World.Active = clientWorld[i];
                             clientSimulationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
+                        }
+                        World.Active = defaultWorld;
+                    }
+#endif
+                }
+                else if (group.GroupType == typeof(ClientAndServerInitializationSystemGroup) || group.GroupType == typeof(InitializationSystemGroup))
+                {
+                    if (group.GroupType == typeof(InitializationSystemGroup))
+                        defaultBootstrap.Add(type);
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
+                    if (serverWorld != null)
+                    {
+                        var defaultWorld = World.Active;
+                        World.Active = serverWorld;
+                        serverInitializationSystemGroup.AddSystemToUpdateList(
+                            serverWorld.GetOrCreateSystem(type));
+                        World.Active = defaultWorld;
+                    }
+#endif
+#if !UNITY_SERVER
+                    if (clientWorld != null)
+                    {
+                        var defaultWorld = World.Active;
+                        for (int i = 0; i < clientInitializationSystemGroup.Length; ++i)
+                        {
+                            World.Active = clientWorld[i];
+                            clientInitializationSystemGroup[i]
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
+                        }
+                        World.Active = defaultWorld;
+                    }
+#endif
+                }
+                else if (group.GroupType == typeof(ServerInitializationSystemGroup))
+                {
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
+                    if (serverWorld != null)
+                    {
+                        var defaultWorld = World.Active;
+                        World.Active = serverWorld;
+                        serverInitializationSystemGroup.AddSystemToUpdateList(
+                            serverWorld.GetOrCreateSystem(type));
+                        World.Active = defaultWorld;
+                    }
+#endif
+                }
+                else if (group.GroupType == typeof(ClientInitializationSystemGroup))
+                {
+#if !UNITY_SERVER
+                    if (clientWorld != null)
+                    {
+                        var defaultWorld = World.Active;
+                        for (int i = 0; i < clientInitializationSystemGroup.Length; ++i)
+                        {
+                            World.Active = clientWorld[i];
+                            clientInitializationSystemGroup[i]
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
+                        }
+                        World.Active = defaultWorld;
                     }
 #endif
                 }
                 else if (group.GroupType == typeof(ServerSimulationSystemGroup))
                 {
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
                     if (serverWorld != null)
-                        serverSimulationSystemGroup.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
+                    {
+                        var defaultWorld = World.Active;
+                        World.Active = serverWorld;
+                        serverSimulationSystemGroup.AddSystemToUpdateList(
+                            serverWorld.GetOrCreateSystem(type));
+                        World.Active = defaultWorld;
+                    }
 #endif
                 }
                 else if (group.GroupType == typeof(ClientSimulationSystemGroup))
@@ -296,20 +503,32 @@ public class ClientServerBootstrap : ICustomBootstrap
 #if !UNITY_SERVER
                     if (clientWorld != null)
                     {
+                        var defaultWorld = World.Active;
                         for (int i = 0; i < clientSimulationSystemGroup.Length; ++i)
+                        {
+                            World.Active = clientWorld[i];
                             clientSimulationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
+                        }
+                        World.Active = defaultWorld;
                     }
 #endif
                 }
-                else if (group.GroupType == typeof(ClientPresentationSystemGroup))
+                else if (group.GroupType == typeof(ClientPresentationSystemGroup) || group.GroupType == typeof(PresentationSystemGroup))
                 {
+                    if (group.GroupType == typeof(PresentationSystemGroup))
+                        defaultBootstrap.Add(type);
 #if !UNITY_SERVER
                     if (clientWorld != null)
                     {
+                        var defaultWorld = World.Active;
                         for (int i = 0; i < clientPresentationSystemGroup.Length; ++i)
+                        {
+                            World.Active = clientWorld[i];
                             clientPresentationSystemGroup[i]
-                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
+                                .AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
+                        }
+                        World.Active = defaultWorld;
                     }
 #endif
                 }
@@ -321,27 +540,35 @@ public class ClientServerBootstrap : ICustomBootstrap
 #if !UNITY_SERVER
                     if ((mask & WorldType.ClientWorld) != 0 && clientWorld != null)
                     {
+                        var defaultWorld = World.Active;
                         for (int i = 0; i < clientWorld.Length; ++i)
                         {
+                            World.Active = clientWorld[i];
                             var groupSys = clientWorld[i].GetOrCreateSystem(group.GroupType) as ComponentSystemGroup;
-                            groupSys.AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type) as ComponentSystemBase);
+                            groupSys.AddSystemToUpdateList(clientWorld[i].GetOrCreateSystem(type));
                         }
+                        World.Active = defaultWorld;
                     }
 #endif
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
                     if ((mask & WorldType.ServerWorld) != 0 && serverWorld != null)
                     {
+                        var defaultWorld = World.Active;
+                        World.Active = serverWorld;
                         var groupSys = serverWorld.GetOrCreateSystem(group.GroupType) as ComponentSystemGroup;
-                        groupSys.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type) as ComponentSystemBase);
+                        groupSys.AddSystemToUpdateList(serverWorld.GetOrCreateSystem(type));
+                        World.Active = defaultWorld;
                     }
 #endif
                 }
             }
         }
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         if (serverWorld != null)
         {
+            serverInitializationSystemGroup.SortSystemUpdateList();
             serverSimulationSystemGroup.SortSystemUpdateList();
+            World.Active.GetOrCreateSystem<TickServerInitializationSystem>().AddSystemToUpdateList(serverInitializationSystemGroup);
             World.Active.GetOrCreateSystem<TickServerSimulationSystem>().AddSystemToUpdateList(serverSimulationSystemGroup);
         }
 #endif
@@ -350,8 +577,10 @@ public class ClientServerBootstrap : ICustomBootstrap
         {
             for (int i = 0; i < clientWorld.Length; ++i)
             {
+                clientInitializationSystemGroup[i].SortSystemUpdateList();
                 clientSimulationSystemGroup[i].SortSystemUpdateList();
                 clientPresentationSystemGroup[i].SortSystemUpdateList();
+                World.Active.GetOrCreateSystem<TickClientInitializationSystem>().AddSystemToUpdateList(clientInitializationSystemGroup[i]);
                 World.Active.GetOrCreateSystem<TickClientSimulationSystem>().AddSystemToUpdateList(clientSimulationSystemGroup[i]);
                 World.Active.GetOrCreateSystem<TickClientPresentationSystem>().AddSystemToUpdateList(clientPresentationSystemGroup[i]);
             }
@@ -373,14 +602,20 @@ public class ClientServerBootstrap : ICustomBootstrap
         var groups = type.GetCustomAttributes(typeof(UpdateInGroupAttribute), true);
         if (groups.Length == 0)
         {
-            if (type == typeof(ClientAndServerSimulationSystemGroup))
+            if (type == typeof(ClientAndServerSimulationSystemGroup) || type == typeof(ClientAndServerInitializationSystemGroup))
                 return WorldType.ClientWorld | WorldType.ServerWorld;
-            if (type == typeof(ServerSimulationSystemGroup))
+            if (type == typeof(SimulationSystemGroup) || type == typeof(InitializationSystemGroup))
+                return WorldType.DefaultWorld | WorldType.ClientWorld | WorldType.ServerWorld;
+            if (type == typeof(ServerSimulationSystemGroup) || type == typeof(ServerInitializationSystemGroup))
                 return WorldType.ServerWorld;
             if (type == typeof(ClientSimulationSystemGroup) ||
+                type == typeof(ClientInitializationSystemGroup) ||
                 type == typeof(ClientPresentationSystemGroup))
                 return WorldType.ClientWorld;
-            return WorldType.DefaultWorld;
+            if (type == typeof(PresentationSystemGroup))
+                return WorldType.DefaultWorld | WorldType.ClientWorld;
+            // Empty means the same thing as SimulationSystemGroup
+            return WorldType.DefaultWorld | WorldType.ClientWorld | WorldType.ServerWorld;
         }
 
         WorldType mask = WorldType.NoWorld;
@@ -396,7 +631,7 @@ public class ClientServerBootstrap : ICustomBootstrap
 #if !UNITY_SERVER
     public static World[] clientWorld;
 #endif
-#if !UNITY_CLIENT
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
     public static World serverWorld;
 #endif
 }

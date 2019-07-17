@@ -10,6 +10,7 @@ using Unity.Networking.Transport.LowLevel.Unsafe;
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [NotClientServerSystem]
     public class InputSamplerSystem : ComponentSystem
     {
         public static int spacePresses;
@@ -23,6 +24,7 @@ namespace Asteroids.Client
 #if !UNITY_SERVER
     [UpdateAfter(typeof(TickClientSimulationSystem))]
 #endif
+    [NotClientServerSystem]
     public class InputSamplerResetSystem : ComponentSystem
     {
         protected override void OnUpdate()
@@ -38,9 +40,12 @@ namespace Asteroids.Client
     public class InputSystem : JobComponentSystem
     {
         private RpcQueue<RpcSpawn> m_RpcQueue;
+        private NetworkTimeSystem m_NetworkTimeSystem;
+
         protected override void OnCreateManager()
         {
             m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcSpawn>();
+            m_NetworkTimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
         }
 
         [ExcludeComponent(typeof(NetworkStreamDisconnected))]
@@ -90,7 +95,7 @@ namespace Asteroids.Client
             playerJob.rpcQueue = m_RpcQueue;
             playerJob.rpcBuffer = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
             playerJob.inputFromEntity = GetBufferFromEntity<ShipCommandData>();
-            playerJob.inputTargetTick = NetworkTimeSystem.predictTargetTick;
+            playerJob.inputTargetTick = m_NetworkTimeSystem.predictTargetTick;
 
             if (World.GetExistingSystem<ClientPresentationSystemGroup>().Enabled)
             {

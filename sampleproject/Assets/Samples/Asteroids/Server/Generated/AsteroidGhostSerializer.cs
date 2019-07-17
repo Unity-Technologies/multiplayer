@@ -6,10 +6,10 @@ public struct AsteroidGhostSerializer : IGhostSerializer<AsteroidSnapshotData>
 {
     // FIXME: These disable safety since all serializers have an instance of the same type - causing aliasing. Should be fixed in a cleaner way
     private ComponentType componentTypeAsteroidTagComponentData;
-    private ComponentType componentTypeTranslation;
-    [NativeDisableContainerSafetyRestriction] private ArchetypeChunkComponentType<Translation> ghostTranslationType;
     private ComponentType componentTypeRotation;
     [NativeDisableContainerSafetyRestriction] private ArchetypeChunkComponentType<Rotation> ghostRotationType;
+    private ComponentType componentTypeTranslation;
+    [NativeDisableContainerSafetyRestriction] private ArchetypeChunkComponentType<Translation> ghostTranslationType;
 
 
     public int CalculateImportance(ArchetypeChunk chunk)
@@ -23,10 +23,10 @@ public struct AsteroidGhostSerializer : IGhostSerializer<AsteroidSnapshotData>
     public void BeginSerialize(ComponentSystemBase system)
     {
         componentTypeAsteroidTagComponentData = ComponentType.ReadWrite<AsteroidTagComponentData>();
-        componentTypeTranslation = ComponentType.ReadWrite<Translation>();
-        ghostTranslationType = system.GetArchetypeChunkComponentType<Translation>();
         componentTypeRotation = ComponentType.ReadWrite<Rotation>();
         ghostRotationType = system.GetArchetypeChunkComponentType<Rotation>();
+        componentTypeTranslation = ComponentType.ReadWrite<Translation>();
+        ghostTranslationType = system.GetArchetypeChunkComponentType<Translation>();
 
     }
 
@@ -38,9 +38,9 @@ public struct AsteroidGhostSerializer : IGhostSerializer<AsteroidSnapshotData>
         {
             if (components[i] == componentTypeAsteroidTagComponentData)
                 ++matches;
-            if (components[i] == componentTypeTranslation)
-                ++matches;
             if (components[i] == componentTypeRotation)
+                ++matches;
+            if (components[i] == componentTypeTranslation)
                 ++matches;
 
         }
@@ -50,10 +50,10 @@ public struct AsteroidGhostSerializer : IGhostSerializer<AsteroidSnapshotData>
     public void CopyToSnapshot(ArchetypeChunk chunk, int ent, uint tick, ref AsteroidSnapshotData snapshot)
     {
         snapshot.tick = tick;
-        var chunkDataTranslation = chunk.GetNativeArray(ghostTranslationType);
-        snapshot.SetTranslationValue(chunkDataTranslation[ent].Value);
         var chunkDataRotation = chunk.GetNativeArray(ghostRotationType);
         snapshot.SetRotationValue(chunkDataRotation[ent].Value);
+        var chunkDataTranslation = chunk.GetNativeArray(ghostTranslationType);
+        snapshot.SetTranslationValue(chunkDataTranslation[ent].Value);
 
     }
 }

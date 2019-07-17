@@ -15,6 +15,7 @@
         private BeginSimulationEntityCommandBufferSystem barrier;
         private EntityArchetype bulletSpawnArchetype;
         private NativeArray<uint> lastPredictedSpawn;
+        private NetworkTimeSystem m_NetworkTimeSystem;
 
         //[BurstCompile]
         [RequireComponentTag(typeof(ShipTagComponentData), typeof(ShipCommandData), typeof(PredictedEntityComponent))]
@@ -101,6 +102,8 @@
                 ComponentType.ReadWrite<PredictedSpawnRequestComponent>(),
                 ComponentType.ReadWrite<BulletSnapshotData>());
             lastPredictedSpawn = new NativeArray<uint>(1, Allocator.Persistent);
+            m_NetworkTimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
+            RequireSingletonForUpdate<ClientSettings>();
         }
 
         protected override void OnDestroyManager()
@@ -117,7 +120,7 @@
                 deltaTime = topGroup.UpdateDeltaTime,
                 displacement = 100.0f,
                 playerForce = settings.playerForce,
-                currentTick = NetworkTimeSystem.predictTargetTick,
+                currentTick = m_NetworkTimeSystem.predictTargetTick,
                 lastPredictedSpawn = lastPredictedSpawn,
                 bulletSpawnArchetype = bulletSpawnArchetype,
                 commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),

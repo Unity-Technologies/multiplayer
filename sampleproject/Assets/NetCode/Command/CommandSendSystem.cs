@@ -46,9 +46,11 @@ public class CommandSendSystem<TCommandData> : JobComponentSystem
     }
 
     private NetworkStreamReceiveSystem m_ReceiveSystem;
+    private NetworkTimeSystem m_TimeSystem;
     protected override void OnCreateManager()
     {
         m_ReceiveSystem = World.GetOrCreateSystem<NetworkStreamReceiveSystem>();
+        m_TimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
     }
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
@@ -60,7 +62,7 @@ public class CommandSendSystem<TCommandData> : JobComponentSystem
             ackSnapshot = GetComponentDataFromEntity<NetworkSnapshotAckComponent>(),
             inputFromEntity = GetBufferFromEntity<TCommandData>(),
             localTime = NetworkTimeSystem.TimestampMS,
-            inputTargetTick = NetworkTimeSystem.predictTargetTick
+            inputTargetTick = m_TimeSystem.predictTargetTick
         };
 
         return sendJob.ScheduleSingle(this, inputDeps);

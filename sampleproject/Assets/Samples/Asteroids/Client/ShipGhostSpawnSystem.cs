@@ -29,9 +29,7 @@ public partial class ShipGhostSpawnSystem
         {
             entities = entities,
             snapshotFromEntity = GetBufferFromEntity<ShipSnapshotData>(),
-            emitterFromEntity = GetComponentDataFromEntity<ParticleEmitterComponentData>(),
             shipStateFromEntity = GetComponentDataFromEntity<ShipStateComponentData>(),
-            emitterData = GetSingleton<ClientSettings>().particleEmitter,
             playerEntities = m_PlayerGroup.ToEntityArray(Allocator.TempJob),
             playerIds = m_PlayerGroup.ToComponentDataArray<NetworkIdComponent>(Allocator.TempJob),
             commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(),
@@ -54,9 +52,7 @@ public partial class ShipGhostSpawnSystem
     {
         [ReadOnly] public NativeArray<Entity> entities;
         [NativeDisableParallelForRestriction] public BufferFromEntity<ShipSnapshotData> snapshotFromEntity;
-        [NativeDisableParallelForRestriction] public ComponentDataFromEntity<ParticleEmitterComponentData> emitterFromEntity;
         [NativeDisableParallelForRestriction] public ComponentDataFromEntity<ShipStateComponentData> shipStateFromEntity;
-        public ParticleEmitterComponentData emitterData;
 
         [DeallocateOnJobCompletion] public NativeArray<Entity> playerEntities;
         [DeallocateOnJobCompletion] public NativeArray<NetworkIdComponent> playerIds;
@@ -67,7 +63,6 @@ public partial class ShipGhostSpawnSystem
         public EntityCommandBuffer.Concurrent commandBuffer;
         public void Execute(int i)
         {
-            emitterFromEntity[entities[i]] = emitterData;
             var snapshot = snapshotFromEntity[entities[i]];
 
             bool selfSpawn = playerIds.Length > 0 && (snapshot[0].GetPlayerIdComponentDataPlayerId() == playerIds[0].Value);
@@ -82,6 +77,7 @@ public partial class ShipGhostSpawnSystem
                 state.targetEntity = entities[i];
                 commandTargetFromEntity[playerEntities[0]] = state;
             }
+            commandBuffer.AddComponent(i, entities[i], new GhostShipState());
         }
     }
     struct MarkPredictedJob : IJobParallelFor

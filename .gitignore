@@ -3,6 +3,7 @@
 sampleproject/Assets/Plugins*
 Assets/AssetStoreTools*
 sampleproject/Assets/EntityCache*
+sampleproject/Assets/StreamingAssets*
 
 network.bindings/artifacts/
 network.bindings/build.gen.csproj
@@ -70,3 +71,4 @@ build/**
 *~
 *.swp
 sampleproject/Logs
+!Documentation~

@@ -30,12 +30,17 @@ public class BulletPredictionSystem : JobComponentSystem
         }
     }
 
+    private NetworkTimeSystem m_NetworkTimeSystem;
+    protected override void OnCreateManager()
+    {
+        m_NetworkTimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
+    }
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
         var topGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
         var job = new BulletJob
         {
-            targetTick = NetworkTimeSystem.predictTargetTick,
+            targetTick = m_NetworkTimeSystem.predictTargetTick,
             deltaTime = topGroup.UpdateDeltaTime,
             snapshotFromEntity = GetBufferFromEntity<BulletSnapshotData>()
         };

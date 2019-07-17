@@ -50,16 +50,20 @@ public class GhostReceiveSystem<TGhostDeserializerCollection> : JobComponentSyst
         m_CompressionModel = new NetworkCompressionModel(Allocator.Persistent);
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
         m_NetStats = new NativeArray<uint>(serializers.Length * 3 + 3, Allocator.Persistent);
-        World.GetOrCreateSystem<GhostStatsSystem>().SetStatsBuffer(m_NetStats, serializers.CreateSerializerNameList());
+        m_StatsCollection = World.GetOrCreateSystem<GhostStatsCollectionSystem>();
+        m_StatsCollection.SetGhostNames(serializers.CreateSerializerNameList());
 #endif
+        m_TimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
 
         m_DelayedDespawnQueue = new NativeQueue<DelayedDespawnGhost>(Allocator.Persistent);
 
         serializers.Initialize(World);
     }
 
+    private NetworkTimeSystem m_TimeSystem;
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
     private NativeArray<uint> m_NetStats;
+    private GhostStatsCollectionSystem m_StatsCollection;
 #endif
     private NetworkCompressionModel m_CompressionModel;
 
@@ -109,6 +113,13 @@ public class GhostReceiveSystem<TGhostDeserializerCollection> : JobComponentSyst
         [ReadOnly] public ComponentDataFromEntity<PredictedEntityComponent> predictedFromEntity;
         public unsafe void Execute()
         {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            for (int i = 0; i < netStats.Length; ++i)
+            {
+                netStats[i] = 0;
+            }
+#endif
+
             // FIXME: should handle any number of connections with individual ghost mappings for each
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             if (players.Length > 1)
@@ -164,12 +175,6 @@ public class GhostReceiveSystem<TGhostDeserializerCollection> : JobComponentSyst
             netStats[0] = despawnLen;
             netStats[1] = (uint) (dataStream.GetBitsRead(ref readCtx) - startPos);
             netStats[2] = 0;
-            for (int i = 0; i < serializers.Length; ++i)
-            {
-                netStats[i * 3 + 3] = 0;
-                netStats[i * 3 + 4] = 0;
-                netStats[i * 3 + 5] = 0;
-            }
             uint statCount = 0;
             uint uncompressedCount = 0;
 #endif
@@ -254,6 +259,9 @@ public class GhostReceiveSystem<TGhostDeserializerCollection> : JobComponentSyst
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+        m_StatsCollection.AddSnapshotReceiveStats(m_NetStats);
+#endif
         var commandBuffer = m_Barrier.CreateCommandBuffer();
         if (playerGroup.IsEmptyIgnoreFilter)
         {
@@ -288,7 +296,7 @@ public class GhostReceiveSystem<TGhostDeserializerCollection> : JobComponentSyst
             #endif
             replicatedEntityType = ComponentType.ReadWrite<ReplicatedEntityComponent>(),
             delayedDespawnQueue = m_DelayedDespawnQueue,
-            targetTick = NetworkTimeSystem.interpolateTargetTick,
+            targetTick = m_TimeSystem.interpolateTargetTick,
             predictedFromEntity = GetComponentDataFromEntity<PredictedEntityComponent>(true)
         };
         inputDeps = readJob.Schedule(JobHandle.CombineDependencies(inputDeps, playerHandle));

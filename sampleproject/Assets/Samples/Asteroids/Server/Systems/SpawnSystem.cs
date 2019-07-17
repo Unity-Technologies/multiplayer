@@ -9,7 +9,6 @@ using Unity.Transforms;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [AlwaysUpdateSystem]
     public class AsteroidSpawnSystem : JobComponentSystem
     {
         [BurstCompile]

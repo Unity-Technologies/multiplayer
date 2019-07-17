@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Networking.Transport.Utilities;
 
 public struct NetworkSnapshotAckComponent : IComponentData
@@ -65,12 +66,18 @@ public struct NetworkSnapshotAckComponent : IComponentData
         if (remoteTime != 0 && SequenceHelpers.IsNewer(remoteTime, LastReceivedRemoteTime))
         {
             LastReceivedRemoteTime = remoteTime;
-            LastReceivedRTT = localTime - localTimeMinusRTT;
             LastReceiveTimestamp = localTime;
+            uint lastReceivedRTT = localTime - localTimeMinusRTT;
+            if (EstimatedRTT == 0)
+                EstimatedRTT = lastReceivedRTT;
+            else
+                EstimatedRTT = EstimatedRTT * 0.875f + lastReceivedRTT * 0.125f;
+            DeviationRTT = DeviationRTT * 0.75f + math.abs(lastReceivedRTT - EstimatedRTT) * 0.25f;
         }
     }
     public uint LastReceivedRemoteTime;
-    public uint LastReceivedRTT;
     public uint LastReceiveTimestamp;
+    public float EstimatedRTT;
+    public float DeviationRTT;
 }
 

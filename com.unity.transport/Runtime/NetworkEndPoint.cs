@@ -95,30 +95,37 @@ namespace Unity.Networking.Transport
 
         public static NetworkEndPoint AnyIpv4 => CreateIpv4(0, 0);
         public static NetworkEndPoint LoopbackIpv4 => CreateIpv4((127<<24) | 1, 0);
-        public static NetworkEndPoint Parse(string ip, ushort port)
+
+        // Returns true if we can fully parse the input and return a valid endpoint
+        public static bool TryParse(string ip, ushort port, out NetworkEndPoint endpoint)
         {
+            endpoint = default(NetworkEndPoint);
+
+            // Parse failure check
+            if (ip == null || ip.Length < 7)
+                return false;
+
             uint ipaddr = 0;
-            int pos = 0;
-            for (int part = 0; part < 4; ++part)
+            var pos = 0;
+
+            // Parse characters
+            for (var part = 0; part < 4; ++part)
             {
+                // Parse failure check
                 if (pos >= ip.Length || ip[pos] < '0' || ip[pos] > '9')
-                {
-                    // Parsing failed
-                    ipaddr = 0;
-                    break;
-                }
+                    return false;
+
                 uint byteVal = 0;
+
                 while (pos < ip.Length && ip[pos] >= '0' && ip[pos] <= '9')
                 {
-                    byteVal = (byteVal * 10) + (uint) (ip[pos] - '0');
+                    byteVal = byteVal * 10 + (uint)(ip[pos] - '0');
                     ++pos;
                 }
+
+                // Parse failure check
                 if (byteVal > 255)
-                {
-                    // Parsing failed
-                    ipaddr = 0;
-                    break;
-                }
+                    return false;
 
                 ipaddr = (ipaddr << 8) | byteVal;
 
@@ -126,7 +133,17 @@ namespace Unity.Networking.Transport
                     ++pos;
             }
 
-            return CreateIpv4(ipaddr, port);
+            endpoint = CreateIpv4(ipaddr, port);
+            return endpoint.IsValid;
+        }
+
+        // Returns a default address if parsing fails
+        public static NetworkEndPoint Parse(string ip, ushort port)
+        {
+            if (TryParse(ip, port, out var endpoint))
+                return endpoint;
+
+            return CreateIpv4(0, port);
         }
 
         public static bool operator ==(NetworkEndPoint lhs, NetworkEndPoint rhs)

@@ -8,10 +8,10 @@ public partial class BulletGhostSpawnSystem : DefaultGhostSpawnSystem<BulletSnap
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<BulletSnapshotData>(),
             ComponentType.ReadWrite<BulletTagComponentData>(),
-            ComponentType.ReadWrite<Translation>(),
-            ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<Rotation>(),
+            ComponentType.ReadWrite<Translation>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>()
         );
@@ -21,10 +21,10 @@ public partial class BulletGhostSpawnSystem : DefaultGhostSpawnSystem<BulletSnap
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<BulletSnapshotData>(),
             ComponentType.ReadWrite<BulletTagComponentData>(),
-            ComponentType.ReadWrite<Translation>(),
-            ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<Rotation>(),
+            ComponentType.ReadWrite<Translation>(),
             ComponentType.ReadWrite<Velocity>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>(),

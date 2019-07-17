@@ -8,10 +8,10 @@ public partial class AsteroidGhostSpawnSystem : DefaultGhostSpawnSystem<Asteroid
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<AsteroidSnapshotData>(),
             ComponentType.ReadWrite<AsteroidTagComponentData>(),
-            ComponentType.ReadWrite<Translation>(),
-            ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<Rotation>(),
+            ComponentType.ReadWrite<Translation>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>()
         );
@@ -21,10 +21,10 @@ public partial class AsteroidGhostSpawnSystem : DefaultGhostSpawnSystem<Asteroid
         return EntityManager.CreateArchetype(
             ComponentType.ReadWrite<AsteroidSnapshotData>(),
             ComponentType.ReadWrite<AsteroidTagComponentData>(),
-            ComponentType.ReadWrite<Translation>(),
-            ComponentType.ReadWrite<Rotation>(),
             ComponentType.ReadWrite<CurrentSimulatedPosition>(),
             ComponentType.ReadWrite<CurrentSimulatedRotation>(),
+            ComponentType.ReadWrite<Rotation>(),
+            ComponentType.ReadWrite<Translation>(),
 
             ComponentType.ReadWrite<ReplicatedEntityComponent>(),
             ComponentType.ReadWrite<PredictedEntityComponent>()

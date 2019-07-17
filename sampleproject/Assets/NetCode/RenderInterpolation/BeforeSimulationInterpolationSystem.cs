@@ -7,6 +7,7 @@ using UnityEngine;
 
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
 [UpdateBefore(typeof(NetworkStreamReceiveSystem))]
+[UpdateBefore(typeof(TransformSystemGroup))]
 public class BeforeSimulationInterpolationSystem : JobComponentSystem
 {
     private EntityQuery positionInterpolationGroup;

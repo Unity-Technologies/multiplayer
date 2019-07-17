@@ -82,6 +82,7 @@ namespace Asteroids.Server
         {
             barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             serverSimulationSystemGroup = World.GetOrCreateSystem<ServerSimulationSystemGroup>();
+            RequireSingletonForUpdate<ServerSettings>();
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
