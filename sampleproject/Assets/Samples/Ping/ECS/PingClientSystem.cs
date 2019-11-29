@@ -16,7 +16,7 @@ public class PingClientSystem : JobComponentSystem
     struct PendingPing
     {
         public int id;
-        public float time;
+        public double time;
     }
     // Adding and removing components with EntityCommandBuffer is not burst compatible
     //[BurstCompile]
@@ -26,7 +26,7 @@ public class PingClientSystem : JobComponentSystem
         public NetworkEndPoint serverEP;
         public NativeArray<PendingPing> pendingPings;
         public NativeArray<int> pingStats;
-        public float frameTime;
+        public double frameTime;
         public EntityCommandBuffer commandBuffer;
 
         public void Execute(Entity entity, int index, ref PingClientConnectionComponentData connection)
@@ -78,7 +78,7 @@ public class PingClientSystem : JobComponentSystem
     private NativeArray<PendingPing> m_pendingPings;
     private NativeArray<int> m_pingStats;
 
-    protected override void OnCreateManager()
+    protected override void OnCreate()
     {
         m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
         m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
@@ -89,7 +89,7 @@ public class PingClientSystem : JobComponentSystem
         GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
 
-    protected override void OnDestroyManager()
+    protected override void OnDestroy()
     {
         m_pendingPings.Dispose();
         m_pingStats.Dispose();
@@ -118,7 +118,7 @@ public class PingClientSystem : JobComponentSystem
             serverEP = PingClientUIBehaviour.ServerEndPoint,
             pendingPings = m_pendingPings,
             pingStats = m_pingStats,
-            frameTime = Time.time,
+            frameTime = Time.ElapsedTime,
             commandBuffer = m_Barrier.CreateCommandBuffer()
         };
         var handle = pingJob.ScheduleSingle(this, inputDep);

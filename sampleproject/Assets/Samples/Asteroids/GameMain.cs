@@ -1,5 +1,11 @@
+using Unity.Burst;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Networking.Transport;
+using Unity.NetCode;
+#if UNITY_EDITOR
+using Unity.NetCode.Editor;
+#endif
 
 #if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
 [UpdateBefore(typeof(TickServerSimulationSystem))]
@@ -7,71 +13,67 @@ using Unity.Networking.Transport;
 #if !UNITY_SERVER
 [UpdateBefore(typeof(TickClientSimulationSystem))]
 #endif
-[NotClientServerSystem]
+[UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
 public class AsteroidsClientServerControlSystem : ComponentSystem
 {
     private const ushort networkPort = 50001;
-    private bool m_initializeClientServer;
 
-    protected override void OnCreateManager()
+    private struct InitializeClientServer : IComponentData
     {
-        var initEntity = EntityManager.CreateEntity();
-        var group = GetEntityQuery(ComponentType.ReadWrite<GameMainComponent>());
-        RequireForUpdate(group);
-        m_initializeClientServer = true;
+    }
+
+    protected override void OnCreate()
+    {
+        RequireSingletonForUpdate<InitializeClientServer>();
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Asteroids")
+            return;
+        var initEntity = EntityManager.CreateEntity(typeof(InitializeClientServer));
     }
 
     protected override void OnUpdate()
     {
-        if (!m_initializeClientServer)
-            return;
-        m_initializeClientServer = false;
-        // Bind the server and start listening for connections
-#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
-        var serverWorld = ClientServerBootstrap.serverWorld;
-        if (serverWorld != null)
+        EntityManager.DestroyEntity(GetSingletonEntity<InitializeClientServer>());
+        foreach (var world in World.AllWorlds)
         {
-            var entityManager = serverWorld.EntityManager;
-            var settings = entityManager.CreateEntity();
-            var settingsData = GetSingleton<ServerSettings>();
-            settingsData.InitArchetypes(entityManager);
-            entityManager.AddComponentData(settings, settingsData);
-            NetworkEndPoint ep = NetworkEndPoint.AnyIpv4;
-            ep.Port = networkPort;
-            serverWorld.GetExistingSystem<NetworkStreamReceiveSystem>().Listen(ep);
-        }
+#if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
+            // Bind the server and start listening for connections
+            if (world.GetExistingSystem<ServerSimulationSystemGroup>() != null)
+            {
+                var entityManager = world.EntityManager;
+                var settings = entityManager.CreateEntity();
+                var settingsData = GetSingleton<ServerSettings>();
+                entityManager.AddComponentData(settings, settingsData);
+
+                var grid = entityManager.CreateEntity();
+                entityManager.AddComponentData(grid, new GhostDistanceImportance
+                {
+                    ScaleImportanceByDistance = new PortableFunctionPointer<GhostDistanceImportance.ScaleImportanceByDistanceDelegate>(GhostDistanceImportance.DefaultScale),
+                    TileSize = new int3(256, 256, 256),
+                    TileCenter = new int3(0, 0, 128),
+                    TileBorderWidth = new float3(1f, 1f, 1f)
+                });
+                NetworkEndPoint ep = NetworkEndPoint.AnyIpv4;
+                ep.Port = networkPort;
+                world.GetExistingSystem<NetworkStreamReceiveSystem>().Listen(ep);
+            }
 #endif
 #if !UNITY_SERVER
-        // Auto connect all clients to the server
-        if (ClientServerBootstrap.clientWorld != null)
-        {
-            for (int i = 0; i < ClientServerBootstrap.clientWorld.Length; ++i)
+            // Auto connect all clients to the server
+            if (world.GetExistingSystem<ClientSimulationSystemGroup>() != null)
             {
-                var clientWorld = ClientServerBootstrap.clientWorld[i];
-                var entityManager = clientWorld.EntityManager;
-                var settings = new ClientSettings(entityManager);
-                var settingsEnt = entityManager.CreateEntity();
-                entityManager.AddComponentData(settingsEnt, settings);
-
+                // Enable fixed tick rate
+                world.EntityManager.CreateEntity(typeof(FixedClientTickRate));
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = networkPort;
-                clientWorld.GetExistingSystem<NetworkStreamReceiveSystem>().Connect(ep);
+                world.GetExistingSystem<NetworkStreamReceiveSystem>().Connect(ep);
             }
-        }
 #endif
+        }
     }
-}
-
-public struct GameMainComponent : IComponentData
-{
 }
 
 public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
 {
-    public float asteroidRadius = 15f;
-    public float playerRadius = 10f;
-    public float bulletRadius = 1f;
-
     public float asteroidVelocity = 10f;
     public float playerForce = 50f;
     public float bulletVelocity = 500f;
@@ -82,13 +84,8 @@ public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
     public int damageShips = 1;
     public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
     {
-        var data = new GameMainComponent();
-        dstManager.AddComponentData(entity, data);
 #if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
         var settings = default(ServerSettings);
-        settings.asteroidRadius = asteroidRadius;
-        settings.playerRadius = playerRadius;
-        settings.bulletRadius = bulletRadius;
 
         settings.asteroidVelocity = asteroidVelocity;
         settings.playerForce = playerForce;

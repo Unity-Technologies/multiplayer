@@ -18,7 +18,7 @@ public class BuildPostprocessor
 
         if (target == BuildTarget.StandaloneOSX)
             dllPath = pathToBuiltProject + "/Contents/Resources/Data/Managed/";
-        else if (target == BuildTarget.StandaloneWindows)
+        else if (target == BuildTarget.StandaloneWindows || target == BuildTarget.StandaloneWindows64)
             dllPath = pathToBuiltProject.Replace(".exe", "_Data") + "/Managed/";
         else
             throw new Exception("Fill in platform path structure...");

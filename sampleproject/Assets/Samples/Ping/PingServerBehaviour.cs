@@ -14,9 +14,6 @@ public class PingServerBehaviour : MonoBehaviour
     void Start()
     {
         ushort serverPort = 9000;
-        ushort newPort = 0;
-        if (CommandLine.TryGetCommandLineArgValue("-port", out newPort))
-            serverPort = newPort;
         // Create the server driver, bind it to a port and start listening for incoming connections
         m_ServerDriver = new UdpNetworkDriver(new INetworkParameter[0]);
         var addr = NetworkEndPoint.AnyIpv4;
@@ -137,9 +134,6 @@ public class PingServerBehaviour : MonoBehaviour
         // Wait for the previous frames ping to complete before starting a new one, the Complete in LateUpdate is not
         // enough since we can get multiple FixedUpdate per frame on slow clients
         m_updateHandle.Complete();
-        // If there is at least one client connected update the activity so the server is not shutdown
-        if (m_connections.Length > 0)
-            DedicatedServerConfig.UpdateLastActivity();
         var updateJob = new DriverUpdateJob {driver = m_ServerDriver, connections = m_connections};
         var pongJob = new PongJob
         {

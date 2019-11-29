@@ -2,8 +2,35 @@ using System;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Networking.Transport;
-public struct GhostSerializerCollection : IGhostSerializerCollection
+using Unity.NetCode;
+
+public struct AsteroidsGhostSerializerCollection : IGhostSerializerCollection
 {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public string[] CreateSerializerNameList()
+    {
+        var arr = new string[]
+        {
+            "ShipGhostSerializer",
+            "AsteroidGhostSerializer",
+            "BulletGhostSerializer",
+        };
+        return arr;
+    }
+
+    public int Length => 3;
+#endif
+    public static int FindGhostType<T>()
+        where T : struct, ISnapshotData<T>
+    {
+        if (typeof(T) == typeof(ShipSnapshotData))
+            return 0;
+        if (typeof(T) == typeof(AsteroidSnapshotData))
+            return 1;
+        if (typeof(T) == typeof(BulletSnapshotData))
+            return 2;
+        return -1;
+    }
     public int FindSerializer(EntityArchetype arch)
     {
         if (m_ShipGhostSerializer.CanSerialize(arch))
@@ -12,7 +39,6 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
             return 1;
         if (m_BulletGhostSerializer.CanSerialize(arch))
             return 2;
-
         throw new ArgumentException("Invalid serializer type");
     }
 
@@ -21,7 +47,6 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
         m_ShipGhostSerializer.BeginSerialize(system);
         m_AsteroidGhostSerializer.BeginSerialize(system);
         m_BulletGhostSerializer.BeginSerialize(system);
-
     }
 
     public int CalculateImportance(int serializer, ArchetypeChunk chunk)
@@ -34,7 +59,6 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
                 return m_AsteroidGhostSerializer.CalculateImportance(chunk);
             case 2:
                 return m_BulletGhostSerializer.CalculateImportance(chunk);
-
         }
 
         throw new ArgumentException("Invalid serializer type");
@@ -50,7 +74,6 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
                 return m_AsteroidGhostSerializer.WantsPredictionDelta;
             case 2:
                 return m_BulletGhostSerializer.WantsPredictionDelta;
-
         }
 
         throw new ArgumentException("Invalid serializer type");
@@ -66,42 +89,27 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
                 return m_AsteroidGhostSerializer.SnapshotSize;
             case 2:
                 return m_BulletGhostSerializer.SnapshotSize;
-
         }
 
         throw new ArgumentException("Invalid serializer type");
     }
 
-    public unsafe int Serialize(int serializer, ArchetypeChunk chunk, int startIndex, uint currentTick,
-        Entity* currentSnapshotEntity, void* currentSnapshotData,
-        GhostSystemStateComponent* ghosts, NativeArray<Entity> ghostEntities,
-        NativeArray<int> baselinePerEntity, NativeList<SnapshotBaseline> availableBaselines,
-        DataStreamWriter dataStream, NetworkCompressionModel compressionModel)
+    public int Serialize(SerializeData data)
     {
-        switch (serializer)
+        switch (data.ghostType)
         {
             case 0:
             {
-                return GhostSendSystem<GhostSerializerCollection>.InvokeSerialize(m_ShipGhostSerializer, serializer,
-                    chunk, startIndex, currentTick, currentSnapshotEntity, (ShipSnapshotData*)currentSnapshotData,
-                    ghosts, ghostEntities, baselinePerEntity, availableBaselines,
-                    dataStream, compressionModel);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<ShipGhostSerializer, ShipSnapshotData>(m_ShipGhostSerializer, data);
             }
             case 1:
             {
-                return GhostSendSystem<GhostSerializerCollection>.InvokeSerialize(m_AsteroidGhostSerializer, serializer,
-                    chunk, startIndex, currentTick, currentSnapshotEntity, (AsteroidSnapshotData*)currentSnapshotData,
-                    ghosts, ghostEntities, baselinePerEntity, availableBaselines,
-                    dataStream, compressionModel);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<AsteroidGhostSerializer, AsteroidSnapshotData>(m_AsteroidGhostSerializer, data);
             }
             case 2:
             {
-                return GhostSendSystem<GhostSerializerCollection>.InvokeSerialize(m_BulletGhostSerializer, serializer,
-                    chunk, startIndex, currentTick, currentSnapshotEntity, (BulletSnapshotData*)currentSnapshotData,
-                    ghosts, ghostEntities, baselinePerEntity, availableBaselines,
-                    dataStream, compressionModel);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<BulletGhostSerializer, BulletSnapshotData>(m_BulletGhostSerializer, data);
             }
-
             default:
                 throw new ArgumentException("Invalid serializer type");
         }
@@ -109,9 +117,15 @@ public struct GhostSerializerCollection : IGhostSerializerCollection
     private ShipGhostSerializer m_ShipGhostSerializer;
     private AsteroidGhostSerializer m_AsteroidGhostSerializer;
     private BulletGhostSerializer m_BulletGhostSerializer;
-
 }
 
-public class MultiplayerSampleGhostSendSystem : GhostSendSystem<GhostSerializerCollection>
+public struct EnableAsteroidsGhostSendSystemComponent : IComponentData
+{}
+public class AsteroidsGhostSendSystem : GhostSendSystem<AsteroidsGhostSerializerCollection>
 {
+    protected override void OnCreate()
+    {
+        base.OnCreate();
+        RequireSingletonForUpdate<EnableAsteroidsGhostSendSystemComponent>();
+    }
 }

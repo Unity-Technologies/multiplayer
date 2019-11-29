@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Jobs;
 using Unity.Burst;
 using Unity.Transforms;
+using Unity.NetCode;
 
 namespace Asteroids.Client
 {
@@ -19,8 +20,8 @@ namespace Asteroids.Client
     public class ParticleRenderSystem : JobComponentSystem
     {
         private EntityQuery lineGroup;
-        private NativeQueue<LineRenderSystem.Line>.Concurrent lineQueue;
-        protected override void OnCreateManager()
+        private NativeQueue<LineRenderSystem.Line>.ParallelWriter lineQueue;
+        protected override void OnCreate()
         {
             lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
             lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
@@ -30,7 +31,7 @@ namespace Asteroids.Client
         [BurstCompile]
         struct ParticleRenderJob : IJobForEach<ParticleComponentData, Translation, Rotation>
         {
-            public NativeQueue<LineRenderSystem.Line>.Concurrent lines;
+            public NativeQueue<LineRenderSystem.Line>.ParallelWriter lines;
             public void Execute([ReadOnly] ref ParticleComponentData particle, [ReadOnly] ref Translation position, [ReadOnly] ref Rotation rotation)
             {
                 float3 pos = position.Value;
@@ -54,7 +55,7 @@ namespace Asteroids.Client
     {
         private BeginPresentationEntityCommandBufferSystem barrier;
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
             barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
         }
@@ -80,7 +81,7 @@ namespace Asteroids.Client
         {
             var job = new ParticleAgeJob();
             job.commandBuffer = barrier.CreateCommandBuffer().ToConcurrent();
-            job.deltaTime = Time.deltaTime;
+            job.deltaTime = Time.DeltaTime;
             var handle = job.Schedule(this, inputDep);
             barrier.AddJobHandleForProducer(handle);
             return handle;
@@ -106,7 +107,7 @@ namespace Asteroids.Client
         protected override JobHandle OnUpdate(JobHandle inputDep)
         {
             var job = new ParticleMoveJob();
-            job.deltaTime = Time.deltaTime;
+            job.deltaTime = Time.DeltaTime;
             return job.Schedule(this, inputDep);
         }
     }

@@ -1,10 +1,11 @@
 using Unity.Entities;
 
-public struct CollisionSphereComponentData : IComponentData
+[GenerateAuthoringComponent]
+public struct CollisionSphereComponent : IComponentData
 {
     public float radius;
 
-    public CollisionSphereComponentData(float radius)
+    public CollisionSphereComponent(float radius)
     {
         this.radius = radius;
     }

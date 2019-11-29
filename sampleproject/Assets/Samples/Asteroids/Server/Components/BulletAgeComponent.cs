@@ -1,8 +1,9 @@
 using Unity.Entities;
 
-public struct BulletAgeComponentData : IComponentData
+[GenerateAuthoringComponent]
+public struct BulletAgeComponent : IComponentData
 {
-    public BulletAgeComponentData(float maxAge)
+    public BulletAgeComponent(float maxAge)
     {
         this.maxAge = maxAge;
         age = 0;

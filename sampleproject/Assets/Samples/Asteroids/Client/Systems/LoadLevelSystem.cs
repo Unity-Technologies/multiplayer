@@ -1,42 +1,49 @@
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Collections;
+using Unity.NetCode;
 
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    [UpdateBefore(typeof(RpcSendSystem))]
+    [UpdateBefore(typeof(RpcSystem))]
     public class LoadLevelSystem : JobComponentSystem
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLevelLoaded> m_RpcQueue;
         private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
-        struct LoadJob : IJobForEachWithEntity<LevelLoadRequest>
+        struct LoadJob : IJobForEachWithEntity<LevelLoadRequest, ReceiveRpcCommandRequestComponent>
         {
             public EntityCommandBuffer.Concurrent commandBuffer;
             public RpcQueue<RpcLevelLoaded> rpcQueue;
             public BufferFromEntity<OutgoingRpcDataStreamBufferComponent> rpcFromEntity;
             public Entity levelSingleton;
             public ComponentDataFromEntity<LevelComponent> levelFromEntity;
-            public void Execute(Entity entity, int index, [ReadOnly] ref LevelLoadRequest request)
+            public void Execute(Entity entity, int index, [ReadOnly] ref LevelLoadRequest request, [ReadOnly] ref ReceiveRpcCommandRequestComponent requestSource)
             {
                 commandBuffer.DestroyEntity(index, entity);
                 // Check for disconnects
-                if (!rpcFromEntity.Exists(request.connection))
+                if (!rpcFromEntity.Exists(requestSource.SourceConnection))
                     return;
                 // set the level size - fake loading of level
-                levelFromEntity[levelSingleton] = new LevelComponent {width = request.width, height = request.height};
-                commandBuffer.AddComponent(index, request.connection, new PlayerStateComponentData());
-                commandBuffer.AddComponent(index, request.connection, default(NetworkStreamInGame));
-                rpcQueue.Schedule(rpcFromEntity[request.connection], new RpcLevelLoaded());
+                levelFromEntity[levelSingleton] = new LevelComponent
+                {
+                    width = request.width,
+                    height = request.height,
+                    playerForce = request.playerForce,
+                    bulletVelocity = request.bulletVelocity
+                };
+                commandBuffer.AddComponent(index, requestSource.SourceConnection, new PlayerStateComponentData());
+                commandBuffer.AddComponent(index, requestSource.SourceConnection, default(NetworkStreamInGame));
+                rpcQueue.Schedule(rpcFromEntity[requestSource.SourceConnection], new RpcLevelLoaded());
             }
         }
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcLevelLoaded>();
+            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLevelLoaded>();
 
             // The level always exist, "loading" just resizes it
             m_LevelSingleton = EntityManager.CreateEntity();

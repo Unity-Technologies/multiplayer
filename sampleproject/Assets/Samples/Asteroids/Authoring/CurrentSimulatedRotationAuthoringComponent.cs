@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using Unity.NetCode;
 
 public class CurrentSimulatedRotationAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
 {

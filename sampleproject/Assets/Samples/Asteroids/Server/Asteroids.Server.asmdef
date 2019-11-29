@@ -1,14 +1,22 @@
 {
-  "name": "Asteroids.Server",
-  "references": [
-    "Unity.Burst",
-    "Unity.Entities",
-    "Unity.Transforms",
-    "Unity.Collections",
-    "Unity.Mathematics",
-    "Unity.Networking.Transport",
-    "Unity.NetCode",
-    "Asteroids.Mixed"
-  ],
-  "allowUnsafeCode": true
+    "name": "Asteroids.Server",
+    "references": [
+        "Unity.Burst",
+        "Unity.Entities",
+        "Unity.Transforms",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Networking.Transport",
+        "Unity.NetCode",
+        "Asteroids.Mixed"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

@@ -1,3 +1,10 @@
+# 2019-11-29
+## New features
+* Unity Transport is a package, see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.2/changelog/CHANGELOG.html) for details.
+* Unity NetCode is a package, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/changelog/CHANGELOG.html) for details.
+* Added a new sample - NetCube - used in the Unite presentation about netcode.
+* Removed Matchmaking, SQP and related samples.
+
 # 2019-07-17
 ## New features
 * Added a prefab based workflow for specifying ghosts. A prefab can contain a `GhostAuthoringComponent` which is used to generate code for a ghost. A `GhostPrefabAuthoringComponent` can be used to instantiate the prefab when spawning ghosts on the client. This replaces the .ghost files, all projects need to be updated to the new ghost definitions.

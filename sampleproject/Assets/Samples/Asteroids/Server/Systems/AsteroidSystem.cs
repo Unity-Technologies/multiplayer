@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Collections;
 using Unity.Jobs;
+using Unity.NetCode;
 
 namespace Asteroids.Server
 {
@@ -24,8 +25,7 @@ namespace Asteroids.Server
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var topGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
-            var asteroidJob = new AsteroidJob() {deltaTime = topGroup.UpdateDeltaTime};
+            var asteroidJob = new AsteroidJob() {deltaTime = Time.DeltaTime};
             return asteroidJob.Schedule(this, inputDeps);
         }
     }

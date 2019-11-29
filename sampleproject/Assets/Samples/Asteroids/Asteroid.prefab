@@ -9,10 +9,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 405061397939786722}
-  - component: {fileID: 2495728771080875079}
+  - component: {fileID: 2472327286752606328}
   - component: {fileID: -4511429949734935422}
   - component: {fileID: 6118769756459075749}
   - component: {fileID: 613457668621408085}
+  - component: {fileID: 1743168433765635315}
+  - component: {fileID: 379170053741580826}
   m_Layer: 0
   m_Name: Asteroid
   m_TagString: Untagged
@@ -34,7 +36,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2495728771080875079
+--- !u!114 &2472327286752606328
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -46,55 +48,85 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ClientInstantiateTarget: 0
+  DefaultClientInstantiationType: 0
+  RootPath: /Samples/Asteroids
   SnapshotDataPath: Mixed/Generated/AsteroidSnapshotData.cs
-  SpawnSystemPath: Client/Generated/AsteroidGhostSpawnSystem.cs
   UpdateSystemPath: Client/Generated/AsteroidGhostUpdateSystem.cs
   SerializerPath: Server/Generated/AsteroidGhostSerializer.cs
   Importance: 1
+  PredictingPlayerNetworkId: 
   Components:
   - name: AsteroidTagComponentData
     interpolatedClient: 1
     predictedClient: 1
     server: 1
+    sendDataTo: 0
     fields: []
-    isManual: 0
-  - name: CurrentSimulatedPosition
+    manualFieldList: 0
+    entityIndex: 0
+  - name: CollisionSphereComponent
+    interpolatedClient: 0
+    predictedClient: 0
+    server: 1
+    sendDataTo: 0
+    fields: []
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Unity.NetCode.CurrentSimulatedPosition
     interpolatedClient: 1
     predictedClient: 1
     server: 0
+    sendDataTo: 0
     fields: []
-    isManual: 0
-  - name: CurrentSimulatedRotation
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Unity.NetCode.CurrentSimulatedRotation
     interpolatedClient: 1
     predictedClient: 1
     server: 0
+    sendDataTo: 0
     fields: []
-    isManual: 0
-  - name: LocalToWorld
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Unity.Transforms.LocalToWorld
     interpolatedClient: 0
     predictedClient: 0
     server: 0
+    sendDataTo: 0
     fields: []
-    isManual: 0
-  - name: Rotation
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Unity.Transforms.Rotation
     interpolatedClient: 1
     predictedClient: 1
     server: 1
+    sendDataTo: 0
     fields:
     - name: Value
       quantization: 1000
       interpolate: 1
-    isManual: 0
-  - name: Translation
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Unity.Transforms.Translation
     interpolatedClient: 1
     predictedClient: 1
     server: 1
+    sendDataTo: 0
     fields:
     - name: Value
-      quantization: 10
+      quantization: 100
       interpolate: 1
-    isManual: 0
+    manualFieldList: 0
+    entityIndex: 0
+  - name: Velocity
+    interpolatedClient: 0
+    predictedClient: 0
+    server: 1
+    sendDataTo: 0
+    fields: []
+    manualFieldList: 1
+    entityIndex: 0
+  doNotStrip: 0
 --- !u!114 &-4511429949734935422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -129,5 +161,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b40a686630c0401fb889a766e1b99ad2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1743168433765635315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 617574f4a9c8931469c423d5ea412677, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  radius: 15
+--- !u!114 &379170053741580826
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1179405006722280534}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a02d0bfe041460eafdbd0af99b85622, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 

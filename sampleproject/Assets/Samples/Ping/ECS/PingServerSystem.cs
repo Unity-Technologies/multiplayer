@@ -36,7 +36,7 @@ public class PingServerSystem : JobComponentSystem
         }
     }
 
-    protected override void OnCreateManager()
+    protected override void OnCreate()
     {
         m_ServerDriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
     }

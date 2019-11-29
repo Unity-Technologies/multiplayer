@@ -1,7 +1,9 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.NetCode;
 
 [System.Serializable]
+[GhostDefaultComponent(GhostDefaultComponentAttribute.Type.Client)]
 public struct ParticleEmitterComponentData : IComponentData
 {
     public float particlesPerSecond;

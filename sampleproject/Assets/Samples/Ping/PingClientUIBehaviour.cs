@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using Unity.Networking.Transport;
-using UnityEngine.Ucg.Matchmaking;
 
 /* The PingClientUIBehaviour is responsible for displaying statistics of a
  running ping client as well as for starting and stopping the ping of a
@@ -15,11 +14,6 @@ public class PingClientUIBehaviour : MonoBehaviour
     static int s_PingTime;
     static int s_PingCounter;
 
-    // Matchmaking
-    public string MatchmakingServer = "";
-    bool m_UseMatchmaking = false;
-    Matchmaker m_Matchmaker = null;
-
     string m_CustomIp = "";
 
     void Start()
@@ -29,40 +23,9 @@ public class PingClientUIBehaviour : MonoBehaviour
         ServerEndPoint = default(NetworkEndPoint);
     }
 
-    void FixedUpdate()
+    void OnGUI()
     {
-        if (!m_UseMatchmaking)
-            return;
-
-        if (m_Matchmaker == null)
-        {
-            MatchmakingServer = MatchmakingServer.Trim();
-
-            m_Matchmaker = new Matchmaker(MatchmakingServer, OnMatchmakingSuccess, OnMatchmakingError);
-            
-            var matchId = Guid.NewGuid().ToString();
-            var playerProps = new MatchmakingUtilities.PlayerProperties() { hats = 5 };
-            var groupProps = new MatchmakingUtilities.GroupProperties() { mode = 0 };
-            var request = MatchmakingUtilities.CreateMatchmakingRequest(matchId, playerProps, groupProps);
-
-            m_Matchmaker.RequestMatch(request);
-        }
-        else
-        {
-            m_Matchmaker.Update();
-        }
-    }
-
-    void OnGUI() 
-    {
-        if (m_UseMatchmaking)
-        {
-            UpdateMatchmakingUI();
-        }
-        else
-        {
-            UpdatePingClientUI();
-        }
+        UpdatePingClientUI();
     }
 
     // Update the ping statistics displayed in the ui. Should be called from the ping client every time a new ping is complete
@@ -70,24 +33,6 @@ public class PingClientUIBehaviour : MonoBehaviour
     {
         s_PingCounter = count;
         s_PingTime = time;
-    }
-
-    void UpdateMatchmakingUI()
-    {
-        if (m_UseMatchmaking && MatchmakingServer.Length > 0)
-        {
-            GUILayout.Label("Matchmaking");
-            GUILayout.Label("Finding a server...");
-            if (GUILayout.Button("Cancel"))
-            {
-                m_Matchmaker = null;
-                m_UseMatchmaking = false;
-            }
-        }
-        else
-        {
-            m_UseMatchmaking = false;
-        }
     }
 
     void UpdatePingClientUI()
@@ -118,10 +63,6 @@ public class PingClientUIBehaviour : MonoBehaviour
             }
 
             m_CustomIp = GUILayout.TextField(m_CustomIp);
-            if (!string.IsNullOrEmpty(MatchmakingServer) && GUILayout.Button("Use Matchmaking"))
-            {
-                m_UseMatchmaking = true;
-            }
         }
         else
         {
@@ -132,27 +73,4 @@ public class PingClientUIBehaviour : MonoBehaviour
             }
         }
     }
-
-    void OnMatchmakingSuccess(Assignment assignment)
-    {
-        if (string.IsNullOrEmpty(assignment.ConnectionString))
-        {
-            Debug.Log("Matchmaking finished, but did not return a game server.  Ensure your server has been allocated and is running then try again.");
-        }
-        else
-        {
-            Debug.Log($"Matchmaking has found a game! The server is at {assignment.ConnectionString} with players: " + string.Join(", ", assignment.Roster));
-            m_CustomIp = assignment.ConnectionString;
-        }
-        m_UseMatchmaking = false;
-        m_Matchmaker = null;
-    }
-
-    void OnMatchmakingError(string errorInfo)
-    {
-        Debug.Log($"Matchmaking failed! Error is: {errorInfo}.");
-        m_UseMatchmaking = false;
-        m_Matchmaker = null;
-    }
 }
-

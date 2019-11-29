@@ -1,18 +1,10 @@
-using Unity.Entities;
+using Unity.Burst;
 using Unity.Networking.Transport;
+using Unity.NetCode;
 
-public struct PlayerSpawnRequest : IComponentData
+[BurstCompile]
+public struct PlayerSpawnRequest : IRpcCommand
 {
-    public Entity connection;
-}
-public struct RpcSpawn : IRpcCommand
-{
-    public void Execute(Entity connection, EntityCommandBuffer.Concurrent commandBuffer, int jobIndex)
-    {
-        var req = commandBuffer.CreateEntity(jobIndex);
-        commandBuffer.AddComponent(jobIndex, req, new PlayerSpawnRequest {connection = connection});
-    }
-
     public void Serialize(DataStreamWriter writer)
     {
     }
@@ -20,4 +12,19 @@ public struct RpcSpawn : IRpcCommand
     public void Deserialize(DataStreamReader reader, ref DataStreamReader.Context ctx)
     {
     }
+
+    [BurstCompile]
+    private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
+    {
+        RpcExecutor.ExecuteCreateRequestComponent<PlayerSpawnRequest>(ref parameters);
+    }
+    
+    public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
+    {
+        return new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
+    }
 }
+class PlayerSpawnRequestRpcCommandRequestSystem : RpcCommandRequestSystem<PlayerSpawnRequest>
+{
+}
+

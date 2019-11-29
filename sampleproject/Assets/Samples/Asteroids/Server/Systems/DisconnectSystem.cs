@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.NetCode;
 
 namespace Asteroids.Server
 {
@@ -22,7 +23,7 @@ namespace Asteroids.Server
             }
         }
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }

@@ -1,5 +1,6 @@
 using Unity.Entities;
 
-public struct BulletTagComponentData : IComponentData
+[GenerateAuthoringComponent]
+public struct BulletTagComponent : IComponentData
 {
 }

@@ -1,13 +1,21 @@
 {
-  "name": "Asteroids.Mixed",
-  "references": [
-    "Unity.Burst",
-    "Unity.Entities",
-    "Unity.Transforms",
-    "Unity.Collections",
-    "Unity.Mathematics",
-    "Unity.Networking.Transport",
-    "Unity.NetCode"
-  ],
-  "allowUnsafeCode": true
+    "name": "Asteroids.Mixed",
+    "references": [
+        "Unity.Burst",
+        "Unity.Entities",
+        "Unity.Transforms",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Networking.Transport",
+        "Unity.NetCode"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

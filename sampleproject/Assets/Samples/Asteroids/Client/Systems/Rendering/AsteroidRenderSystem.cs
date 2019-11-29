@@ -5,7 +5,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-
+using Unity.NetCode;
 
 namespace Asteroids.Client
 {
@@ -15,8 +15,8 @@ namespace Asteroids.Client
     public class AsteroidRenderSystem : JobComponentSystem
     {
         private EntityQuery lineGroup;
-        private NativeQueue<LineRenderSystem.Line>.Concurrent lineQueue;
-        protected override void OnCreateManager()
+        private NativeQueue<LineRenderSystem.Line>.ParallelWriter lineQueue;
+        protected override void OnCreate()
         {
             lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
             lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
@@ -31,7 +31,7 @@ namespace Asteroids.Client
         [RequireComponentTag(typeof(AsteroidTagComponentData))]
         struct ChunkRenderJob : IJobForEach<Translation, Rotation>
         {
-            public NativeQueue<LineRenderSystem.Line>.Concurrent lines;
+            public NativeQueue<LineRenderSystem.Line>.ParallelWriter lines;
             public float astrLineWidth;
             public float4 astrColor;
             public float3 astrTL;
@@ -71,7 +71,7 @@ namespace Asteroids.Client
             rendJob.astrBL = new float3(-astrWidth / 2, astrHeight / 2, 0);
             rendJob.astrBR = new float3(astrWidth / 2, astrHeight / 2, 0);
 
-            pulse += pulseDelta * Time.deltaTime;
+            pulse += pulseDelta * Time.DeltaTime;
             if (pulse > pulseMax)
             {
                 pulse = pulseMax;

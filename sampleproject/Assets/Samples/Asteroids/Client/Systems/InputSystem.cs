@@ -1,16 +1,13 @@
-using System;
 using UnityEngine;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
-using Unity.Networking.Transport;
-using Unity.Networking.Transport.LowLevel.Unsafe;
+using Unity.NetCode;
 
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    [NotClientServerSystem]
+    [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
     public class InputSamplerSystem : ComponentSystem
     {
         public static int spacePresses;
@@ -24,7 +21,7 @@ namespace Asteroids.Client
 #if !UNITY_SERVER
     [UpdateAfter(typeof(TickClientSimulationSystem))]
 #endif
-    [NotClientServerSystem]
+    [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
     public class InputSamplerResetSystem : ComponentSystem
     {
         protected override void OnUpdate()
@@ -36,28 +33,28 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
     [UpdateBefore(typeof(AsteroidsCommandSendSystem))]
     // Try to sample input as late as possible
-    [UpdateAfter(typeof(GhostReceiveSystemGroup))]
+    [UpdateAfter(typeof(GhostSimulationSystemGroup))]
     public class InputSystem : JobComponentSystem
     {
-        private RpcQueue<RpcSpawn> m_RpcQueue;
-        private NetworkTimeSystem m_NetworkTimeSystem;
+        private BeginSimulationEntityCommandBufferSystem m_Barrier;
+        private GhostPredictionSystemGroup m_GhostPredict;
+        private int frameCount;
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
-            m_RpcQueue = World.GetOrCreateSystem<MultiplayerSampleRpcSystem>().GetRpcQueue<RpcSpawn>();
-            m_NetworkTimeSystem = World.GetOrCreateSystem<NetworkTimeSystem>();
+            m_GhostPredict = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
         [ExcludeComponent(typeof(NetworkStreamDisconnected))]
+        [RequireComponentTag(typeof(OutgoingRpcDataStreamBufferComponent))]
         struct PlayerInputJob : IJobForEachWithEntity<CommandTargetComponent>
         {
             public byte left;
             public byte right;
             public byte thrust;
             public byte shoot;
-            public ComponentDataFromEntity<ShipStateComponentData> shipState;
-            public RpcQueue<RpcSpawn> rpcQueue;
-            public BufferFromEntity<OutgoingRpcDataStreamBufferComponent> rpcBuffer;
+            public EntityCommandBuffer.Concurrent commandBuffer;
             public BufferFromEntity<ShipCommandData> inputFromEntity;
             public uint inputTargetTick;
             public void Execute(Entity entity, int index, [ReadOnly] ref CommandTargetComponent state)
@@ -66,15 +63,14 @@ namespace Asteroids.Client
                 {
                     if (shoot != 0)
                     {
-                        rpcQueue.Schedule(rpcBuffer[entity], new RpcSpawn());
+                        var req = commandBuffer.CreateEntity(index);
+                        commandBuffer.AddComponent<PlayerSpawnRequest>(index, req);
+                        commandBuffer.AddComponent(index, req, new SendRpcCommandRequestComponent {TargetConnection = entity});
                     }
                 }
                 else
                 {
                     // If ship, store commands in network command buffer
-                    // FIXME: when destroying the ship is in a command buffer this no longer works
-                    if (shipState.Exists(state.targetEntity)) // There might be a pending set to null
-                        shipState[state.targetEntity] = new ShipStateComponentData(thrust, true);
                     if (inputFromEntity.Exists(state.targetEntity))
                     {
                         var input = inputFromEntity[state.targetEntity];
@@ -91,11 +87,9 @@ namespace Asteroids.Client
             playerJob.right = 0;
             playerJob.thrust = 0;
             playerJob.shoot = 0;
-            playerJob.shipState = GetComponentDataFromEntity<ShipStateComponentData>();
-            playerJob.rpcQueue = m_RpcQueue;
-            playerJob.rpcBuffer = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
+            playerJob.commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
             playerJob.inputFromEntity = GetBufferFromEntity<ShipCommandData>();
-            playerJob.inputTargetTick = m_NetworkTimeSystem.predictTargetTick;
+            playerJob.inputTargetTick = m_GhostPredict.PredictingTick;
 
             if (World.GetExistingSystem<ClientPresentationSystemGroup>().Enabled)
             {
@@ -111,18 +105,23 @@ namespace Asteroids.Client
             }
             else
             {
-                var topGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
                 // Spawn and generate some random inputs
-                var state = (int) topGroup.UpdateTime % 3;
+                var state = (int) Time.ElapsedTime % 3;
                 if (state == 0)
                     playerJob.left = 1;
                 else
                     playerJob.thrust = 1;
-                if (Time.frameCount % 100 == 0)
+                ++frameCount;
+                if (frameCount % 100 == 0)
+                {
                     playerJob.shoot = 1;
+                    frameCount = 0;
+                }
             }
 
-            return playerJob.ScheduleSingle(this, inputDeps);
+            var handle = playerJob.ScheduleSingle(this, inputDeps);
+            m_Barrier.AddJobHandleForProducer(handle);
+            return handle;
         }
     }
 }

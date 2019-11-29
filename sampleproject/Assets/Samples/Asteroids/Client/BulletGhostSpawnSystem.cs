@@ -3,17 +3,10 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Transforms;
+using Unity.NetCode;
 
 public partial class BulletGhostSpawnSystem
 {
-    private EntityQuery m_PlayerGroup;
-    protected override void OnCreateManager()
-    {
-        base.OnCreateManager();
-        m_PlayerGroup = GetEntityQuery(ComponentType.ReadOnly<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
-    }
-
     protected override JobHandle MarkPredictedGhosts(NativeArray<BulletSnapshotData> snapshots, NativeArray<int> predictedMask, NativeList<PredictSpawnGhost> predictionSpawnGhosts, JobHandle inputDeps)
     {
         JobHandle playerHandle;
@@ -33,7 +26,7 @@ public partial class BulletGhostSpawnSystem
         [ReadOnly] public NativeArray<BulletSnapshotData> snapshot;
         public NativeArray<int> predictedMask;
         [ReadOnly] public NativeList<PredictSpawnGhost> predictionSpawnGhosts;
-        [DeallocateOnJobCompletion] public NativeArray<NetworkIdComponent> playerIds;
+        [ReadOnly][DeallocateOnJobCompletion] public NativeArray<NetworkIdComponent> playerIds;
         public void Execute(int i)
         {
             bool selfSpawn = playerIds.Length > 0 && (snapshot[i].GetPlayerIdComponentDataPlayerId() == playerIds[0].Value);
@@ -82,7 +75,7 @@ public partial class BulletGhostSpawnSystem
             entities = entities,
             snapshotFromEntity = GetBufferFromEntity<BulletSnapshotData>(),
             velocityFromEntity = GetComponentDataFromEntity<Velocity>(),
-            bulletVelocity = GetSingleton<ClientSettings>().bulletVelocity
+            bulletVelocity = GetSingleton<LevelComponent>().bulletVelocity
         };
         return job.Schedule(entities.Length, 8, inputDeps);
     }

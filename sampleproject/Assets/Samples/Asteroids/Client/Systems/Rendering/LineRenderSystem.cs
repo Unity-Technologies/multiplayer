@@ -6,7 +6,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine.Rendering;
 using Unity.Jobs;
-
+using Unity.NetCode;
 
 namespace Asteroids.Client
 {
@@ -19,7 +19,7 @@ namespace Asteroids.Client
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class LineRenderSystem : JobComponentSystem
     {
-        public NativeQueue<Line>.Concurrent LineQueue => m_ConcurrentLineQueue;
+        public NativeQueue<Line>.ParallelWriter LineQueue => m_ConcurrentLineQueue;
         public struct Line
         {
             public Line(float2 start, float2 end, float4 color, float width)
@@ -41,7 +41,7 @@ namespace Asteroids.Client
 
         private NativeList<Line> m_LineList;
         private NativeQueue<Line> m_LineQueue;
-        private NativeQueue<Line>.Concurrent m_ConcurrentLineQueue;
+        private NativeQueue<Line>.ParallelWriter m_ConcurrentLineQueue;
         private NativeArray<float2> m_RenderOffset;
 
         // Rendering resources
@@ -131,13 +131,13 @@ namespace Asteroids.Client
             copyToListJob.list = m_LineList;
             copyToListJob.queue = m_LineQueue;
             copyToListJob.renderOffset = m_RenderOffset;
-            copyToListJob.deltaTime = Time.deltaTime;
+            copyToListJob.deltaTime = Time.DeltaTime;
             copyToListJob.level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle);
 
             return copyToListJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));
         }
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
             var shader = Shader.Find("LineRenderer");
             if (shader == null)
@@ -153,7 +153,7 @@ namespace Asteroids.Client
 
             m_LineList = new NativeList<Line>(MaxLines, Allocator.Persistent);
             m_LineQueue = new NativeQueue<Line>(Allocator.Persistent);
-            m_ConcurrentLineQueue = m_LineQueue.ToConcurrent();
+            m_ConcurrentLineQueue = m_LineQueue.AsParallelWriter();
 
             // Fake singleton entity
             m_SingletonEntity = EntityManager.CreateEntity();
@@ -167,7 +167,7 @@ namespace Asteroids.Client
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
         }
 
-        protected override void OnDestroyManager()
+        protected override void OnDestroy()
         {
             m_RenderOffset.Dispose();
             EntityManager.DestroyEntity(m_SingletonEntity);

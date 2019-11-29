@@ -28,7 +28,7 @@ public class PingDriverSystem : JobComponentSystem
     private EntityQuery m_DestroyedDriverGroup;
     private EntityQuery m_ServerConnectionGroup;
 
-    protected override void OnCreateManager()
+    protected override void OnCreate()
     {
         m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         m_NewDriverGroup = GetEntityQuery(ComponentType.ReadOnly<PingDriverComponentData>(),
@@ -38,7 +38,7 @@ public class PingDriverSystem : JobComponentSystem
         m_ServerConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
     }
 
-    protected override void OnDestroyManager()
+    protected override void OnDestroy()
     {
         // Destroy NetworkDrivers if the manager is destroyed with live entities
         if (ServerDriver.IsCreated)

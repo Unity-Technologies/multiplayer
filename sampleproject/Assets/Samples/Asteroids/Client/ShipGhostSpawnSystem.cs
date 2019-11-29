@@ -1,17 +1,15 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
-using Unity.Transforms;
+using Unity.NetCode;
 
 public partial class ShipGhostSpawnSystem
 {
-    private EntityQuery m_PlayerGroup;
     private EntityQuery m_DestroyGroup;
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
-    protected override void OnCreateManager()
+    protected override void OnCreate()
     {
-        base.OnCreateManager();
-        m_PlayerGroup = GetEntityQuery(ComponentType.ReadOnly<PlayerStateComponentData>(), ComponentType.ReadOnly<NetworkIdComponent>());
+        base.OnCreate();
         m_DestroyGroup = GetEntityQuery(ComponentType.ReadWrite<GhostShipState>(),
             ComponentType.Exclude<ShipSnapshotData>());
 
@@ -37,16 +35,6 @@ public partial class ShipGhostSpawnSystem
         };
         return job.Schedule(entities.Length, 8, inputDeps);
     }
-    protected override JobHandle MarkPredictedGhosts(NativeArray<ShipSnapshotData> snapshots, NativeArray<int> predictedMask, NativeList<PredictSpawnGhost> predictionSpawnGhosts, JobHandle inputDeps)
-    {
-        var job = new MarkPredictedJob
-        {
-            snapshot = snapshots,
-            predictedMask = predictedMask,
-            playerIds = m_PlayerGroup.ToComponentDataArray<NetworkIdComponent>(Allocator.TempJob)
-        };
-        return job.Schedule(predictedMask.Length, 8, inputDeps);
-    }
 
     struct SetPlayerStateJob : IJobParallelFor
     {
@@ -70,7 +58,6 @@ public partial class ShipGhostSpawnSystem
             {
                 shipStateFromEntity[entities[i]] = new ShipStateComponentData
                 {
-                    IsLocalPlayer = 1,
                     State = 0
                 };
                 var state = commandTargetFromEntity[playerEntities[0]];
@@ -78,20 +65,6 @@ public partial class ShipGhostSpawnSystem
                 commandTargetFromEntity[playerEntities[0]] = state;
             }
             commandBuffer.AddComponent(i, entities[i], new GhostShipState());
-        }
-    }
-    struct MarkPredictedJob : IJobParallelFor
-    {
-        [ReadOnly] public NativeArray<ShipSnapshotData> snapshot;
-        public NativeArray<int> predictedMask;
-        [DeallocateOnJobCompletion] public NativeArray<NetworkIdComponent> playerIds;
-        public void Execute(int i)
-        {
-            bool selfSpawn = playerIds.Length > 0 && (snapshot[i].GetPlayerIdComponentDataPlayerId() == playerIds[0].Value);
-            if (selfSpawn)
-            {
-                predictedMask[i] = 1;
-            }
         }
     }
 
