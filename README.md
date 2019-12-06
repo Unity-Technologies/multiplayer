@@ -5,7 +5,7 @@ Welcome to the Unity Real-time Multiplayer Alpha repository!
 Here you can find all the resources you need to start prototyping
 your own real-time multiplayer games.
 
-[NetCode Manual](https://docs.unity3d.com/Packages/com.unity.netcode@0.0)
+[NetCode Manual - Table Of Contents](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/manual/TableOfContents.html)
 
 [Transport Manual - Table Of Contents](https://docs.unity3d.com/Packages/com.unity.transport@0.2/manual/TableOfContents.html)
 

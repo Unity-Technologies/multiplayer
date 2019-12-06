@@ -1,3 +1,9 @@
+# 2019-12-06
+## Changes
+* Upgraded Unity NetCode to 0.0.3, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.2.2, see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.2/changelog/CHANGELOG.html)
+* Upgraded Entities to 0.3.0
+
 # 2019-11-29
 ## New features
 * Unity Transport is a package, see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.2/changelog/CHANGELOG.html) for details.
