@@ -49,7 +49,7 @@ namespace Asteroids.Client
         ComputeBuffer m_ComputeBuffer;
         CommandBuffer m_CommandBuffer;
 
-        const int MaxLines = 1024 * 1024;
+        const int MaxLines = 10 * 1024;
 
         [BurstCompile]
         struct CopyToListJob : IJobForEach<LineRendererComponentData>
@@ -60,6 +60,7 @@ namespace Asteroids.Client
 
             public NativeArray<float2> renderOffset;
             public float deltaTime;
+            public float2 renderSize;
 
             public void Execute(ref LineRendererComponentData lineData)
             {
@@ -72,10 +73,6 @@ namespace Asteroids.Client
                     list.Add(new Line(new float2(level[0].width, 0), new float2(level[0].width, level[0].height),
                         new float4(1, 0, 0, 1), 5));
                 }
-
-                Line line;
-                while (queue.TryDequeue(out line))
-                    list.Add(line);
 
                 var offset = renderOffset[0];
                 var target = lineData.targetOffset;
@@ -96,6 +93,17 @@ namespace Asteroids.Client
                     }
 
                     renderOffset[0] = offset;
+                }
+
+                Line line;
+                while (queue.TryDequeue(out line))
+                {
+                    if ((line.start.x < offset.x-line.width && line.end.x < offset.x-line.width) ||
+                        (line.start.x > offset.x+renderSize.x+line.width && line.end.x > offset.x+renderSize.x+line.width) ||
+                        (line.start.y < offset.y-line.width && line.end.y < offset.y-line.width) ||
+                        (line.start.y > offset.y+renderSize.y+line.width && line.end.y > offset.y+renderSize.y+line.width))
+                        continue;
+                    list.Add(line);
                 }
             }
         }
@@ -131,6 +139,7 @@ namespace Asteroids.Client
             copyToListJob.list = m_LineList;
             copyToListJob.queue = m_LineQueue;
             copyToListJob.renderOffset = m_RenderOffset;
+            copyToListJob.renderSize = new float2(Screen.width, Screen.height);
             copyToListJob.deltaTime = Time.DeltaTime;
             copyToListJob.level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle);
 

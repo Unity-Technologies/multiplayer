@@ -1,3 +1,9 @@
+# 2019-12-17
+## Changes
+* Upgraded Unity NetCode to 0.0.4, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.2.3, see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.2/changelog/CHANGELOG.html)
+* Reduced maximum number of lines rendered in asteroids and added simple culling.
+
 # 2019-12-06
 ## Changes
 * Upgraded Unity NetCode to 0.0.3, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/changelog/CHANGELOG.html)
