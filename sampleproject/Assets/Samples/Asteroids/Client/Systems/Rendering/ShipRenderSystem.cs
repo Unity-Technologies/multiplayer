@@ -104,7 +104,7 @@ namespace Asteroids.Client
             trackJob.shipPosition = GetComponentDataFromEntity<Translation>(true);
             trackJob.screenWidth = Screen.width;
             trackJob.screenHeight = Screen.height;
-            trackJob.level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle);
+            trackJob.level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
             trackJob.teleport = teleport;
             return trackJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));
         }

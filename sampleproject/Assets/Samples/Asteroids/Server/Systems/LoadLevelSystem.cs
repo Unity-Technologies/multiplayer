@@ -62,7 +62,7 @@ namespace Asteroids.Server
             var job = new RequestLoadJob
             {
                 commandBuffer = m_Barrier.CreateCommandBuffer(),
-                level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelDep)
+                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelDep)
             };
             var handle = job.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelDep));
             m_Barrier.AddJobHandleForProducer(handle);

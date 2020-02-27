@@ -10,20 +10,20 @@ public struct LevelLoadRequest : IRpcCommand
     public float playerForce;
     public float bulletVelocity;
 
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
-        writer.Write(width);
-        writer.Write(height);
-        writer.Write(playerForce);
-        writer.Write(bulletVelocity);
+        writer.WriteInt(width);
+        writer.WriteInt(height);
+        writer.WriteFloat(playerForce);
+        writer.WriteFloat(bulletVelocity);
     }
 
-    public void Deserialize(DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(ref DataStreamReader reader)
     {
-        width = reader.ReadInt(ref ctx);
-        height = reader.ReadInt(ref ctx);
-        playerForce = reader.ReadFloat(ref ctx);
-        bulletVelocity = reader.ReadFloat(ref ctx);
+        width = reader.ReadInt();
+        height = reader.ReadInt();
+        playerForce = reader.ReadFloat();
+        bulletVelocity = reader.ReadFloat();
     }
     [BurstCompile]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
@@ -31,9 +31,11 @@ public struct LevelLoadRequest : IRpcCommand
         RpcExecutor.ExecuteCreateRequestComponent<LevelLoadRequest>(ref parameters);
     }
 
+    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
+        new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
     public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
     {
-        return new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
+        return InvokeExecuteFunctionPointer;
     }
 }
 class LevelLoadRequestRpcCommandRequestSystem : RpcCommandRequestSystem<LevelLoadRequest>
@@ -43,11 +45,11 @@ class LevelLoadRequestRpcCommandRequestSystem : RpcCommandRequestSystem<LevelLoa
 [BurstCompile]
 public struct RpcLevelLoaded : IRpcCommand
 {
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
     }
 
-    public void Deserialize(DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(ref DataStreamReader reader)
     {
     }
 
@@ -55,16 +57,18 @@ public struct RpcLevelLoaded : IRpcCommand
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         var rpcData = default(RpcLevelLoaded);
-        rpcData.Deserialize(parameters.Reader, ref parameters.ReaderContext);
+        rpcData.Deserialize(ref parameters.Reader);
 
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, new PlayerStateComponentData());
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, default(NetworkStreamInGame));
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, default(GhostConnectionPosition));
     }
 
+    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
+        new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
     public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
     {
-        return new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
+        return InvokeExecuteFunctionPointer;
     }
 }
 class LevelLoadedRpcCommandRequestSystem : RpcCommandRequestSystem<RpcLevelLoaded>

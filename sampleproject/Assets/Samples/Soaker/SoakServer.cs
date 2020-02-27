@@ -7,8 +7,9 @@ using Unity.Networking.Transport.Utilities;
 
 public class SoakServer : IDisposable
 {
-    private UdpNetworkDriver m_ServerDriver;
+    private NetworkDriver m_ServerDriver;
     private NetworkPipeline m_Pipeline;
+    private NetworkPipelineStageId m_ReliableStageId;
     private int m_Tick;
     private double m_NextStatsPrint;
 
@@ -20,9 +21,10 @@ public class SoakServer : IDisposable
     public void Start()
     {
         m_Connections = new NativeList<SoakClientCtx>(1, Allocator.Persistent);
-        m_ServerDriver = new UdpNetworkDriver(new ReliableUtility.Parameters { WindowSize = 32 });
+        m_ServerDriver = NetworkDriver.Create(new ReliableUtility.Parameters { WindowSize = 32 });
         //m_Pipeline = m_ServerDriver.CreatePipeline(typeof(UnreliableSequencedPipelineStage));
         m_Pipeline = m_ServerDriver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
+        m_ReliableStageId = NetworkPipelineStageCollection.GetStageId(typeof(ReliableSequencedPipelineStage));
         var addr = NetworkEndPoint.AnyIpv4;
         addr.Port = 9000;
         if (m_ServerDriver.Bind(addr) != 0)
@@ -78,7 +80,7 @@ public class SoakServer : IDisposable
         for (int i = 0; i < m_Connections.Length; i++)
         {
             Debug.Log("Server dumping stats for client " + i);
-            Util.DumpReliabilityStatistics(m_ServerDriver, m_Pipeline, m_Connections[i].Connection);
+            Util.DumpReliabilityStatistics(m_ServerDriver, m_Pipeline, m_ReliableStageId, m_Connections[i].Connection);
         }
     }
 }

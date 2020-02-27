@@ -218,24 +218,24 @@ namespace Asteroids.Server
             var asteroidJob = new DestroyAsteroidJob
             {
                 commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
-                bulletChunks = bulletGroup.CreateArchetypeChunkArray(Allocator.TempJob, out bulletHandle),
+                bulletChunks = bulletGroup.CreateArchetypeChunkArrayAsync(Allocator.TempJob, out bulletHandle),
                 bulletAgeType = GetArchetypeChunkComponentType<BulletAgeComponent>(true),
                 positionType = GetArchetypeChunkComponentType<Translation>(true),
                 sphereType = GetArchetypeChunkComponentType<CollisionSphereComponent>(true),
                 entityType = GetArchetypeChunkEntityType(),
-                level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle)
+                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle)
             };
             var shipJob = new DestroyShipJob
             {
                 commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
-                asteroidChunks = asteroidGroup.CreateArchetypeChunkArray(Allocator.TempJob, out asteroidHandle),
+                asteroidChunks = asteroidGroup.CreateArchetypeChunkArrayAsync(Allocator.TempJob, out asteroidHandle),
                 bulletChunks = asteroidJob.bulletChunks,
                 bulletAgeType = asteroidJob.bulletAgeType,
                 positionType = asteroidJob.positionType,
                 sphereType = asteroidJob.sphereType,
                 playerIdType = GetArchetypeChunkComponentType<PlayerIdComponentData>(),
                 entityType = asteroidJob.entityType,
-                serverSettings = settingsGroup.ToComponentDataArray<ServerSettings>(Allocator.TempJob, out settingsHandle),
+                serverSettings = settingsGroup.ToComponentDataArrayAsync<ServerSettings>(Allocator.TempJob, out settingsHandle),
                 playerClearQueue = playerClearQueue.AsParallelWriter(),
                 level = asteroidJob.level
             };

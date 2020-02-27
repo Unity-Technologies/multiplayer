@@ -5,11 +5,11 @@ using Unity.NetCode;
 [BurstCompile]
 public struct PlayerSpawnRequest : IRpcCommand
 {
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
     }
 
-    public void Deserialize(DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(ref DataStreamReader reader)
     {
     }
 
@@ -18,10 +18,12 @@ public struct PlayerSpawnRequest : IRpcCommand
     {
         RpcExecutor.ExecuteCreateRequestComponent<PlayerSpawnRequest>(ref parameters);
     }
-    
+
+    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
+        new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
     public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
     {
-        return new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
+        return InvokeExecuteFunctionPointer;
     }
 }
 class PlayerSpawnRequestRpcCommandRequestSystem : RpcCommandRequestSystem<PlayerSpawnRequest>

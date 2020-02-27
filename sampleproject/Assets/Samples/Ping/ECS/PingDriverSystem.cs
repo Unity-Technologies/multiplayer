@@ -18,10 +18,10 @@ public struct PingDriverStateComponent : ISystemStateComponentData
 [AlwaysUpdateSystem]
 public class PingDriverSystem : JobComponentSystem
 {
-    public UdpNetworkDriver ServerDriver { get; private set; }
-    public UdpNetworkDriver ClientDriver { get; private set; }
-    public UdpNetworkDriver.Concurrent ConcurrentServerDriver { get; private set; }
-    public UdpNetworkDriver.Concurrent ConcurrentClientDriver { get; private set; }
+    public NetworkDriver ServerDriver { get; private set; }
+    public NetworkDriver ClientDriver { get; private set; }
+    public NetworkDriver.Concurrent ConcurrentServerDriver { get; private set; }
+    public NetworkDriver.Concurrent ConcurrentClientDriver { get; private set; }
 
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     private EntityQuery m_NewDriverGroup;
@@ -51,7 +51,7 @@ public class PingDriverSystem : JobComponentSystem
     //[BurstCompile]
     struct DriverAcceptJob : IJob
     {
-        public UdpNetworkDriver driver;
+        public NetworkDriver driver;
         public EntityCommandBuffer commandBuffer;
 
         public void Execute()
@@ -123,7 +123,7 @@ public class PingDriverSystem : JobComponentSystem
                 {
                     if (ServerDriver.IsCreated)
                         throw new InvalidOperationException("Cannot create multiple server drivers");
-                    var drv = new UdpNetworkDriver(new INetworkParameter[0]);
+                    var drv = NetworkDriver.Create();
                     var addr = NetworkEndPoint.AnyIpv4;
                     addr.Port = 9000;
                     if (drv.Bind(addr) != 0)
@@ -137,7 +137,7 @@ public class PingDriverSystem : JobComponentSystem
                 {
                     if (ClientDriver.IsCreated)
                         throw new InvalidOperationException("Cannot create multiple client drivers");
-                    ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+                    ClientDriver = NetworkDriver.Create();
                     ConcurrentClientDriver = ClientDriver.ToConcurrent();
                 }
 

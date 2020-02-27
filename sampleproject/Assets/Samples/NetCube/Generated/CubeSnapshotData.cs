@@ -83,7 +83,7 @@ public struct CubeSnapshotData : ISnapshotData<CubeSnapshotData>
         TranslationValueZ = predictor.PredictInt(TranslationValueZ, baseline1.TranslationValueZ, baseline2.TranslationValueZ);
     }
 
-    public void Serialize(int networkId, ref CubeSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
+    public void Serialize(int networkId, ref CubeSnapshotData baseline, ref DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
         changeMask0 = (MovableCubeComponentPlayerId != baseline.MovableCubeComponentPlayerId) ? 1u : 0;
         changeMask0 |= (RotationValueX != baseline.RotationValueX ||
@@ -111,21 +111,21 @@ public struct CubeSnapshotData : ISnapshotData<CubeSnapshotData>
         }
     }
 
-    public void Deserialize(uint tick, ref CubeSnapshotData baseline, DataStreamReader reader, ref DataStreamReader.Context ctx,
+    public void Deserialize(uint tick, ref CubeSnapshotData baseline, ref DataStreamReader reader,
         NetworkCompressionModel compressionModel)
     {
         this.tick = tick;
-        changeMask0 = reader.ReadPackedUIntDelta(ref ctx, baseline.changeMask0, compressionModel);
+        changeMask0 = reader.ReadPackedUIntDelta(baseline.changeMask0, compressionModel);
         if ((changeMask0 & (1 << 0)) != 0)
-            MovableCubeComponentPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.MovableCubeComponentPlayerId, compressionModel);
+            MovableCubeComponentPlayerId = reader.ReadPackedIntDelta(baseline.MovableCubeComponentPlayerId, compressionModel);
         else
             MovableCubeComponentPlayerId = baseline.MovableCubeComponentPlayerId;
         if ((changeMask0 & (1 << 1)) != 0)
         {
-            RotationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValueX, compressionModel);
-            RotationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValueY, compressionModel);
-            RotationValueZ = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValueZ, compressionModel);
-            RotationValueW = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValueW, compressionModel);
+            RotationValueX = reader.ReadPackedIntDelta(baseline.RotationValueX, compressionModel);
+            RotationValueY = reader.ReadPackedIntDelta(baseline.RotationValueY, compressionModel);
+            RotationValueZ = reader.ReadPackedIntDelta(baseline.RotationValueZ, compressionModel);
+            RotationValueW = reader.ReadPackedIntDelta(baseline.RotationValueW, compressionModel);
         }
         else
         {
@@ -136,9 +136,9 @@ public struct CubeSnapshotData : ISnapshotData<CubeSnapshotData>
         }
         if ((changeMask0 & (1 << 2)) != 0)
         {
-            TranslationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueX, compressionModel);
-            TranslationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueY, compressionModel);
-            TranslationValueZ = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueZ, compressionModel);
+            TranslationValueX = reader.ReadPackedIntDelta(baseline.TranslationValueX, compressionModel);
+            TranslationValueY = reader.ReadPackedIntDelta(baseline.TranslationValueY, compressionModel);
+            TranslationValueZ = reader.ReadPackedIntDelta(baseline.TranslationValueZ, compressionModel);
         }
         else
         {

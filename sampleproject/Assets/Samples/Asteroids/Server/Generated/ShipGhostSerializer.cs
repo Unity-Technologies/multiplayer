@@ -27,8 +27,6 @@ public struct ShipGhostSerializer : IGhostSerializer<ShipSnapshotData>
         return 200;
     }
 
-    public bool WantsPredictionDelta => true;
-
     public int SnapshotSize => UnsafeUtility.SizeOf<ShipSnapshotData>();
     public void BeginSerialize(ComponentSystemBase system)
     {
@@ -45,32 +43,6 @@ public struct ShipGhostSerializer : IGhostSerializer<ShipSnapshotData>
         ghostRotationType = system.GetArchetypeChunkComponentType<Rotation>(true);
         ghostTranslationType = system.GetArchetypeChunkComponentType<Translation>(true);
         ghostVelocityType = system.GetArchetypeChunkComponentType<Velocity>(true);
-    }
-
-    public bool CanSerialize(EntityArchetype arch)
-    {
-        var components = arch.GetComponentTypes();
-        int matches = 0;
-        for (int i = 0; i < components.Length; ++i)
-        {
-            if (components[i] == componentTypeCollisionSphereComponent)
-                ++matches;
-            if (components[i] == componentTypePlayerIdComponentData)
-                ++matches;
-            if (components[i] == componentTypeShipCommandData)
-                ++matches;
-            if (components[i] == componentTypeShipStateComponentData)
-                ++matches;
-            if (components[i] == componentTypeShipTagComponentData)
-                ++matches;
-            if (components[i] == componentTypeRotation)
-                ++matches;
-            if (components[i] == componentTypeTranslation)
-                ++matches;
-            if (components[i] == componentTypeVelocity)
-                ++matches;
-        }
-        return (matches == 8);
     }
 
     public void CopyToSnapshot(ArchetypeChunk chunk, int ent, uint tick, ref ShipSnapshotData snapshot, GhostSerializerState serializerState)

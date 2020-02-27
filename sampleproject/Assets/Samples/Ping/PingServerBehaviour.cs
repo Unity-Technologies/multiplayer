@@ -6,7 +6,7 @@ using Unity.Jobs;
 
 public class PingServerBehaviour : MonoBehaviour
 {
-    public UdpNetworkDriver m_ServerDriver;
+    public NetworkDriver m_ServerDriver;
     private NativeList<NetworkConnection> m_connections;
 
     private JobHandle m_updateHandle;
@@ -15,7 +15,7 @@ public class PingServerBehaviour : MonoBehaviour
     {
         ushort serverPort = 9000;
         // Create the server driver, bind it to a port and start listening for incoming connections
-        m_ServerDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+        m_ServerDriver = NetworkDriver.Create();
         var addr = NetworkEndPoint.AnyIpv4;
         addr.Port = serverPort;
         if (m_ServerDriver.Bind(addr) != 0)
@@ -37,7 +37,7 @@ public class PingServerBehaviour : MonoBehaviour
     [BurstCompile]
     struct DriverUpdateJob : IJob
     {
-        public UdpNetworkDriver driver;
+        public NetworkDriver driver;
         public NativeList<NetworkConnection> connections;
 
         public void Execute()
@@ -65,7 +65,7 @@ public class PingServerBehaviour : MonoBehaviour
         }
     }
 
-    static NetworkConnection ProcessSingleConnection(UdpNetworkDriver.Concurrent driver, NetworkConnection connection)
+    static NetworkConnection ProcessSingleConnection(NetworkDriver.Concurrent driver, NetworkConnection connection)
     {
         DataStreamReader strm;
         NetworkEvent.Type cmd;
@@ -75,15 +75,12 @@ public class PingServerBehaviour : MonoBehaviour
             if (cmd == NetworkEvent.Type.Data)
             {
                 // For ping requests we reply with a pong message
-                // A DataStreamReader.Context is required to keep track of current read position since
-                // DataStreamReader is immutable
-                var readerCtx = default(DataStreamReader.Context);
-                int id = strm.ReadInt(ref readerCtx);
+                int id = strm.ReadInt();
                 // Create a temporary DataStreamWriter to keep our serialized pong message
-                var pongData = new DataStreamWriter(4, Allocator.Temp);
-                pongData.Write(id);
+                var pongData = driver.BeginSend(connection);
+                pongData.WriteInt(id);
                 // Send the pong message with the same id as the ping
-                driver.Send(NetworkPipeline.Null, connection, pongData);
+                driver.EndSend(pongData);
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {
@@ -99,7 +96,7 @@ public class PingServerBehaviour : MonoBehaviour
     [BurstCompile]
     struct PongJob : IJob
     {
-        public UdpNetworkDriver.Concurrent driver;
+        public NetworkDriver.Concurrent driver;
         public NativeList<NetworkConnection> connections;
 
         public void Execute()
@@ -112,7 +109,7 @@ public class PingServerBehaviour : MonoBehaviour
     [BurstCompile]
     struct PongJob : IJobParallelForDefer
     {
-        public UdpNetworkDriver.Concurrent driver;
+        public NetworkDriver.Concurrent driver;
         public NativeArray<NetworkConnection> connections;
 
         public void Execute(int i)

@@ -21,8 +21,6 @@ public struct CubeGhostSerializer : IGhostSerializer<CubeSnapshotData>
         return 1;
     }
 
-    public bool WantsPredictionDelta => true;
-
     public int SnapshotSize => UnsafeUtility.SizeOf<CubeSnapshotData>();
     public void BeginSerialize(ComponentSystemBase system)
     {
@@ -33,24 +31,6 @@ public struct CubeGhostSerializer : IGhostSerializer<CubeSnapshotData>
         ghostMovableCubeComponentType = system.GetArchetypeChunkComponentType<MovableCubeComponent>(true);
         ghostRotationType = system.GetArchetypeChunkComponentType<Rotation>(true);
         ghostTranslationType = system.GetArchetypeChunkComponentType<Translation>(true);
-    }
-
-    public bool CanSerialize(EntityArchetype arch)
-    {
-        var components = arch.GetComponentTypes();
-        int matches = 0;
-        for (int i = 0; i < components.Length; ++i)
-        {
-            if (components[i] == componentTypeMovableCubeComponent)
-                ++matches;
-            if (components[i] == componentTypeLocalToWorld)
-                ++matches;
-            if (components[i] == componentTypeRotation)
-                ++matches;
-            if (components[i] == componentTypeTranslation)
-                ++matches;
-        }
-        return (matches == 4);
     }
 
     public void CopyToSnapshot(ArchetypeChunk chunk, int ent, uint tick, ref CubeSnapshotData snapshot, GhostSerializerState serializerState)

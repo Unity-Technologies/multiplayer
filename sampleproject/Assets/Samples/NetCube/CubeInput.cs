@@ -24,28 +24,28 @@ public struct CubeInput : ICommandData<CubeInput>
     public int horizontal;
     public int vertical;
 
-    public void Deserialize(uint tick, DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(uint tick, ref DataStreamReader reader)
     {
         this.tick = tick;
-        horizontal = reader.ReadInt(ref ctx);
-        vertical = reader.ReadInt(ref ctx);
+        horizontal = reader.ReadInt();
+        vertical = reader.ReadInt();
     }
 
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
-        writer.Write(horizontal);
-        writer.Write(vertical);
+        writer.WriteInt(horizontal);
+        writer.WriteInt(vertical);
     }
 
-    public void Deserialize(uint tick, DataStreamReader reader, ref DataStreamReader.Context ctx, CubeInput baseline,
+    public void Deserialize(uint tick, ref DataStreamReader reader, CubeInput baseline,
         NetworkCompressionModel compressionModel)
     {
-        Deserialize(tick, reader, ref ctx);
+        Deserialize(tick, ref reader);
     }
 
-    public void Serialize(DataStreamWriter writer, CubeInput baseline, NetworkCompressionModel compressionModel)
+    public void Serialize(ref DataStreamWriter writer, CubeInput baseline, NetworkCompressionModel compressionModel)
     {
-        Serialize(writer);
+        Serialize(ref writer);
     }
 }
 

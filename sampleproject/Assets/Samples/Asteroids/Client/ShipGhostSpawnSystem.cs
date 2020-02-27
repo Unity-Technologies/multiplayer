@@ -107,7 +107,7 @@ public partial class ShipGhostSpawnSystem
         var entityType = GetArchetypeChunkEntityType();
 
         JobHandle playerHandle;
-        var playerEntity = m_PlayerGroup.ToEntityArray(Allocator.TempJob, out playerHandle);
+        var playerEntity = m_PlayerGroup.ToEntityArrayAsync(Allocator.TempJob, out playerHandle);
 
         var destroyJob = new DestroyJob
         {

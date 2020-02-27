@@ -12,7 +12,7 @@ public class PingServerSystem : JobComponentSystem
     [BurstCompile]
     struct PongJob : IJobForEach<PingServerConnectionComponentData>
     {
-        public UdpNetworkDriver.Concurrent driver;
+        public NetworkDriver.Concurrent driver;
 
         public void Execute(ref PingServerConnectionComponentData connection)
         {
@@ -22,11 +22,10 @@ public class PingServerSystem : JobComponentSystem
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
-                    var readerCtx = default(DataStreamReader.Context);
-                    int id = strm.ReadInt(ref readerCtx);
-                    var pongData = new DataStreamWriter(4, Allocator.Temp);
-                    pongData.Write(id);
-                    driver.Send(NetworkPipeline.Null, connection.connection, pongData);
+                    int id = strm.ReadInt();
+                    var pongData = driver.BeginSend(connection.connection);
+                    pongData.WriteInt(id);
+                    driver.EndSend(pongData);
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {

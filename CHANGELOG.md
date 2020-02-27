@@ -1,3 +1,9 @@
+# 2020-02-24
+## Changes
+* Upgraded Unity NetCode to 0.1.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.1/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.3.0, see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.3/changelog/CHANGELOG.html)
+* Added new sample demonstrating lag compensation.
+
 # 2019-12-17
 ## Changes
 * Upgraded Unity NetCode to 0.0.4, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/changelog/CHANGELOG.html)

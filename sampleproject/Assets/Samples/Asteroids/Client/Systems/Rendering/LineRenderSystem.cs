@@ -141,7 +141,7 @@ namespace Asteroids.Client
             copyToListJob.renderOffset = m_RenderOffset;
             copyToListJob.renderSize = new float2(Screen.width, Screen.height);
             copyToListJob.deltaTime = Time.DeltaTime;
-            copyToListJob.level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle);
+            copyToListJob.level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
 
             return copyToListJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));
         }

@@ -176,7 +176,7 @@ public class SoakStatisticsReporter
         chartData.Append("['Time Elapsed'");
         for (int i = 0; i < columns - 1; i++)
         {
-            chartData.Append(", '" + clientInfos[i] + "'");
+            chartData.Append(", '" + clientInfos[i].ToString(CultureInfo.InvariantCulture) + "'");
         }
 
         chartData.Append("],\n");

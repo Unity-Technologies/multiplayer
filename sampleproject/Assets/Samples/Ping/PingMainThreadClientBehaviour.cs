@@ -10,7 +10,7 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
         public float time;
     }
 
-    private UdpNetworkDriver m_ClientDriver;
+    private NetworkDriver m_ClientDriver;
     private NetworkConnection m_clientToServerConnection;
     // pendingPing is a ping sent to the server which have not yet received a response.
     private PendingPing m_pendingPing;
@@ -22,7 +22,7 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
     {
         // Create a NetworkDriver for the client. We could bind to a specific address but in this case we rely on the
         // implicit bind since we do not need to bing to anything special
-        m_ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+        m_ClientDriver = NetworkDriver.Create();
     }
 
     void OnDestroy()
@@ -60,9 +60,9 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
                 // Set the ping id to a sequence number for the new ping we are about to send
                 m_pendingPing = new PendingPing {id = m_numPingsSent, time = Time.fixedTime};
                 // Create a 4 byte data stream which we can store our ping sequence number in
-                var pingData = new DataStreamWriter(4, Allocator.Temp);
-                pingData.Write(m_numPingsSent);
-                m_clientToServerConnection.Send(m_ClientDriver, pingData);
+                var pingData = m_ClientDriver.BeginSend(m_clientToServerConnection);
+                pingData.WriteInt(m_numPingsSent);
+                m_ClientDriver.EndSend(pingData);
                 // Update the number of sent pings
                 ++m_numPingsSent;
             }

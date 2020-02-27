@@ -31,26 +31,25 @@ public struct NetCubeGhostDeserializerCollection : IGhostDeserializerCollection
         m_CubeSnapshotDataFromEntity = system.GetBufferFromEntity<CubeSnapshotData>();
     }
     public bool Deserialize(int serializer, Entity entity, uint snapshot, uint baseline, uint baseline2, uint baseline3,
-        DataStreamReader reader,
-        ref DataStreamReader.Context ctx, NetworkCompressionModel compressionModel)
+        ref DataStreamReader reader, NetworkCompressionModel compressionModel)
     {
         switch (serializer)
         {
             case 0:
                 return GhostReceiveSystem<NetCubeGhostDeserializerCollection>.InvokeDeserialize(m_CubeSnapshotDataFromEntity, entity, snapshot, baseline, baseline2,
-                baseline3, reader, ref ctx, compressionModel);
+                baseline3, ref reader, compressionModel);
             default:
                 throw new ArgumentException("Invalid serializer type");
         }
     }
-    public void Spawn(int serializer, int ghostId, uint snapshot, DataStreamReader reader,
-        ref DataStreamReader.Context ctx, NetworkCompressionModel compressionModel)
+    public void Spawn(int serializer, int ghostId, uint snapshot, ref DataStreamReader reader,
+        NetworkCompressionModel compressionModel)
     {
         switch (serializer)
         {
             case 0:
                 m_CubeSnapshotDataNewGhostIds.Add(ghostId);
-                m_CubeSnapshotDataNewGhosts.Add(GhostReceiveSystem<NetCubeGhostDeserializerCollection>.InvokeSpawn<CubeSnapshotData>(snapshot, reader, ref ctx, compressionModel));
+                m_CubeSnapshotDataNewGhosts.Add(GhostReceiveSystem<NetCubeGhostDeserializerCollection>.InvokeSpawn<CubeSnapshotData>(snapshot, ref reader, compressionModel));
                 break;
             default:
                 throw new ArgumentException("Invalid serializer type");

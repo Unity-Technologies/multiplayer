@@ -11,39 +11,39 @@ public struct ShipCommandData : ICommandData<ShipCommandData>
     public byte thrust;
     public byte shoot;
 
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
-        writer.Write(left);
-        writer.Write(right);
-        writer.Write(thrust);
-        writer.Write(shoot);
+        writer.WriteByte(left);
+        writer.WriteByte(right);
+        writer.WriteByte(thrust);
+        writer.WriteByte(shoot);
     }
 
-    public void Deserialize(uint inputTick, DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(uint inputTick, ref DataStreamReader reader)
     {
         tick = inputTick;
-        left = reader.ReadByte(ref ctx);
-        right = reader.ReadByte(ref ctx);
-        thrust = reader.ReadByte(ref ctx);
-        shoot = reader.ReadByte(ref ctx);
+        left = reader.ReadByte();
+        right = reader.ReadByte();
+        thrust = reader.ReadByte();
+        shoot = reader.ReadByte();
     }
 
-    public void Serialize(DataStreamWriter writer, ShipCommandData baseline, NetworkCompressionModel compressionModel)
+    public void Serialize(ref DataStreamWriter writer, ShipCommandData baseline, NetworkCompressionModel compressionModel)
     {
-        writer.Write(left);
-        writer.Write(right);
-        writer.Write(thrust);
-        writer.Write(shoot);
+        writer.WriteByte(left);
+        writer.WriteByte(right);
+        writer.WriteByte(thrust);
+        writer.WriteByte(shoot);
     }
 
-    public void Deserialize(uint inputTick, DataStreamReader reader, ref DataStreamReader.Context ctx, ShipCommandData baseline,
+    public void Deserialize(uint inputTick, ref DataStreamReader reader, ShipCommandData baseline,
         NetworkCompressionModel compressionModel)
     {
         tick = inputTick;
-        left = reader.ReadByte(ref ctx);
-        right = reader.ReadByte(ref ctx);
-        thrust = reader.ReadByte(ref ctx);
-        shoot = reader.ReadByte(ref ctx);
+        left = reader.ReadByte();
+        right = reader.ReadByte();
+        thrust = reader.ReadByte();
+        shoot = reader.ReadByte();
     }
 }
 

@@ -52,6 +52,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  prefabId: adc60907807514fb7954a1aa25776eec
   DefaultClientInstantiationType: 2
   RootPath: /Samples/Asteroids
   SnapshotDataPath: Mixed/Generated/ShipSnapshotData.cs

@@ -31,16 +31,6 @@ public struct AsteroidsGhostSerializerCollection : IGhostSerializerCollection
             return 2;
         return -1;
     }
-    public int FindSerializer(EntityArchetype arch)
-    {
-        if (m_ShipGhostSerializer.CanSerialize(arch))
-            return 0;
-        if (m_AsteroidGhostSerializer.CanSerialize(arch))
-            return 1;
-        if (m_BulletGhostSerializer.CanSerialize(arch))
-            return 2;
-        throw new ArgumentException("Invalid serializer type");
-    }
 
     public void BeginSerialize(ComponentSystemBase system)
     {
@@ -64,21 +54,6 @@ public struct AsteroidsGhostSerializerCollection : IGhostSerializerCollection
         throw new ArgumentException("Invalid serializer type");
     }
 
-    public bool WantsPredictionDelta(int serializer)
-    {
-        switch (serializer)
-        {
-            case 0:
-                return m_ShipGhostSerializer.WantsPredictionDelta;
-            case 1:
-                return m_AsteroidGhostSerializer.WantsPredictionDelta;
-            case 2:
-                return m_BulletGhostSerializer.WantsPredictionDelta;
-        }
-
-        throw new ArgumentException("Invalid serializer type");
-    }
-
     public int GetSnapshotSize(int serializer)
     {
         switch (serializer)
@@ -94,21 +69,21 @@ public struct AsteroidsGhostSerializerCollection : IGhostSerializerCollection
         throw new ArgumentException("Invalid serializer type");
     }
 
-    public int Serialize(SerializeData data)
+    public int Serialize(ref DataStreamWriter dataStream, SerializeData data)
     {
         switch (data.ghostType)
         {
             case 0:
             {
-                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<ShipGhostSerializer, ShipSnapshotData>(m_ShipGhostSerializer, data);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<ShipGhostSerializer, ShipSnapshotData>(m_ShipGhostSerializer, ref dataStream, data);
             }
             case 1:
             {
-                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<AsteroidGhostSerializer, AsteroidSnapshotData>(m_AsteroidGhostSerializer, data);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<AsteroidGhostSerializer, AsteroidSnapshotData>(m_AsteroidGhostSerializer, ref dataStream, data);
             }
             case 2:
             {
-                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<BulletGhostSerializer, BulletSnapshotData>(m_BulletGhostSerializer, data);
+                return GhostSendSystem<AsteroidsGhostSerializerCollection>.InvokeSerialize<BulletGhostSerializer, BulletSnapshotData>(m_BulletGhostSerializer, ref dataStream, data);
             }
             default:
                 throw new ArgumentException("Invalid serializer type");

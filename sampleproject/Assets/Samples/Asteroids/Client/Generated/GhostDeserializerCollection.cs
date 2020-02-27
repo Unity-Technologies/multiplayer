@@ -43,40 +43,39 @@ public struct AsteroidsGhostDeserializerCollection : IGhostDeserializerCollectio
         m_BulletSnapshotDataFromEntity = system.GetBufferFromEntity<BulletSnapshotData>();
     }
     public bool Deserialize(int serializer, Entity entity, uint snapshot, uint baseline, uint baseline2, uint baseline3,
-        DataStreamReader reader,
-        ref DataStreamReader.Context ctx, NetworkCompressionModel compressionModel)
+        ref DataStreamReader reader, NetworkCompressionModel compressionModel)
     {
         switch (serializer)
         {
             case 0:
                 return GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeDeserialize(m_ShipSnapshotDataFromEntity, entity, snapshot, baseline, baseline2,
-                baseline3, reader, ref ctx, compressionModel);
+                baseline3, ref reader, compressionModel);
             case 1:
                 return GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeDeserialize(m_AsteroidSnapshotDataFromEntity, entity, snapshot, baseline, baseline2,
-                baseline3, reader, ref ctx, compressionModel);
+                baseline3, ref reader, compressionModel);
             case 2:
                 return GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeDeserialize(m_BulletSnapshotDataFromEntity, entity, snapshot, baseline, baseline2,
-                baseline3, reader, ref ctx, compressionModel);
+                baseline3, ref reader, compressionModel);
             default:
                 throw new ArgumentException("Invalid serializer type");
         }
     }
-    public void Spawn(int serializer, int ghostId, uint snapshot, DataStreamReader reader,
-        ref DataStreamReader.Context ctx, NetworkCompressionModel compressionModel)
+    public void Spawn(int serializer, int ghostId, uint snapshot, ref DataStreamReader reader,
+        NetworkCompressionModel compressionModel)
     {
         switch (serializer)
         {
             case 0:
                 m_ShipSnapshotDataNewGhostIds.Add(ghostId);
-                m_ShipSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<ShipSnapshotData>(snapshot, reader, ref ctx, compressionModel));
+                m_ShipSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<ShipSnapshotData>(snapshot, ref reader, compressionModel));
                 break;
             case 1:
                 m_AsteroidSnapshotDataNewGhostIds.Add(ghostId);
-                m_AsteroidSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<AsteroidSnapshotData>(snapshot, reader, ref ctx, compressionModel));
+                m_AsteroidSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<AsteroidSnapshotData>(snapshot, ref reader, compressionModel));
                 break;
             case 2:
                 m_BulletSnapshotDataNewGhostIds.Add(ghostId);
-                m_BulletSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<BulletSnapshotData>(snapshot, reader, ref ctx, compressionModel));
+                m_BulletSnapshotDataNewGhosts.Add(GhostReceiveSystem<AsteroidsGhostDeserializerCollection>.InvokeSpawn<BulletSnapshotData>(snapshot, ref reader, compressionModel));
                 break;
             default:
                 throw new ArgumentException("Invalid serializer type");

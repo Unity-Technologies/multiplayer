@@ -1,4 +1,3 @@
-using System;
 using Unity.Burst;
 using Unity.Networking.Transport;
 using Unity.Collections;
@@ -15,7 +14,7 @@ struct SoakClientCtx
 struct SoakServerAcceptJob : IJob
 {
     public int now;
-    public UdpNetworkDriver driver;
+    public NetworkDriver driver;
     public NativeList<SoakClientCtx> connections;
 
     public void Execute()
@@ -40,7 +39,7 @@ struct SoakServerAcceptJob : IJob
 [BurstCompile]
 struct SoakServerUpdateClientsJob : IJobParallelForDefer
 {
-    public UdpNetworkDriver.Concurrent driver;
+    public NetworkDriver.Concurrent driver;
     public NetworkPipeline pipeline;
     public NativeArray<SoakClientCtx> connections;
 
@@ -59,19 +58,18 @@ struct SoakServerUpdateClientsJob : IJobParallelForDefer
             {
                 if (cmd == NetworkEvent.Type.Data)
                 {
-                    var readerCtx = default(DataStreamReader.Context);
                     unsafe
                     {
-                        strm.ReadBytes(ref readerCtx, inbound.data, strm.Length);
+                        strm.ReadBytes(inbound.data, strm.Length);
                         Assert.AreEqual(strm.Length, inbound.length + SoakMessage.HeaderLength);
 
                         outbound.id = inbound.id;
                         outbound.sequence = ctx.NextSequenceId++;
 
-                        var soakData = new DataStreamWriter(SoakMessage.HeaderLength, Allocator.Temp);
+                        var soakData = driver.BeginSend(pipeline, connections[i].Connection);
                         soakData.WriteBytes(outbound.data, SoakMessage.HeaderLength);
 
-                        driver.Send(pipeline, connections[i].Connection, soakData);
+                        driver.EndSend(soakData);
                     }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)

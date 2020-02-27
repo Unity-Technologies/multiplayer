@@ -80,9 +80,9 @@ public class SoakClientJobManager : IDisposable
             {
                 driver = client.DriverHandle,
                 pipeline = client.Pipeline,
+                reliableStageId = client.ReliableStageId,
+                simulatorStageId = client.SimulatorStageId,
                 connection = client.ConnectionHandle,
-                streamWriter = client.SoakClientStreamWriter,
-                serverEP = client.ServerEndPoint,
                 pendingSoaks = client.PendingSoakMessages,
                 fixedTime = Time.fixedTime,
 
@@ -100,7 +100,7 @@ public class SoakClientJobManager : IDisposable
         }
     }
 
-    public NativeSlice<SoakStatisticsPoint> Sample()
+    public NativeArray<SoakStatisticsPoint> Sample()
     {
         Assert.AreEqual(m_Samples.Length, m_SoakClients.Count);
 

@@ -24,8 +24,6 @@ public struct BulletGhostSerializer : IGhostSerializer<BulletSnapshotData>
         return 200;
     }
 
-    public bool WantsPredictionDelta => true;
-
     public int SnapshotSize => UnsafeUtility.SizeOf<BulletSnapshotData>();
     public void BeginSerialize(ComponentSystemBase system)
     {
@@ -39,30 +37,6 @@ public struct BulletGhostSerializer : IGhostSerializer<BulletSnapshotData>
         ghostPlayerIdComponentDataType = system.GetArchetypeChunkComponentType<PlayerIdComponentData>(true);
         ghostRotationType = system.GetArchetypeChunkComponentType<Rotation>(true);
         ghostTranslationType = system.GetArchetypeChunkComponentType<Translation>(true);
-    }
-
-    public bool CanSerialize(EntityArchetype arch)
-    {
-        var components = arch.GetComponentTypes();
-        int matches = 0;
-        for (int i = 0; i < components.Length; ++i)
-        {
-            if (components[i] == componentTypeBulletAgeComponent)
-                ++matches;
-            if (components[i] == componentTypeBulletTagComponent)
-                ++matches;
-            if (components[i] == componentTypeCollisionSphereComponent)
-                ++matches;
-            if (components[i] == componentTypePlayerIdComponentData)
-                ++matches;
-            if (components[i] == componentTypeRotation)
-                ++matches;
-            if (components[i] == componentTypeTranslation)
-                ++matches;
-            if (components[i] == componentTypeVelocity)
-                ++matches;
-        }
-        return (matches == 7);
     }
 
     public void CopyToSnapshot(ArchetypeChunk chunk, int ent, uint tick, ref BulletSnapshotData snapshot, GhostSerializerState serializerState)

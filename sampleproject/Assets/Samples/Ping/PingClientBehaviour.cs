@@ -12,7 +12,7 @@ public class PingClientBehaviour : MonoBehaviour
         public float time;
     }
 
-    private UdpNetworkDriver m_ClientDriver;
+    private NetworkDriver m_ClientDriver;
     private NativeArray<NetworkConnection> m_clientToServerConnection;
     // pendingPings is an array of pings sent to the server which have not yet received a response.
     // Currently we only support one ping in-flight
@@ -26,7 +26,7 @@ public class PingClientBehaviour : MonoBehaviour
     {
         // Create a NetworkDriver for the client. We could bind to a specific address but in this case we rely on the
         // implicit bind since we do not need to bing to anything special
-        m_ClientDriver = new UdpNetworkDriver(new INetworkParameter[0]);
+        m_ClientDriver = NetworkDriver.Create();
 
         m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
         m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
@@ -46,25 +46,14 @@ public class PingClientBehaviour : MonoBehaviour
     [BurstCompile]
     struct PingJob : IJob
     {
-        public UdpNetworkDriver driver;
+        public NetworkDriver driver;
         public NativeArray<NetworkConnection> connection;
-        public NetworkEndPoint serverEP;
         public NativeArray<PendingPing> pendingPings;
         public NativeArray<int> pingStats;
         public float fixedTime;
 
         public void Execute()
         {
-            // If the client ui indicates we should be sending pings but we do not have an active connection we create one
-            if (serverEP.IsValid && !connection[0].IsCreated)
-                connection[0] = driver.Connect(serverEP);
-            // If the client ui indicates we should not be sending pings but we do have a connection we close that connection
-            if (!serverEP.IsValid && connection[0].IsCreated)
-            {
-                connection[0].Disconnect(driver);
-                connection[0] = default(NetworkConnection);
-            }
-
             DataStreamReader strm;
             NetworkEvent.Type cmd;
             // Process all events on the connection. If the connection is invalid it will return Empty immediately
@@ -76,9 +65,9 @@ public class PingClientBehaviour : MonoBehaviour
                     // Set the ping id to a sequence number for the new ping we are about to send
                     pendingPings[0] = new PendingPing {id = pingStats[0], time = fixedTime};
                     // Create a 4 byte data stream which we can store our ping sequence number in
-                    var pingData = new DataStreamWriter(4, Allocator.Temp);
-                    pingData.Write(pingStats[0]);
-                    connection[0].Send(driver, pingData);
+                    var pingData = driver.BeginSend(connection[0]);
+                    pingData.WriteInt(pingStats[0]);
+                    driver.EndSend(pingData);
                     // Update the number of sent pings
                     pingStats[0] = pingStats[0] + 1;
                 }
@@ -111,6 +100,17 @@ public class PingClientBehaviour : MonoBehaviour
         // enough since we can get multiple FixedUpdate per frame on slow clients
         m_updateHandle.Complete();
 
+        var serverEP = PingClientUIBehaviour.ServerEndPoint;
+        // If the client ui indicates we should be sending pings but we do not have an active connection we create one
+        if (serverEP.IsValid && !m_clientToServerConnection[0].IsCreated)
+            m_clientToServerConnection[0] = m_ClientDriver.Connect(serverEP);
+        // If the client ui indicates we should not be sending pings but we do have a connection we close that connection
+        if (!serverEP.IsValid && m_clientToServerConnection[0].IsCreated)
+        {
+            m_clientToServerConnection[0].Disconnect(m_ClientDriver);
+            m_clientToServerConnection[0] = default(NetworkConnection);
+        }
+
         // Update the ping client UI with the ping statistics computed by teh job scheduled previous frame since that
         // is now guaranteed to have completed
         PingClientUIBehaviour.UpdateStats(m_pingStats[0], m_pingStats[1]);
@@ -118,7 +118,6 @@ public class PingClientBehaviour : MonoBehaviour
         {
             driver = m_ClientDriver,
             connection = m_clientToServerConnection,
-            serverEP = PingClientUIBehaviour.ServerEndPoint,
             pendingPings = m_pendingPings,
             pingStats = m_pingStats,
             fixedTime = Time.fixedTime

@@ -50,6 +50,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  prefabId: 76e3e5acde5e440efb5fe01af44afc72
   DefaultClientInstantiationType: 0
   RootPath: /Samples/Asteroids
   SnapshotDataPath: Mixed/Generated/BulletSnapshotData.cs

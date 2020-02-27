@@ -111,7 +111,7 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         VelocityValueY = predictor.PredictInt(VelocityValueY, baseline1.VelocityValueY, baseline2.VelocityValueY);
     }
 
-    public void Serialize(int networkId, ref ShipSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
+    public void Serialize(int networkId, ref ShipSnapshotData baseline, ref DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
         changeMask0 = (PlayerIdComponentDataPlayerId != baseline.PlayerIdComponentDataPlayerId) ? 1u : 0;
         changeMask0 |= (ShipStateComponentDataState != baseline.ShipStateComponentDataState) ? (1u<<1) : 0;
@@ -147,20 +147,20 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         }
     }
 
-    public void Deserialize(uint tick, ref ShipSnapshotData baseline, DataStreamReader reader, ref DataStreamReader.Context ctx,
+    public void Deserialize(uint tick, ref ShipSnapshotData baseline, ref DataStreamReader reader,
         NetworkCompressionModel compressionModel)
     {
         this.tick = tick;
-        changeMask0 = reader.ReadPackedUIntDelta(ref ctx, baseline.changeMask0, compressionModel);
-        bool isPredicted = reader.ReadPackedUInt(ref ctx, compressionModel)!=0;
+        changeMask0 = reader.ReadPackedUIntDelta(baseline.changeMask0, compressionModel);
+        bool isPredicted = reader.ReadPackedUInt(compressionModel)!=0;
         if ((changeMask0 & (1 << 2)) != 0)
-            RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
+            RotationValue = reader.ReadPackedIntDelta(baseline.RotationValue, compressionModel);
         else
             RotationValue = baseline.RotationValue;
         if ((changeMask0 & (1 << 3)) != 0)
         {
-            TranslationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueX, compressionModel);
-            TranslationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueY, compressionModel);
+            TranslationValueX = reader.ReadPackedIntDelta(baseline.TranslationValueX, compressionModel);
+            TranslationValueY = reader.ReadPackedIntDelta(baseline.TranslationValueY, compressionModel);
         }
         else
         {
@@ -170,13 +170,13 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         if (isPredicted)
         {
             if ((changeMask0 & (1 << 0)) != 0)
-                PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+                PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(baseline.PlayerIdComponentDataPlayerId, compressionModel);
             else
                 PlayerIdComponentDataPlayerId = baseline.PlayerIdComponentDataPlayerId;
             if ((changeMask0 & (1 << 4)) != 0)
             {
-                VelocityValueX = reader.ReadPackedIntDelta(ref ctx, baseline.VelocityValueX, compressionModel);
-                VelocityValueY = reader.ReadPackedIntDelta(ref ctx, baseline.VelocityValueY, compressionModel);
+                VelocityValueX = reader.ReadPackedIntDelta(baseline.VelocityValueX, compressionModel);
+                VelocityValueY = reader.ReadPackedIntDelta(baseline.VelocityValueY, compressionModel);
             }
             else
             {
@@ -187,7 +187,7 @@ public struct ShipSnapshotData : ISnapshotData<ShipSnapshotData>
         if (!isPredicted)
         {
             if ((changeMask0 & (1 << 1)) != 0)
-                ShipStateComponentDataState = reader.ReadPackedIntDelta(ref ctx, baseline.ShipStateComponentDataState, compressionModel);
+                ShipStateComponentDataState = reader.ReadPackedIntDelta(baseline.ShipStateComponentDataState, compressionModel);
             else
                 ShipStateComponentDataState = baseline.ShipStateComponentDataState;
         }

@@ -9,7 +9,8 @@ public class NetCodeBootstrap : ClientServerBootstrap
     public override bool Initialize(string defaultWorldName)
     {
         if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Asteroids" ||
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "NetCube")
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "NetCube" ||
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "LagCompensation")
             return base.Initialize(defaultWorldName);
 
         var systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default);

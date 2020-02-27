@@ -106,12 +106,9 @@ public class StatisticsReport : IDisposable
 
 public static class Util
 {
-    public static unsafe void DumpReliabilityStatistics(UdpNetworkDriver driver, NetworkPipeline pipeline, NetworkConnection con)
+    public static unsafe void DumpReliabilityStatistics(NetworkDriver driver, NetworkPipeline pipeline, NetworkPipelineStageId reliableStageId, NetworkConnection con)
     {
-        NativeSlice<byte> receiveBuffer = default;
-        NativeSlice<byte> sendBuffer = default;
-        NativeSlice<byte> sharedBuffer = default;
-        driver.GetPipelineBuffers(pipeline, 4, con, ref receiveBuffer, ref sendBuffer, ref sharedBuffer);
+        driver.GetPipelineBuffers(pipeline, reliableStageId, con, out var receiveBuffer, out var sendBuffer, out var sharedBuffer);
         /*var relCtx = (ReliableUtility.SharedContext*)sharedBuffer.GetUnsafeReadOnlyPtr();
         var sendCtx = (ReliableUtility.Context*)sendBuffer.GetUnsafeReadOnlyPtr();
         UnityEngine.Debug.Log("Reliability stats\nPacketsDropped: " + relCtx->stats.PacketsDropped + "\n" +
@@ -128,13 +125,10 @@ public static class Util
                   "Last ackmask: " + SequenceHelpers.BitMaskToString(relCtx->SentPackets.AckMask));*/
     }
 
-    public static unsafe void GatherReliabilityStats(ref SoakStatisticsPoint stats, ref SoakStatisticsPoint lastStats, UdpNetworkDriver driver,
-        NetworkPipeline pipeline, NetworkConnection con, long timestamp)
+    public static unsafe void GatherReliabilityStats(ref SoakStatisticsPoint stats, ref SoakStatisticsPoint lastStats, NetworkDriver driver,
+        NetworkPipeline pipeline, NetworkPipelineStageId reliableStageId, NetworkConnection con, long timestamp)
     {
-        NativeSlice<byte> receiveBuffer = default;
-        NativeSlice<byte> sendBuffer = default;
-        NativeSlice<byte> sharedBuffer = default;
-        driver.GetPipelineBuffers(pipeline, 4, con, ref receiveBuffer, ref sendBuffer, ref sharedBuffer);
+        driver.GetPipelineBuffers(pipeline, reliableStageId, con, out var receiveBuffer, out var sendBuffer, out var sharedBuffer);
 
         var sharedCtx = (ReliableUtility.SharedContext*)sharedBuffer.GetUnsafeReadOnlyPtr();
         stats.ReliableSent += sharedCtx->stats.PacketsSent - lastStats.ReliableSent;
@@ -162,7 +156,7 @@ public static class Util
         lastStats.ReliableDuplicate = sharedCtx->stats.PacketsDuplicated;
     }
 
-    static unsafe void GatherExtraStats(NativeSlice<byte> sendBuffer, NativeSlice<byte> sharedBuffer, long timestamp, ref int usedCount, ref int oldestAge, ref int maxRtt, ref int maxProcessingTime)
+    static unsafe void GatherExtraStats(NativeArray<byte> sendBuffer, NativeArray<byte> sharedBuffer, long timestamp, ref int usedCount, ref int oldestAge, ref int maxRtt, ref int maxProcessingTime)
     {
         var ptr = (byte*)sendBuffer.GetUnsafePtr();
         var ctx = (ReliableUtility.Context*) ptr;
@@ -174,11 +168,11 @@ public static class Util
             if (*seqId != -1)
             {
                 usedCount++;
-                var packetInfo = ReliableUtility.GetPacketInformation(sendBuffer, *seqId);
+                var packetInfo = ReliableUtility.GetPacketInformation((byte*)sendBuffer.GetUnsafeReadOnlyPtr(), *seqId);
                 oldestAge = Math.Max(oldestAge, (int)(timestamp - packetInfo->SendTime));
             }
 
-            var timingData = ReliableUtility.GetLocalPacketTimer(sharedBuffer, (ushort)i);
+            var timingData = ReliableUtility.GetLocalPacketTimer((byte*)sharedBuffer.GetUnsafeReadOnlyPtr(), (ushort)i);
             if (timingData->SentTime > 0 && timingData->ReceiveTime > 0)
                 maxRtt = Math.Max(maxRtt, (int)(timingData->ReceiveTime - timingData->SentTime - timingData->ProcessingTime));
 

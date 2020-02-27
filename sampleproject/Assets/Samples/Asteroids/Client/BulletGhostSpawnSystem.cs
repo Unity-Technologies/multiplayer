@@ -15,7 +15,7 @@ public partial class BulletGhostSpawnSystem
             snapshot = snapshots,
             predictedMask = predictedMask,
             predictionSpawnGhosts = predictionSpawnGhosts,
-            playerIds = m_PlayerGroup.ToComponentDataArray<NetworkIdComponent>(Allocator.TempJob, out playerHandle),
+            playerIds = m_PlayerGroup.ToComponentDataArrayAsync<NetworkIdComponent>(Allocator.TempJob, out playerHandle),
         };
         return job.Schedule(predictedMask.Length, 8, JobHandle.CombineDependencies(inputDeps, playerHandle));
     }

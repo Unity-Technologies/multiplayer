@@ -32,7 +32,7 @@ public struct GhostSnapshotData
         #endregion
     }
 
-    public void Serialize(int networkId, ref GhostSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
+    public void Serialize(int networkId, ref GhostSnapshotData baseline, ref DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
         #region __GHOST_CALCULATE_CHANGE_MASK_ZERO__
         changeMask__GHOST_MASK_BATCH__ = (__GHOST_FIELD_NAME__ != baseline.__GHOST_FIELD_NAME__) ? 1u : 0;
@@ -46,12 +46,12 @@ public struct GhostSnapshotData
         #endregion
     }
 
-    public void Deserialize(uint tick, ref GhostSnapshotData baseline, DataStreamReader reader, ref DataStreamReader.Context ctx,
+    public void Deserialize(uint tick, ref GhostSnapshotData baseline, ref DataStreamReader reader,
         NetworkCompressionModel compressionModel)
     {
         #region __GHOST_READ__
         if ((changeMask__GHOST_MASK_BATCH__ & (1 << __GHOST_MASK_INDEX__)) != 0)
-            __GHOST_FIELD_NAME__ = reader.ReadPackedIntDelta(ref ctx, baseline.__GHOST_FIELD_NAME__, compressionModel);
+            __GHOST_FIELD_NAME__ = reader.ReadPackedIntDelta(baseline.__GHOST_FIELD_NAME__, compressionModel);
         else
             __GHOST_FIELD_NAME__ = baseline.__GHOST_FIELD_NAME__;
         #endregion

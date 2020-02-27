@@ -93,7 +93,7 @@ namespace Asteroids.Server
                 asteroidPrefab = m_Prefab,
                 asteroidRadius = m_Radius,
                 asteroidVelocity = settings.asteroidVelocity,
-                level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle),
+                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle),
                 rand = new Unity.Mathematics.Random((uint)Stopwatch.GetTimestamp())
             };
             var handle = spawnJob.Schedule(JobHandle.CombineDependencies(inputDeps, levelHandle));
@@ -178,7 +178,7 @@ namespace Asteroids.Server
                 networkIdFromEntity = GetComponentDataFromEntity<NetworkIdComponent>(),
                 shipPrefab = m_Prefab,
                 shipRadius = m_Radius,
-                level = m_LevelGroup.ToComponentDataArray<LevelComponent>(Allocator.TempJob, out levelHandle),
+                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle),
                 rand = new Unity.Mathematics.Random((uint)Stopwatch.GetTimestamp())
             };
             var handle = spawnJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));

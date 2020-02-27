@@ -72,7 +72,7 @@ public struct BulletSnapshotData : ISnapshotData<BulletSnapshotData>
         TranslationValueY = predictor.PredictInt(TranslationValueY, baseline1.TranslationValueY, baseline2.TranslationValueY);
     }
 
-    public void Serialize(int networkId, ref BulletSnapshotData baseline, DataStreamWriter writer, NetworkCompressionModel compressionModel)
+    public void Serialize(int networkId, ref BulletSnapshotData baseline, ref DataStreamWriter writer, NetworkCompressionModel compressionModel)
     {
         changeMask0 = (PlayerIdComponentDataPlayerId != baseline.PlayerIdComponentDataPlayerId) ? 1u : 0;
         changeMask0 |= (RotationValue != baseline.RotationValue) ? (1u<<1) : 0;
@@ -90,23 +90,23 @@ public struct BulletSnapshotData : ISnapshotData<BulletSnapshotData>
         }
     }
 
-    public void Deserialize(uint tick, ref BulletSnapshotData baseline, DataStreamReader reader, ref DataStreamReader.Context ctx,
+    public void Deserialize(uint tick, ref BulletSnapshotData baseline, ref DataStreamReader reader,
         NetworkCompressionModel compressionModel)
     {
         this.tick = tick;
-        changeMask0 = reader.ReadPackedUIntDelta(ref ctx, baseline.changeMask0, compressionModel);
+        changeMask0 = reader.ReadPackedUIntDelta(baseline.changeMask0, compressionModel);
         if ((changeMask0 & (1 << 0)) != 0)
-            PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(ref ctx, baseline.PlayerIdComponentDataPlayerId, compressionModel);
+            PlayerIdComponentDataPlayerId = reader.ReadPackedIntDelta(baseline.PlayerIdComponentDataPlayerId, compressionModel);
         else
             PlayerIdComponentDataPlayerId = baseline.PlayerIdComponentDataPlayerId;
         if ((changeMask0 & (1 << 1)) != 0)
-            RotationValue = reader.ReadPackedIntDelta(ref ctx, baseline.RotationValue, compressionModel);
+            RotationValue = reader.ReadPackedIntDelta(baseline.RotationValue, compressionModel);
         else
             RotationValue = baseline.RotationValue;
         if ((changeMask0 & (1 << 2)) != 0)
         {
-            TranslationValueX = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueX, compressionModel);
-            TranslationValueY = reader.ReadPackedIntDelta(ref ctx, baseline.TranslationValueY, compressionModel);
+            TranslationValueX = reader.ReadPackedIntDelta(baseline.TranslationValueX, compressionModel);
+            TranslationValueY = reader.ReadPackedIntDelta(baseline.TranslationValueY, compressionModel);
         }
         else
         {

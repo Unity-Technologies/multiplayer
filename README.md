@@ -5,9 +5,9 @@ Welcome to the Unity Real-time Multiplayer Alpha repository!
 Here you can find all the resources you need to start prototyping
 your own real-time multiplayer games.
 
-[NetCode Manual - Table Of Contents](https://docs.unity3d.com/Packages/com.unity.netcode@0.0/manual/TableOfContents.html)
+[NetCode Manual](https://docs.unity3d.com/Packages/com.unity.netcode@latest)
 
-[Transport Manual - Table Of Contents](https://docs.unity3d.com/Packages/com.unity.transport@0.2/manual/TableOfContents.html)
+[Transport Manual](https://docs.unity3d.com/Packages/com.unity.transport@latest)
 
 [Click here to visit the forum](https://forum.unity.com/forums/data-oriented-technology-stack.147/)
 
@@ -15,6 +15,7 @@ your own real-time multiplayer games.
 
 - `sampleproject/` - Unity Project containing all the multiplayer samples.
 - `sampleproject/Assets/Samples/Asteroids` - Asteroids clone demonstrating the core netcode concepts.
+- `sampleproject/Assets/Samples/LagCompensation` - Sample showing lag compensation based on Unity Physics.
 - `sampleproject/Assets/Samples/NetCube` - Sample showing basic netcode usage.
 - `sampleproject/Assets/Samples/Ping` - Sample showing basic transport usage.
 - `sampleproject/Assets/Samples/Soaker` - A soak tester for the transport, for testing typical production load.
@@ -24,12 +25,12 @@ The new Unity Transport Package which will replace the UNet low-level API.
 The preview of the transport package supports establishing connections and sending messages to a
 remote host. It also contains utilities for serializing data streams to send
 over the network.
-For more information about the transport package, please see the [Unity Transport Documentation](https://docs.unity3d.com/Packages/com.unity.transport@0.2)
+For more information about the transport package, please see the [Unity Transport Documentation](https://docs.unity3d.com/Packages/com.unity.transport@latest)
 
 ### Unity NetCode Package
 The netcode package provides the multiplayer features needed to implement
 world synchronization in a multiplayer game. It uses the transport package
-for the socket level functionality and is made for the [Entity Component System](https://docs.unity3d.com/Packages/com.unity.entities@0.2).
+for the socket level functionality and is made for the [Entity Component System](https://docs.unity3d.com/Packages/com.unity.entities@latest).
 Some higher level things it provides are
 * Server authoritative synchronization model.
 * RPC support, useful for control flow or network events.
@@ -38,7 +39,7 @@ Some higher level things it provides are
 * Network traffic debugging tools
 * GameObject conversion flow support, so you can use a hybrid model to add multiplayer to a GameObject/MonoBehaviour based project.
 
-For more information about the netcode package, please see the [Unity NetCode Documentation](https://docs.unity3d.com/Packages/com.unity.netcode@0.0)
+For more information about the netcode package, please see the [Unity NetCode Documentation](https://docs.unity3d.com/Packages/com.unity.netcode@latest)
 
 ### Samples
 
@@ -60,6 +61,9 @@ A stress test which will create a set number of clients and a server in the same
 
 #### Asteroids
 A small game featuring the Unity NetCode Package features.
+
+#### LagCompensation
+A sample showing a way to implement lag compensation based on Unity Physics. In a game based on the Unity NetCode the client will display an old world state, lag compensation allows the server to take this into account when performing raycasts so the player can aim at what is actually displayed on the client.
 
 #### NetCube
 A small sample featuring the Unity NetCode Package features. This is the code used in the [Unite presentation about NetCode](https://www.youtube.com/watch?v=P_-FoJuaYOI)

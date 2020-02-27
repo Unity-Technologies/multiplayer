@@ -54,14 +54,14 @@ public struct GoInGameRequest : IRpcCommand
 {
     // Unused integer for demonstration
     public int value;
-    public void Deserialize(DataStreamReader reader, ref DataStreamReader.Context ctx)
+    public void Deserialize(ref DataStreamReader reader)
     {
-        value = reader.ReadInt(ref ctx);
+        value = reader.ReadInt();
     }
 
-    public void Serialize(DataStreamWriter writer)
+    public void Serialize(ref DataStreamWriter writer)
     {
-        writer.Write(value);
+        writer.WriteInt(value);
     }
     [BurstCompile]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
@@ -69,9 +69,11 @@ public struct GoInGameRequest : IRpcCommand
         RpcExecutor.ExecuteCreateRequestComponent<GoInGameRequest>(ref parameters);
     }
 
+    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
+        new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
     public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
     {
-        return new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
+        return InvokeExecuteFunctionPointer;
     }
 }
 

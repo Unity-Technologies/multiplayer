@@ -25,12 +25,6 @@ public struct NetCubeGhostSerializerCollection : IGhostSerializerCollection
             return 0;
         return -1;
     }
-    public int FindSerializer(EntityArchetype arch)
-    {
-        if (m_CubeGhostSerializer.CanSerialize(arch))
-            return 0;
-        throw new ArgumentException("Invalid serializer type");
-    }
 
     public void BeginSerialize(ComponentSystemBase system)
     {
@@ -48,17 +42,6 @@ public struct NetCubeGhostSerializerCollection : IGhostSerializerCollection
         throw new ArgumentException("Invalid serializer type");
     }
 
-    public bool WantsPredictionDelta(int serializer)
-    {
-        switch (serializer)
-        {
-            case 0:
-                return m_CubeGhostSerializer.WantsPredictionDelta;
-        }
-
-        throw new ArgumentException("Invalid serializer type");
-    }
-
     public int GetSnapshotSize(int serializer)
     {
         switch (serializer)
@@ -70,13 +53,13 @@ public struct NetCubeGhostSerializerCollection : IGhostSerializerCollection
         throw new ArgumentException("Invalid serializer type");
     }
 
-    public int Serialize(SerializeData data)
+    public int Serialize(ref DataStreamWriter dataStream, SerializeData data)
     {
         switch (data.ghostType)
         {
             case 0:
             {
-                return GhostSendSystem<NetCubeGhostSerializerCollection>.InvokeSerialize<CubeGhostSerializer, CubeSnapshotData>(m_CubeGhostSerializer, data);
+                return GhostSendSystem<NetCubeGhostSerializerCollection>.InvokeSerialize<CubeGhostSerializer, CubeSnapshotData>(m_CubeGhostSerializer, ref dataStream, data);
             }
             default:
                 throw new ArgumentException("Invalid serializer type");

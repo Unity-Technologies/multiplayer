@@ -47,7 +47,7 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
                 var grid = entityManager.CreateEntity();
                 entityManager.AddComponentData(grid, new GhostDistanceImportance
                 {
-                    ScaleImportanceByDistance = new PortableFunctionPointer<GhostDistanceImportance.ScaleImportanceByDistanceDelegate>(GhostDistanceImportance.DefaultScale),
+                    ScaleImportanceByDistance = GhostDistanceImportance.DefaultScaleFunctionPointer,
                     TileSize = new int3(256, 256, 256),
                     TileCenter = new int3(0, 0, 128),
                     TileBorderWidth = new float3(1f, 1f, 1f)
