@@ -34,7 +34,7 @@ for the socket level functionality and is made for the [Entity Component System]
 Some higher level things it provides are
 * Server authoritative synchronization model.
 * RPC support, useful for control flow or network events.
-* Client / server world bootrapping so you have clear seperation of logic and you can run a server with multiple clients in a single process, like the editor when testing.
+* Client / server world bootstrapping so you have clear separation of logic and you can run a server with multiple clients in a single process, like the editor when testing.
 * Synchronize entities with interpolation and client side prediction working by default.
 * Network traffic debugging tools
 * GameObject conversion flow support, so you can use a hybrid model to add multiplayer to a GameObject/MonoBehaviour based project.
