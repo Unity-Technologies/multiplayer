@@ -1,10 +1,7 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
 using Unity.NetCode;
 
 namespace Asteroids.Client
@@ -12,35 +9,52 @@ namespace Asteroids.Client
     [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(LineRenderSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
-    public class AsteroidRenderSystem : JobComponentSystem
+    public class AsteroidRenderSystem : SystemBase
     {
-        private EntityQuery lineGroup;
-        private NativeQueue<LineRenderSystem.Line>.ParallelWriter lineQueue;
+        private EntityQuery m_LineGroup;
+        private LineRenderSystem m_LineRenderSystem;
+        private float m_Pulse = 1;
+        private float m_PulseDelta = 1;
+        private const float m_PulseMax = 1.2f;
+        private const float m_PulseMin = 0.8f;
+
         protected override void OnCreate()
         {
-            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
+            m_LineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            m_LineRenderSystem = World.GetOrCreateSystem<LineRenderSystem>();
         }
 
-        float pulse = 1;
-        float pulseDelta = 1;
-        const float pulseMax = 1.2f;
-        const float pulseMin = 0.8f;
-
-        [BurstCompile]
-        [RequireComponentTag(typeof(AsteroidTagComponentData))]
-        struct ChunkRenderJob : IJobForEach<Translation, Rotation>
+        override protected void OnUpdate()
         {
-            public NativeQueue<LineRenderSystem.Line>.ParallelWriter lines;
-            public float astrLineWidth;
-            public float4 astrColor;
-            public float3 astrTL;
-            public float3 astrTR;
-            public float3 astrBL;
-            public float3 astrBR;
-            public float pulse;
+            if (m_LineGroup.IsEmptyIgnoreFilter)
+                return;
 
-            public void Execute([ReadOnly] ref Translation position, [ReadOnly] ref Rotation rotation)
+            var lineQueue = m_LineRenderSystem.LineQueue;
+
+            float astrWidth = 30;
+            float astrHeight = 30;
+            float astrLineWidth = 2;
+            var astrColor = new float4(0.25f, 0.85f, 0.85f, 1);
+            var astrTL = new float3(-astrWidth / 2, -astrHeight / 2, 0);
+            var astrTR = new float3(astrWidth / 2, -astrHeight / 2, 0);
+            var astrBL = new float3(-astrWidth / 2, astrHeight / 2, 0);
+            var astrBR = new float3(astrWidth / 2, astrHeight / 2, 0);
+
+            m_Pulse += m_PulseDelta * Time.DeltaTime;
+            if (m_Pulse > m_PulseMax)
+            {
+                m_Pulse = m_PulseMax;
+                m_PulseDelta = -m_PulseDelta;
+            }
+            else if (m_Pulse < m_PulseMin)
+            {
+                m_Pulse = m_PulseMin;
+                m_PulseDelta = -m_PulseDelta;
+            }
+            var pulse = m_Pulse;
+            var lines = lineQueue;
+
+            Entities.WithAll<AsteroidTagComponentData>().ForEach((in Translation position, in Rotation rotation) =>
             {
                 float3 pos = position.Value;
                 var rot = rotation.Value;
@@ -52,39 +66,7 @@ namespace Asteroids.Client
                 lines.Enqueue(new LineRenderSystem.Line(rotTL.xy, rotBL.xy, astrColor, astrLineWidth));
                 lines.Enqueue(new LineRenderSystem.Line(rotTR.xy, rotBR.xy, astrColor, astrLineWidth));
                 lines.Enqueue(new LineRenderSystem.Line(rotBL.xy, rotBR.xy, astrColor, astrLineWidth));
-            }
-        }
-
-        override protected JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (lineGroup.IsEmptyIgnoreFilter)
-                return inputDeps;
-            var rendJob = new ChunkRenderJob();
-            rendJob.lines = lineQueue;
-
-            float astrWidth = 30;
-            float astrHeight = 30;
-            rendJob.astrLineWidth = 2;
-            rendJob.astrColor = new float4(0.25f, 0.85f, 0.85f, 1);
-            rendJob.astrTL = new float3(-astrWidth / 2, -astrHeight / 2, 0);
-            rendJob.astrTR = new float3(astrWidth / 2, -astrHeight / 2, 0);
-            rendJob.astrBL = new float3(-astrWidth / 2, astrHeight / 2, 0);
-            rendJob.astrBR = new float3(astrWidth / 2, astrHeight / 2, 0);
-
-            pulse += pulseDelta * Time.DeltaTime;
-            if (pulse > pulseMax)
-            {
-                pulse = pulseMax;
-                pulseDelta = -pulseDelta;
-            }
-            else if (pulse < pulseMin)
-            {
-                pulse = pulseMin;
-                pulseDelta = -pulseDelta;
-            }
-
-            rendJob.pulse = pulse;
-            return rendJob.Schedule(this, inputDeps);
+            }).ScheduleParallel();
         }
     }
 }

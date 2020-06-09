@@ -103,4 +103,9 @@ public class AsteroidsGhostSendSystem : GhostSendSystem<AsteroidsGhostSerializer
         base.OnCreate();
         RequireSingletonForUpdate<EnableAsteroidsGhostSendSystemComponent>();
     }
+
+    public override bool IsEnabled()
+    {
+        return HasSingleton<EnableAsteroidsGhostSendSystemComponent>();
+    }
 }

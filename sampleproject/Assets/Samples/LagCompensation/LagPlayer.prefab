@@ -110,6 +110,8 @@ MonoBehaviour:
       interpolate: 1
     manualFieldList: 0
     entityIndex: 0
+  prefabId: c56a7162007b441e3bbc2d11f8d71615
+  Name: LagPlayer
   doNotStrip: 0
 --- !u!114 &2643699210625179272
 MonoBehaviour:

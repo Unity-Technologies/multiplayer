@@ -1,4 +1,5 @@
 ﻿using System;
+using AOT;
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
@@ -25,7 +26,7 @@ public class Game : ComponentSystem
     {
         // Destroy singleton to prevent system from running again
         EntityManager.DestroyEntity(GetSingletonEntity<InitGameComponent>());
-        foreach (var world in World.AllWorlds)
+        foreach (var world in World.All)
         {
             var network = world.GetExistingSystem<NetworkStreamReceiveSystem>();
             if (world.GetExistingSystem<ClientSimulationSystemGroup>() != null)
@@ -33,9 +34,12 @@ public class Game : ComponentSystem
                 // Client worlds automatically connect to localhost
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = 7979;
+#if UNITY_EDITOR
+                ep = NetworkEndPoint.Parse(ClientServerBootstrap.RequestedAutoConnect, 7979);
+#endif
                 network.Connect(ep);
             }
-            #if UNITY_EDITOR
+            #if UNITY_EDITOR || UNITY_SERVER
             else if (world.GetExistingSystem<ServerSimulationSystemGroup>() != null)
             {
                 // Server world automatically listen for connections from any host
@@ -64,6 +68,7 @@ public struct GoInGameRequest : IRpcCommand
         writer.WriteInt(value);
     }
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         RpcExecutor.ExecuteCreateRequestComponent<GoInGameRequest>(ref parameters);

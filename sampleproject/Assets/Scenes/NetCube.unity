@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657892, g: 0.4964127, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641275, b: 0.5748172, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -387,7 +387,7 @@ MeshCollider:
   m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
-  serializedVersion: 3
+  serializedVersion: 4
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
@@ -481,8 +481,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c75b8787d8624691813514d3823a59f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SerializerCollectionPath: /Samples/NetCube/Generated/GhostSerializerCollection.cs
-  DeserializerCollectionPath: /Samples/NetCube/Generated/GhostDeserializerCollection.cs
+  RootPath: /Samples/NetCube/Generated
+  SerializerCollectionPath: GhostSerializerCollection.cs
+  DeserializerCollectionPath: GhostDeserializerCollection.cs
   NamePrefix: NetCube
   Ghosts:
   - prefab: {fileID: 2552174147846842480, guid: bd05f2145763d425091243a36d80d893,

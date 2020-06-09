@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -12,63 +11,59 @@ namespace Asteroids.Client
     [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(ParticleEmitterSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
-    public class ShipThrustParticleSystem : JobComponentSystem
+    public class ShipThrustParticleSystem : SystemBase
     {
-        [BurstCompile]
-        struct ThrustJob : IJobForEach<ParticleEmitterComponentData, ShipStateComponentData>
+        override protected void OnUpdate()
         {
-            public void Execute(ref ParticleEmitterComponentData emitter, [ReadOnly] ref ShipStateComponentData state)
+            Entities.ForEach((ref ParticleEmitterComponentData emitter, in ShipStateComponentData state) =>
             {
                 emitter.active = state.State;
-            }
-        }
-
-        override protected JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            var thrustJob = new ThrustJob();
-            return thrustJob.Schedule(this, inputDeps);
+            }).ScheduleParallel();
         }
     }
 
     [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(LineRenderSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
-    public class ShipTrackingSystem : JobComponentSystem
+    public class ShipTrackingSystem : SystemBase
     {
-        private EntityQuery shipGroup;
+        private EntityQuery m_ShipGroup;
         private EntityQuery m_LevelGroup;
-        private NativeArray<int> teleport;
+        private NativeArray<int> m_Teleport;
+
         protected override void OnCreate()
         {
-            shipGroup = GetEntityQuery(
+            m_ShipGroup = GetEntityQuery(
                 ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<Rotation>(),
                 ComponentType.ReadOnly<ShipStateComponentData>(),
                 ComponentType.ReadOnly<ShipTagComponentData>());
-            teleport = new NativeArray<int>(1, Allocator.Persistent);
-            teleport[0] = 1;
+            m_Teleport = new NativeArray<int>(1, Allocator.Persistent);
+            m_Teleport[0] = 1;
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 
         protected override void OnDestroy()
         {
-            teleport.Dispose();
+            m_Teleport.Dispose();
         }
 
-        [BurstCompile]
-        struct TrackJob : IJobForEach<LineRendererComponentData>
+        override protected void OnUpdate()
         {
-            [ReadOnly] public ComponentDataFromEntity<Translation> shipPosition;
-            public Entity localPlayerShip;
+            if (m_ShipGroup.IsEmptyIgnoreFilter)
+                return;
 
-            public int screenWidth;
-            public int screenHeight;
-            [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<LevelComponent> level;
+            JobHandle levelHandle;
+            var localPlayerShip = GetSingleton<CommandTargetComponent>().targetEntity;
+            var shipPosition = GetComponentDataFromEntity<Translation>(true);
+            var screenWidth = Screen.width;
+            var screenHeight = Screen.height;
+            var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
+            var teleport = m_Teleport;
 
-            public NativeArray<int> teleport;
-
-            public void Execute(ref LineRendererComponentData target)
+            var trackJob = Entities.WithReadOnly(shipPosition).WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+                ForEach((ref LineRendererComponentData target) =>
             {
                 int mapWidth = level[0].width;
                 int mapHeight = level[0].height;
@@ -91,50 +86,42 @@ namespace Asteroids.Client
                     target.teleport = teleport[0];
                     nextTeleport = 0;
                 }
+
                 teleport[0] = nextTeleport;
-            }
-        }
-        override protected JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (shipGroup.IsEmptyIgnoreFilter)
-                return inputDeps;
-            var trackJob = new TrackJob();
-            JobHandle levelHandle;
-            trackJob.localPlayerShip = GetSingleton<CommandTargetComponent>().targetEntity;
-            trackJob.shipPosition = GetComponentDataFromEntity<Translation>(true);
-            trackJob.screenWidth = Screen.width;
-            trackJob.screenHeight = Screen.height;
-            trackJob.level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
-            trackJob.teleport = teleport;
-            return trackJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));
+            }).Schedule(JobHandle.CombineDependencies(Dependency, levelHandle));
+            Dependency = trackJob;
         }
     }
 
     [UpdateBefore(typeof(LineRenderSystem))]
     [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
-    public class ShipRenderSystem : JobComponentSystem
+    public class ShipRenderSystem : SystemBase
     {
-        private EntityQuery lineGroup;
-        private NativeQueue<LineRenderSystem.Line>.ParallelWriter lineQueue;
+        private EntityQuery m_LineGroup;
+        private NativeQueue<LineRenderSystem.Line>.ParallelWriter m_LineQueue;
+
         protected override void OnCreate()
         {
-            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
+            m_LineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            m_LineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
         }
 
-        [BurstCompile]
-        [RequireComponentTag(typeof(ShipTagComponentData))]
-        struct ChunkRenderJob : IJobForEach<Translation, Rotation>
+        override protected void OnUpdate()
         {
-            public NativeQueue<LineRenderSystem.Line>.ParallelWriter lines;
-            public float4 shipColor;
-            public float3 shipTop;
-            public float3 shipBL;
-            public float3 shipBR;
-            public float shipLineWidth;
+            if (m_LineGroup.IsEmptyIgnoreFilter)
+                return;
 
-            public void Execute([ReadOnly] ref Translation position, [ReadOnly] ref Rotation rotation)
+            float shipWidth = 10;
+            float shipHeight = 20;
+            var shipLineWidth = 2;
+            var shipColor = new float4(0.85f, 0.85f, 0.85f, 1);
+            var shipTop = new float3(0, shipHeight / 2, 0);
+            var shipBL = new float3(-shipWidth / 2, -shipHeight / 2, 0);
+            var shipBR = new float3(shipWidth / 2, -shipHeight / 2, 0);
+            var lines = m_LineQueue;
+
+            Entities.WithAll<ShipTagComponentData>().ForEach((in Translation position, in Rotation rotation) =>
             {
                 float3 pos = position.Value;
                 var rot = rotation.Value;
@@ -145,24 +132,7 @@ namespace Asteroids.Client
                 lines.Enqueue(new LineRenderSystem.Line(rotTop.xy, rotBL.xy, shipColor, shipLineWidth));
                 lines.Enqueue(new LineRenderSystem.Line(rotTop.xy, rotBR.xy, shipColor, shipLineWidth));
                 lines.Enqueue(new LineRenderSystem.Line(rotBL.xy, rotBR.xy, shipColor, shipLineWidth));
-            }
-        }
-        override protected JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (lineGroup.IsEmptyIgnoreFilter)
-                return inputDeps;
-            var rendJob = new ChunkRenderJob();
-            rendJob.lines = lineQueue;
-
-            float shipWidth = 10;
-            float shipHeight = 20;
-            rendJob.shipLineWidth = 2;
-            rendJob.shipColor = new float4(0.85f, 0.85f, 0.85f, 1);
-            rendJob.shipTop = new float3(0, shipHeight / 2, 0);
-            rendJob.shipBL = new float3(-shipWidth / 2, -shipHeight / 2, 0);
-            rendJob.shipBR = new float3(shipWidth / 2, -shipHeight / 2, 0);
-
-            return rendJob.Schedule(this, inputDeps);
+            }).ScheduleParallel();
         }
     }
 }

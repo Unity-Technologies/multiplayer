@@ -90,4 +90,9 @@ public class LagCompensationGhostSendSystem : GhostSendSystem<LagCompensationGho
         base.OnCreate();
         RequireSingletonForUpdate<EnableLagCompensationGhostSendSystemComponent>();
     }
+
+    public override bool IsEnabled()
+    {
+        return HasSingleton<EnableLagCompensationGhostSendSystemComponent>();
+    }
 }

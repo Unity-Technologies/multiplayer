@@ -11,17 +11,39 @@ namespace Asteroids.Server
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateBefore(typeof(RpcSystem))]
-    public class LoadLevelSystem : JobComponentSystem
+    public class LoadLevelSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private EntityQuery m_LevelGroup;
 
-        [ExcludeComponent(typeof(LevelRequestedTag))]
-        struct RequestLoadJob : IJobForEachWithEntity<NetworkIdComponent>
+        protected override void OnCreate()
         {
-            public EntityCommandBuffer commandBuffer;
-            [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<LevelComponent> level;
-            public void Execute(Entity entity, int index, [ReadOnly] ref NetworkIdComponent netId)
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
+            RequireSingletonForUpdate<ServerSettings>();
+        }
+
+        protected override void OnUpdate()
+        {
+            if (m_LevelGroup.IsEmptyIgnoreFilter)
+            {
+                var settings = GetSingleton<ServerSettings>();
+                var newLevel = EntityManager.CreateEntity();
+                EntityManager.AddComponentData(newLevel, new LevelComponent
+                {
+                    width = settings.levelWidth,
+                    height = settings.levelHeight,
+                    playerForce = settings.playerForce,
+                    bulletVelocity = settings.bulletVelocity
+                });
+                return;
+            }
+            JobHandle levelDep;
+            var commandBuffer = m_Barrier.CreateCommandBuffer();
+            var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelDep);
+
+            var requestLoadJob = Entities.WithNone<LevelRequestedTag>().WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+                ForEach((Entity entity, in NetworkIdComponent netId) =>
             {
                 commandBuffer.AddComponent(entity, new LevelRequestedTag());
                 var req = commandBuffer.CreateEntity();
@@ -33,40 +55,9 @@ namespace Asteroids.Server
                     bulletVelocity = level[0].bulletVelocity
                 });
                 commandBuffer.AddComponent(req, new SendRpcCommandRequestComponent {TargetConnection = entity});
-            }
-        }
-
-        protected override void OnCreate()
-        {
-            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
-            RequireSingletonForUpdate<ServerSettings>();
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (m_LevelGroup.IsEmptyIgnoreFilter)
-            {
-                var settings = GetSingleton<ServerSettings>();
-                var level = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(level, new LevelComponent
-                {
-                    width = settings.levelWidth,
-                    height = settings.levelHeight,
-                    playerForce = settings.playerForce,
-                    bulletVelocity = settings.bulletVelocity
-                });
-                return inputDeps;
-            }
-            JobHandle levelDep;
-            var job = new RequestLoadJob
-            {
-                commandBuffer = m_Barrier.CreateCommandBuffer(),
-                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelDep)
-            };
-            var handle = job.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelDep));
-            m_Barrier.AddJobHandleForProducer(handle);
-            return handle;
+            }).Schedule(JobHandle.CombineDependencies(Dependency, levelDep));
+            Dependency = requestLoadJob;
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 }

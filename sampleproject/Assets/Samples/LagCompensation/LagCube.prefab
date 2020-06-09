@@ -176,4 +176,6 @@ MonoBehaviour:
       interpolate: 1
     manualFieldList: 0
     entityIndex: 0
+  prefabId: d87b8dd41a4604dd7bfb08763aa5174c
+  Name: LagCube
   doNotStrip: 0

@@ -1,3 +1,8 @@
+# 2020-06-09
+## Changes
+* Upgraded Unity NetCode to 0.2.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.2/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.3.1 see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.3/changelog/CHANGELOG.html)
+
 # 2020-02-24
 ## Changes
 * Upgraded Unity NetCode to 0.1.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.1/changelog/CHANGELOG.html)

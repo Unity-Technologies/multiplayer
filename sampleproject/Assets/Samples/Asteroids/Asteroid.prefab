@@ -48,7 +48,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  prefabId: 22681d06f3b7a4c5a999a7a7aa16bd15
   DefaultClientInstantiationType: 0
   RootPath: /Samples/Asteroids
   SnapshotDataPath: Mixed/Generated/AsteroidSnapshotData.cs
@@ -127,6 +126,8 @@ MonoBehaviour:
     fields: []
     manualFieldList: 1
     entityIndex: 0
+  prefabId: 22681d06f3b7a4c5a999a7a7aa16bd15
+  Name: Asteroid
   doNotStrip: 0
 --- !u!114 &-4511429949734935422
 MonoBehaviour:

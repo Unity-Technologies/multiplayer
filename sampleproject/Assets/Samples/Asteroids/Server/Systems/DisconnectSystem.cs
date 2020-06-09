@@ -1,39 +1,31 @@
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.NetCode;
 
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateAfter(typeof(CollisionSystem))]
-    public class DisconnectSystem : JobComponentSystem
+    public class DisconnectSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
-        [RequireComponentTag(typeof(NetworkStreamDisconnected))]
-        struct DisconnectJob : IJobForEach<CommandTargetComponent>
-        {
-            public EntityCommandBuffer commandBuffer;
-            public void Execute(ref CommandTargetComponent state)
-            {
-                if (state.targetEntity != Entity.Null)
-                {
-                    commandBuffer.DestroyEntity(state.targetEntity);
-                    state.targetEntity = Entity.Null;
-                }
-            }
-        }
 
         protected override void OnCreate()
         {
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnUpdate()
         {
-            var job = new DisconnectJob {commandBuffer = m_Barrier.CreateCommandBuffer()};
-            var handle = job.ScheduleSingle(this, inputDeps);
-            m_Barrier.AddJobHandleForProducer(handle);
-            return handle;
+            var commandBuffer = m_Barrier.CreateCommandBuffer();
+            Entities.WithAll<NetworkStreamDisconnected>().ForEach((ref CommandTargetComponent state) =>
+            {
+                if (state.targetEntity != Entity.Null)
+                {
+                    commandBuffer.DestroyEntity(state.targetEntity);
+                    state.targetEntity = Entity.Null;
+                }
+            }).Schedule();
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 }

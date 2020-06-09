@@ -1,3 +1,4 @@
+using AOT;
 using Unity.Burst;
 using Unity.Networking.Transport;
 using Unity.NetCode;
@@ -26,6 +27,7 @@ public struct LevelLoadRequest : IRpcCommand
         bulletVelocity = reader.ReadFloat();
     }
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         RpcExecutor.ExecuteCreateRequestComponent<LevelLoadRequest>(ref parameters);
@@ -54,6 +56,7 @@ public struct RpcLevelLoaded : IRpcCommand
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         var rpcData = default(RpcLevelLoaded);

@@ -181,6 +181,8 @@ MonoBehaviour:
       interpolate: 1
     manualFieldList: 0
     entityIndex: 0
+  prefabId: bd05f2145763d425091243a36d80d893
+  Name: Cube
   doNotStrip: 0
 --- !u!114 &5304272404096775568
 MonoBehaviour:

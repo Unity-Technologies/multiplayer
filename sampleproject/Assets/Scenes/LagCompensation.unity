@@ -211,8 +211,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c75b8787d8624691813514d3823a59f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SerializerCollectionPath: /Samples/LagCompensation/Generated/GhostSerializerCollection.cs
-  DeserializerCollectionPath: /Samples/LagCompensation/Generated/GhostDeserializerCollection.cs
+  RootPath: /Samples/LagCompensation/Generated
+  SerializerCollectionPath: GhostSerializerCollection.cs
+  DeserializerCollectionPath: GhostDeserializerCollection.cs
   NamePrefix: LagCompensation
   Ghosts:
   - prefab: {fileID: -6690360135873833551, guid: d87b8dd41a4604dd7bfb08763aa5174c,

@@ -215,8 +215,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c75b8787d8624691813514d3823a59f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SerializerCollectionPath: /Samples/Asteroids/Server/Generated/GhostSerializerCollection.cs
-  DeserializerCollectionPath: /Samples/Asteroids/Client/Generated/GhostDeserializerCollection.cs
+  RootPath: /Samples/Asteroids
+  SerializerCollectionPath: Server/Generated/GhostSerializerCollection.cs
+  DeserializerCollectionPath: Client/Generated/GhostDeserializerCollection.cs
   NamePrefix: Asteroids
   Ghosts:
   - prefab: {fileID: -7054750042840138153, guid: adc60907807514fb7954a1aa25776eec,

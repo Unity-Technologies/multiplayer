@@ -77,4 +77,9 @@ public class NetCubeGhostSendSystem : GhostSendSystem<NetCubeGhostSerializerColl
         base.OnCreate();
         RequireSingletonForUpdate<EnableNetCubeGhostSendSystemComponent>();
     }
+
+    public override bool IsEnabled()
+    {
+        return HasSingleton<EnableNetCubeGhostSendSystemComponent>();
+    }
 }

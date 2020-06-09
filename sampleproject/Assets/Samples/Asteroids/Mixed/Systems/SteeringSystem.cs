@@ -1,6 +1,4 @@
 using Unity.Entities;
-using Unity.Collections;
-using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
@@ -9,30 +7,58 @@ using Unity.Networking.Transport.Utilities;
 namespace Asteroids.Mixed
 {
     [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-    public class SteeringSystem : JobComponentSystem
+    public class SteeringSystem : SystemBase
     {
-        private BeginSimulationEntityCommandBufferSystem barrier;
-        private GhostPredictionSystemGroup predictionGroup;
-        private Entity bulletPrefab;
-        private EntityArchetype bulletSpawnArchetype;
-        private uint lastSpawnTick;
+        private const int k_CoolDownTicksCount = 10;
 
-        //[BurstCompile]
-        [RequireComponentTag(typeof(ShipTagComponentData), typeof(ShipCommandData))]
-        struct SteeringJob : IJobForEachWithEntity<Translation, Rotation, Velocity, ShipStateComponentData, PlayerIdComponentData, PredictedGhostComponent>
+        private BeginSimulationEntityCommandBufferSystem m_Barrier;
+        private GhostPredictionSystemGroup m_PredictionGroup;
+        private Entity m_BulletPrefab;
+        private EntityArchetype m_BulletSpawnArchetype;
+
+        protected override void OnCreate()
         {
-            private const int k_CoolDownTicksCount = 10;
-            public EntityCommandBuffer.Concurrent commandBuffer;
-            public float deltaTime;
-            public float displacement;
-            public float playerForce;
-            public float bulletVelocity;
-            public Entity bulletPrefab;
-            public EntityArchetype bulletSpawnArchetype;
-            public uint currentTick;
-            [ReadOnly] public BufferFromEntity<ShipCommandData> inputFromEntity;
-            public void Execute(Entity entity, int index, ref Translation position, ref Rotation rotation, ref Velocity velocity,
-                ref ShipStateComponentData state, [ReadOnly] ref PlayerIdComponentData playerIdData, [ReadOnly] ref PredictedGhostComponent prediction)
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_PredictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
+            RequireSingletonForUpdate<LevelComponent>();
+        }
+
+        protected override void OnUpdate()
+        {
+            if (m_BulletPrefab == Entity.Null && m_BulletSpawnArchetype == default)
+            {
+                if (World.GetExistingSystem<ServerSimulationSystemGroup>() != null)
+                {
+                    var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
+                    var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
+                    for (int i = 0; i < serverPrefabs.Length; ++i)
+                    {
+                        if (EntityManager.HasComponent<BulletTagComponent>(serverPrefabs[i].Value))
+                            m_BulletPrefab = serverPrefabs[i].Value;
+                    }
+                }
+                else
+                {
+                    m_BulletSpawnArchetype = EntityManager.CreateArchetype(
+                        ComponentType.ReadWrite<PredictedGhostSpawnRequestComponent>(),
+                        ComponentType.ReadWrite<BulletSnapshotData>());
+                }
+            }
+
+            var level = GetSingleton<LevelComponent>();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var deltaTime = Time.DeltaTime;
+            var displacement = 100.0f;
+            var playerForce = level.playerForce;
+            var bulletVelocity = level.bulletVelocity;
+            var bulletPrefab = m_BulletPrefab;
+            var bulletSpawnArchetype = m_BulletSpawnArchetype;
+            var currentTick = m_PredictionGroup.PredictingTick;
+            var inputFromEntity = GetBufferFromEntity<ShipCommandData>(true);
+            Entities.WithReadOnly(inputFromEntity).WithAll<ShipTagComponentData, ShipCommandData>().
+                ForEach((Entity entity, int nativeThreadIndex, ref Translation position, ref Rotation rotation,
+                ref Velocity velocity, ref ShipStateComponentData state,
+                in PlayerIdComponentData playerIdData, in PredictedGhostComponent prediction) =>
             {
                 if (!GhostPredictionSystemGroup.ShouldPredict(currentTick, prediction))
                     return;
@@ -45,12 +71,14 @@ namespace Asteroids.Mixed
 
                 if (inputData.left == 1)
                 {
-                    rotation.Value = math.mul(rotation.Value, quaternion.RotateZ(math.radians(-displacement * deltaTime)));
+                    rotation.Value = math.mul(rotation.Value,
+                        quaternion.RotateZ(math.radians(-displacement * deltaTime)));
                 }
 
                 if (inputData.right == 1)
                 {
-                    rotation.Value = math.mul(rotation.Value, quaternion.RotateZ(math.radians(displacement * deltaTime)));
+                    rotation.Value = math.mul(rotation.Value,
+                        quaternion.RotateZ(math.radians(displacement * deltaTime)));
                 }
 
                 if (inputData.thrust == 1)
@@ -66,29 +94,30 @@ namespace Asteroids.Mixed
                 {
                     if (bulletPrefab != Entity.Null)
                     {
-                        var e = commandBuffer.Instantiate(index, bulletPrefab);
+                        var e = commandBuffer.Instantiate(nativeThreadIndex, bulletPrefab);
 
-                        commandBuffer.SetComponent(index, e, position);
-                        commandBuffer.SetComponent(index, e, rotation);
+                        commandBuffer.SetComponent(nativeThreadIndex, e, position);
+                        commandBuffer.SetComponent(nativeThreadIndex, e, rotation);
 
                         var vel = new Velocity
                             {Value = math.mul(rotation.Value, new float3(0, bulletVelocity, 0)).xy};
 
-                        commandBuffer.SetComponent(index, e,
+                        commandBuffer.SetComponent(nativeThreadIndex, e,
                             new PlayerIdComponentData {PlayerId = playerIdData.PlayerId});
-                        commandBuffer.SetComponent(index, e, vel);
+                        commandBuffer.SetComponent(nativeThreadIndex, e, vel);
                     }
                     else
                     {
-                        var e = commandBuffer.CreateEntity(index, bulletSpawnArchetype);
+                        var e = commandBuffer.CreateEntity(nativeThreadIndex, bulletSpawnArchetype);
                         var bulletData = default(BulletSnapshotData);
                         bulletData.tick = currentTick;
                         bulletData.SetRotationValue(rotation.Value);
                         bulletData.SetTranslationValue(position.Value);
                         // Offset bullets for debugging spawn prediction
                         //bulletData.SetTranslationValue(position.Value + new float3(0,10,0));
-                        bulletData.SetPlayerIdComponentDataPlayerId(playerIdData.PlayerId, default(GhostSerializerState));
-                        var bulletSnapshots = commandBuffer.SetBuffer<BulletSnapshotData>(index, e);
+                        bulletData.SetPlayerIdComponentDataPlayerId(playerIdData.PlayerId,
+                            default(GhostSerializerState));
+                        var bulletSnapshots = commandBuffer.SetBuffer<BulletSnapshotData>(nativeThreadIndex, e);
                         bulletSnapshots.Add(bulletData);
                     }
 
@@ -98,53 +127,8 @@ namespace Asteroids.Mixed
                 {
                     state.WeaponCooldown = 0;
                 }
-            }
-        }
-
-        protected override void OnCreate()
-        {
-            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            predictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
-            RequireSingletonForUpdate<LevelComponent>();
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            if (bulletPrefab == Entity.Null && bulletSpawnArchetype == default)
-            {
-                if (World.GetExistingSystem<ServerSimulationSystemGroup>() != null)
-                {
-                    var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
-                    var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
-                    for (int i = 0; i < serverPrefabs.Length; ++i)
-                    {
-                        if (EntityManager.HasComponent<BulletTagComponent>(serverPrefabs[i].Value))
-                            bulletPrefab = serverPrefabs[i].Value;
-                    }
-                }
-                else
-                {
-                    bulletSpawnArchetype = EntityManager.CreateArchetype(
-                        ComponentType.ReadWrite<PredictedGhostSpawnRequestComponent>(),
-                        ComponentType.ReadWrite<BulletSnapshotData>());
-                }
-            }
-            var level = GetSingleton<LevelComponent>();
-            var steerJob = new SteeringJob
-            {
-                commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
-                deltaTime = Time.DeltaTime,
-                displacement = 100.0f,
-                playerForce = level.playerForce,
-                bulletVelocity = level.bulletVelocity,
-                bulletPrefab = bulletPrefab,
-                bulletSpawnArchetype = bulletSpawnArchetype,
-                currentTick = predictionGroup.PredictingTick,
-                inputFromEntity = GetBufferFromEntity<ShipCommandData>(true)
-            };
-            var handle = steerJob.Schedule(this, inputDeps);
-            barrier.AddJobHandleForProducer(handle);
-            return handle;
+            }).ScheduleParallel();
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 }

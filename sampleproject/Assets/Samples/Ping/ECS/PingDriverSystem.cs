@@ -16,7 +16,7 @@ public struct PingDriverStateComponent : ISystemStateComponentData
 // creating entities to track the connections
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [AlwaysUpdateSystem]
-public class PingDriverSystem : JobComponentSystem
+public class PingDriverSystem : SystemBase
 {
     public NetworkDriver ServerDriver { get; private set; }
     public NetworkDriver ClientDriver { get; private set; }
@@ -48,7 +48,7 @@ public class PingDriverSystem : JobComponentSystem
     }
 
     // Adding and removing components with EntityCommandBuffer is not burst compatible
-    //[BurstCompile]
+    [BurstCompile]
     struct DriverAcceptJob : IJob
     {
         public NetworkDriver driver;
@@ -67,27 +67,14 @@ public class PingDriverSystem : JobComponentSystem
             }
         }
     }
-    [BurstCompile]
-    struct DriverCleanupJob : IJobForEachWithEntity<PingServerConnectionComponentData>
-    {
-        public EntityCommandBuffer.Concurrent commandBuffer;
 
-        public void Execute(Entity entity, int index, [ReadOnly] ref PingServerConnectionComponentData connection)
-        {
-            // Cleanup old connections
-            if (!connection.connection.IsCreated)
-            {
-                commandBuffer.DestroyEntity(index, entity);
-            }
-        }
-    }
-    protected override JobHandle OnUpdate(JobHandle inputDep)
+    protected override void OnUpdate()
     {
         var commandBuffer = m_Barrier.CreateCommandBuffer();
         // Destroy drivers if the PingDriverComponents were removed
         if (!m_DestroyedDriverGroup.IsEmptyIgnoreFilter)
         {
-            inputDep.Complete();
+            Dependency.Complete();
             var destroyedDriverEntity = m_DestroyedDriverGroup.ToEntityArray(Allocator.TempJob);
             var destroyedDriverList = m_DestroyedDriverGroup.ToComponentDataArray<PingDriverComponentData>(Allocator.TempJob);
             for (int i = 0; i < destroyedDriverList.Length; ++i)
@@ -114,7 +101,7 @@ public class PingDriverSystem : JobComponentSystem
         // Create drivers if new PingDriverComponents were added
         if (!m_NewDriverGroup.IsEmptyIgnoreFilter)
         {
-            inputDep.Complete();
+            Dependency.Complete();
             var newDriverEntity = m_NewDriverGroup.ToEntityArray(Allocator.TempJob);
             var newDriverList = m_NewDriverGroup.ToComponentDataArray<PingDriverComponentData>(Allocator.TempJob);
             for (int i = 0; i < newDriverList.Length; ++i)
@@ -155,23 +142,29 @@ public class PingDriverSystem : JobComponentSystem
         if (ServerDriver.IsCreated)
         {
             // Schedule a chain with driver update, a job to accept all connections and finally a job to delete all invalid connections
-            serverDep = ServerDriver.ScheduleUpdate(inputDep);
+            serverDep = ServerDriver.ScheduleUpdate(Dependency);
             var acceptJob = new DriverAcceptJob
                 {driver = ServerDriver, commandBuffer = commandBuffer};
             serverDep = acceptJob.Schedule(serverDep);
-            var cleanupJob = new DriverCleanupJob
+            var cleanupCommandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            serverDep = Entities.ForEach((Entity entity, int nativeThreadIndex, in PingServerConnectionComponentData connection) =>
             {
-                commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent()
-            };
-            serverDep = cleanupJob.Schedule(this, serverDep);
-            m_Barrier.AddJobHandleForProducer(serverDep);
+                // Cleanup old connections
+                if (!connection.connection.IsCreated)
+                {
+                    cleanupCommandBuffer.DestroyEntity(nativeThreadIndex, entity);
+                }
+            }).ScheduleParallel(serverDep);
+            Dependency = serverDep;
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
 
         if (ClientDriver.IsCreated)
         {
-            clientDep = ClientDriver.ScheduleUpdate(inputDep);
+            clientDep = ClientDriver.ScheduleUpdate(Dependency);
+            Dependency = clientDep;
         }
 
-        return JobHandle.CombineDependencies(clientDep, serverDep);
+        JobHandle.CombineDependencies(clientDep, serverDep);
     }
 }

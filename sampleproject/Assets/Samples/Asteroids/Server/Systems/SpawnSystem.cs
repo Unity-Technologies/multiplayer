@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Collections;
 using Unity.Jobs;
@@ -107,59 +106,21 @@ namespace Asteroids.Server
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public class PlayerSpawnSystem : JobComponentSystem
+    public class PlayerSpawnSystem : SystemBase
     {
         protected override void OnCreate()
         {
-            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
         }
 
-        private BeginSimulationEntityCommandBufferSystem barrier;
+        private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private EntityQuery m_LevelGroup;
         private Entity m_Prefab;
         private float m_Radius;
 
-        struct SpawnJob : IJobForEachWithEntity<PlayerSpawnRequest, ReceiveRpcCommandRequestComponent>
-        {
-            public EntityCommandBuffer commandBuffer;
-            public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;
-            public ComponentDataFromEntity<CommandTargetComponent> commandTargetFromEntity;
-            public ComponentDataFromEntity<NetworkIdComponent> networkIdFromEntity;
-            public Entity shipPrefab;
-            public float shipRadius;
-            [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<LevelComponent> level;
-
-            public Unity.Mathematics.Random rand;
-
-            public void Execute(Entity entity, int index, [ReadOnly] ref PlayerSpawnRequest request, [ReadOnly] ref ReceiveRpcCommandRequestComponent requestSource)
-            {
-                // Destroy the request
-                commandBuffer.DestroyEntity(entity);
-                if (!playerStateFromEntity.Exists(requestSource.SourceConnection) ||
-                    !commandTargetFromEntity.Exists(requestSource.SourceConnection) ||
-                    commandTargetFromEntity[requestSource.SourceConnection].targetEntity != Entity.Null ||
-                    playerStateFromEntity[requestSource.SourceConnection].IsSpawning != 0)
-                    return;
-                var ship = commandBuffer.Instantiate(shipPrefab);
-                var padding = 2 * shipRadius;
-                var pos = new Translation{Value = new float3(rand.NextFloat(padding, level[0].width-padding),
-                    rand.NextFloat(padding, level[0].height-padding), 0)};
-                //var pos = new PositionComponentData(GameSettings.mapWidth / 2, GameSettings.mapHeight / 2);
-                var rot = new Rotation{Value = quaternion.RotateZ(math.radians(90f))};
-
-                commandBuffer.SetComponent(ship, pos);
-                commandBuffer.SetComponent(ship, rot);
-                commandBuffer.SetComponent(ship, new PlayerIdComponentData {PlayerId = networkIdFromEntity[requestSource.SourceConnection].Value, PlayerEntity = requestSource.SourceConnection});
-
-                commandBuffer.AddComponent(ship, new ShipSpawnInProgressTag());
-
-                // Mark the player as currently spawning
-                playerStateFromEntity[requestSource.SourceConnection] = new PlayerStateComponentData { IsSpawning = 1};
-            }
-        }
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnUpdate()
         {
             if (m_Prefab == Entity.Null)
             {
@@ -170,68 +131,89 @@ namespace Asteroids.Server
             }
 
             JobHandle levelHandle;
-            var spawnJob = new SpawnJob
+            var commandBuffer = m_Barrier.CreateCommandBuffer();
+            var playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>();
+            var commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>();
+            var networkIdFromEntity = GetComponentDataFromEntity<NetworkIdComponent>();
+            var shipPrefab = m_Prefab;
+            var shipRadius = m_Radius;
+            var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
+            var rand = new Unity.Mathematics.Random((uint) Stopwatch.GetTimestamp());
+
+            var  spawnJob = Entities.WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+                ForEach((Entity entity, in PlayerSpawnRequest request,
+                in ReceiveRpcCommandRequestComponent requestSource) =>
             {
-                commandBuffer = barrier.CreateCommandBuffer(),
-                playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>(),
-                commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(),
-                networkIdFromEntity = GetComponentDataFromEntity<NetworkIdComponent>(),
-                shipPrefab = m_Prefab,
-                shipRadius = m_Radius,
-                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle),
-                rand = new Unity.Mathematics.Random((uint)Stopwatch.GetTimestamp())
-            };
-            var handle = spawnJob.ScheduleSingle(this, JobHandle.CombineDependencies(inputDeps, levelHandle));
-            barrier.AddJobHandleForProducer(handle);
-            return handle;
+                // Destroy the request
+                commandBuffer.DestroyEntity(entity);
+                if (!playerStateFromEntity.Exists(requestSource.SourceConnection) ||
+                    !commandTargetFromEntity.Exists(requestSource.SourceConnection) ||
+                    commandTargetFromEntity[requestSource.SourceConnection].targetEntity != Entity.Null ||
+                    playerStateFromEntity[requestSource.SourceConnection].IsSpawning != 0)
+                    return;
+                var ship = commandBuffer.Instantiate(shipPrefab);
+                var padding = 2 * shipRadius;
+                var pos = new Translation
+                {
+                    Value = new float3(rand.NextFloat(padding, level[0].width - padding),
+                        rand.NextFloat(padding, level[0].height - padding), 0)
+                };
+                //var pos = new PositionComponentData(GameSettings.mapWidth / 2, GameSettings.mapHeight / 2);
+                var rot = new Rotation {Value = quaternion.RotateZ(math.radians(90f))};
+
+                commandBuffer.SetComponent(ship, pos);
+                commandBuffer.SetComponent(ship, rot);
+                commandBuffer.SetComponent(ship,
+                    new PlayerIdComponentData
+                    {
+                        PlayerId = networkIdFromEntity[requestSource.SourceConnection].Value,
+                        PlayerEntity = requestSource.SourceConnection
+                    });
+
+                commandBuffer.AddComponent(ship, new ShipSpawnInProgressTag());
+
+                // Mark the player as currently spawning
+                playerStateFromEntity[requestSource.SourceConnection] = new PlayerStateComponentData {IsSpawning = 1};
+            }).Schedule(JobHandle.CombineDependencies(Dependency, levelHandle));
+            Dependency = spawnJob;
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateBefore(typeof(AsteroidsGhostSendSystem))]
-    public class PlayerCompleteSpawnSystem : JobComponentSystem
+    public class PlayerCompleteSpawnSystem : SystemBase
     {
         protected override void OnCreate()
         {
-            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         }
 
-        private BeginSimulationEntityCommandBufferSystem barrier;
+        private BeginSimulationEntityCommandBufferSystem m_Barrier;
 
-        [RequireComponentTag(typeof(ShipSpawnInProgressTag))]
-        struct SpawnJob : IJobForEachWithEntity<PlayerIdComponentData>
+        protected override void OnUpdate()
         {
-            public EntityCommandBuffer commandBuffer;
-            public ComponentDataFromEntity<PlayerStateComponentData> playerStateFromEntity;
-            public ComponentDataFromEntity<CommandTargetComponent> commandTargetFromEntity;
-            public ComponentDataFromEntity<NetworkStreamConnection> connectionFromEntity;
+            var commandBuffer = m_Barrier.CreateCommandBuffer();
+            var playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>();
+            var commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>();
+            var connectionFromEntity = GetComponentDataFromEntity<NetworkStreamConnection>();
 
-            public void Execute(Entity entity, int index, [ReadOnly] ref PlayerIdComponentData player)
-            {
-                if (!playerStateFromEntity.Exists(player.PlayerEntity) || !connectionFromEntity[player.PlayerEntity].Value.IsCreated)
+            Entities.WithAll<ShipSpawnInProgressTag>().
+                ForEach((Entity entity, in PlayerIdComponentData player) =>
                 {
-                    // Player was disconnected during spawn, or other error
-                    commandBuffer.DestroyEntity(entity);
-                    return;
-                }
-                commandBuffer.RemoveComponent<ShipSpawnInProgressTag>(entity);
-                commandTargetFromEntity[player.PlayerEntity] = new CommandTargetComponent {targetEntity = entity};
-                playerStateFromEntity[player.PlayerEntity] = new PlayerStateComponentData {IsSpawning = 0};
-            }
-        }
+                    if (!playerStateFromEntity.Exists(player.PlayerEntity) ||
+                        !connectionFromEntity[player.PlayerEntity].Value.IsCreated)
+                    {
+                        // Player was disconnected during spawn, or other error
+                        commandBuffer.DestroyEntity(entity);
+                        return;
+                    }
 
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
-        {
-            var spawnJob = new SpawnJob
-            {
-                commandBuffer = barrier.CreateCommandBuffer(),
-                playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>(),
-                commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>(),
-                connectionFromEntity = GetComponentDataFromEntity<NetworkStreamConnection>()
-            };
-            var handle = spawnJob.ScheduleSingle(this, inputDeps);
-            barrier.AddJobHandleForProducer(handle);
-            return handle;
+                    commandBuffer.RemoveComponent<ShipSpawnInProgressTag>(entity);
+                    commandTargetFromEntity[player.PlayerEntity] = new CommandTargetComponent {targetEntity = entity};
+                    playerStateFromEntity[player.PlayerEntity] = new PlayerStateComponentData {IsSpawning = 0};
+                }).Schedule();
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 }

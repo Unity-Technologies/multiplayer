@@ -1,20 +1,22 @@
-using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Networking.Transport;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-public class PingServerSystem : JobComponentSystem
+public class PingServerSystem : SystemBase
 {
     private PingDriverSystem m_ServerDriverSystem;
 
-    [BurstCompile]
-    struct PongJob : IJobForEach<PingServerConnectionComponentData>
+    protected override void OnCreate()
     {
-        public NetworkDriver.Concurrent driver;
+        m_ServerDriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
+    }
 
-        public void Execute(ref PingServerConnectionComponentData connection)
+    protected override void OnUpdate()
+    {
+        if (!m_ServerDriverSystem.ServerDriver.IsCreated)
+            return;
+        var driver = m_ServerDriverSystem.ConcurrentServerDriver;
+        Entities.ForEach((ref PingServerConnectionComponentData connection) =>
         {
             DataStreamReader strm;
             NetworkEvent.Type cmd;
@@ -32,24 +34,6 @@ public class PingServerSystem : JobComponentSystem
                     connection = new PingServerConnectionComponentData {connection = default(NetworkConnection)};
                 }
             }
-        }
-    }
-
-    protected override void OnCreate()
-    {
-        m_ServerDriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
-    }
-
-    protected override JobHandle OnUpdate(JobHandle inputDep)
-    {
-        if (!m_ServerDriverSystem.ServerDriver.IsCreated)
-            return inputDep;
-        var pongJob = new PongJob
-        {
-            driver = m_ServerDriverSystem.ConcurrentServerDriver
-        };
-        inputDep = pongJob.Schedule(this, inputDep);
-
-        return inputDep;
+        }).ScheduleParallel();
     }
 }

@@ -1,3 +1,4 @@
+using AOT;
 using Unity.Burst;
 using Unity.Networking.Transport;
 using Unity.NetCode;
@@ -14,6 +15,7 @@ public struct PlayerSpawnRequest : IRpcCommand
     }
 
     [BurstCompile]
+    [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         RpcExecutor.ExecuteCreateRequestComponent<PlayerSpawnRequest>(ref parameters);

@@ -33,7 +33,7 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
     protected override void OnUpdate()
     {
         EntityManager.DestroyEntity(GetSingletonEntity<InitializeClientServer>());
-        foreach (var world in World.AllWorlds)
+        foreach (var world in World.All)
         {
 #if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
             // Bind the server and start listening for connections
@@ -65,6 +65,9 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
                 world.EntityManager.CreateEntity(typeof(FixedClientTickRate));
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = networkPort;
+#if UNITY_EDITOR
+                ep = NetworkEndPoint.Parse(ClientServerBootstrap.RequestedAutoConnect, networkPort);
+#endif
                 world.GetExistingSystem<NetworkStreamReceiveSystem>().Connect(ep);
             }
 #endif

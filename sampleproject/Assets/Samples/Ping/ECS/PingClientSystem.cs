@@ -1,16 +1,17 @@
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
 using Unity.Networking.Transport;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [AlwaysUpdateSystem]
-public class PingClientSystem : JobComponentSystem
+public class PingClientSystem : SystemBase
 {
     private BeginSimulationEntityCommandBufferSystem m_Barrier;
     private PingDriverSystem m_DriverSystem;
     private EntityQuery m_ConnectionGroup;
+    private EntityQuery m_ServerConnectionGroup;
+    private NativeArray<PendingPing> m_PendingPings;
+    private NativeArray<int> m_PingStats;
 
     struct PendingPing
     {
@@ -18,17 +19,43 @@ public class PingClientSystem : JobComponentSystem
         public double time;
     }
 
-    [BurstCompile]
-    struct PingJob : IJobForEachWithEntity<PingClientConnectionComponentData>
+    protected override void OnCreate()
     {
-        public NetworkDriver driver;
-        public NetworkEndPoint serverEP;
-        public NativeArray<PendingPing> pendingPings;
-        public NativeArray<int> pingStats;
-        public double frameTime;
-        public EntityCommandBuffer commandBuffer;
+        m_PendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
+        m_PingStats = new NativeArray<int>(2, Allocator.Persistent);
+        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_DriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
+        m_ConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingClientConnectionComponentData>());
+        // Group used only to get dependency tracking for the driver
+        m_ServerConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
+    }
 
-        public void Execute(Entity entity, int index, ref PingClientConnectionComponentData connection)
+    protected override void OnDestroy()
+    {
+        m_PendingPings.Dispose();
+        m_PingStats.Dispose();
+    }
+
+    protected override void OnUpdate()
+    {
+        if (!m_DriverSystem.ClientDriver.IsCreated)
+            return;
+        PingClientUIBehaviour.UpdateStats(m_PingStats[0], m_PingStats[1]);
+        if (PingClientUIBehaviour.ServerEndPoint.IsValid && m_ConnectionGroup.IsEmptyIgnoreFilter)
+        {
+            Dependency.Complete();
+            var ent = EntityManager.CreateEntity();
+            EntityManager.AddComponentData(ent, new PingClientConnectionComponentData{connection = m_DriverSystem.ClientDriver.Connect(PingClientUIBehaviour.ServerEndPoint)});
+            return;
+        }
+
+        var driver = m_DriverSystem.ClientDriver;
+        var serverEP = PingClientUIBehaviour.ServerEndPoint;
+        var pendingPings = m_PendingPings;
+        var pingStats = m_PingStats;
+        var frameTime = Time.ElapsedTime;
+        var commandBuffer = m_Barrier.CreateCommandBuffer();
+        Entities.ForEach((Entity entity, ref PingClientConnectionComponentData connection) =>
         {
             if (!serverEP.IsValid)
             {
@@ -36,6 +63,7 @@ public class PingClientSystem : JobComponentSystem
                 commandBuffer.DestroyEntity(entity);
                 return;
             }
+
             DataStreamReader strm;
             NetworkEvent.Type cmd;
             while ((cmd = connection.connection.PopEvent(driver, out strm)) != NetworkEvent.Type.Empty)
@@ -59,53 +87,8 @@ public class PingClientSystem : JobComponentSystem
                     commandBuffer.DestroyEntity(entity);
                 }
             }
-        }
+        }).Schedule();
+        m_Barrier.AddJobHandleForProducer(Dependency);
+        m_ServerConnectionGroup.AddDependency(Dependency);
     }
-
-    private NativeArray<PendingPing> m_pendingPings;
-    private NativeArray<int> m_pingStats;
-
-    protected override void OnCreate()
-    {
-        m_pendingPings = new NativeArray<PendingPing>(64, Allocator.Persistent);
-        m_pingStats = new NativeArray<int>(2, Allocator.Persistent);
-        m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-        m_DriverSystem = World.GetOrCreateSystem<PingDriverSystem>();
-        m_ConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<PingClientConnectionComponentData>());
-        // Group used only to get dependency tracking for the driver
-        GetEntityQuery(ComponentType.ReadWrite<PingServerConnectionComponentData>());
-    }
-
-    protected override void OnDestroy()
-    {
-        m_pendingPings.Dispose();
-        m_pingStats.Dispose();
-    }
-
-    protected override JobHandle OnUpdate(JobHandle inputDep)
-    {
-        if (!m_DriverSystem.ClientDriver.IsCreated)
-            return inputDep;
-        PingClientUIBehaviour.UpdateStats(m_pingStats[0], m_pingStats[1]);
-        if (PingClientUIBehaviour.ServerEndPoint.IsValid && m_ConnectionGroup.IsEmptyIgnoreFilter)
-        {
-            inputDep.Complete();
-            var ent = EntityManager.CreateEntity();
-            EntityManager.AddComponentData(ent, new PingClientConnectionComponentData{connection = m_DriverSystem.ClientDriver.Connect(PingClientUIBehaviour.ServerEndPoint)});
-            return default;
-        }
-        var pingJob = new PingJob
-        {
-            driver = m_DriverSystem.ClientDriver,
-            serverEP = PingClientUIBehaviour.ServerEndPoint,
-            pendingPings = m_pendingPings,
-            pingStats = m_pingStats,
-            frameTime = Time.ElapsedTime,
-            commandBuffer = m_Barrier.CreateCommandBuffer()
-        };
-        var handle = pingJob.ScheduleSingle(this, inputDep);
-        m_Barrier.AddJobHandleForProducer(handle);
-        return handle;
-    }
-
 }

@@ -1,9 +1,6 @@
 using Unity.Collections;
-using UnityEngine;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Jobs;
-using Unity.Burst;
 using Unity.Transforms;
 using Unity.NetCode;
 
@@ -17,143 +14,104 @@ namespace Asteroids.Client
     }
 
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public class ParticleRenderSystem : JobComponentSystem
+    public class ParticleRenderSystem : SystemBase
     {
-        private EntityQuery lineGroup;
-        private NativeQueue<LineRenderSystem.Line>.ParallelWriter lineQueue;
+        private EntityQuery m_LineGroup;
+        private NativeQueue<LineRenderSystem.Line>.ParallelWriter m_LineQueue;
+
         protected override void OnCreate()
         {
-            lineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
-            lineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
-            RequireForUpdate(lineGroup);
+            m_LineGroup = GetEntityQuery(ComponentType.ReadWrite<LineRendererComponentData>());
+            m_LineQueue = World.GetOrCreateSystem<LineRenderSystem>().LineQueue;
+            RequireForUpdate(m_LineGroup);
         }
 
-        [BurstCompile]
-        struct ParticleRenderJob : IJobForEach<ParticleComponentData, Translation, Rotation>
+        protected override void OnUpdate()
         {
-            public NativeQueue<LineRenderSystem.Line>.ParallelWriter lines;
-            public void Execute([ReadOnly] ref ParticleComponentData particle, [ReadOnly] ref Translation position, [ReadOnly] ref Rotation rotation)
+            var lines = m_LineQueue;
+            Entities.ForEach((in ParticleComponentData particle, in Translation position, in Rotation rotation) =>
             {
                 float3 pos = position.Value;
                 float3 dir = new float3(0, particle.length, 0);
                 dir = math.mul(rotation.Value, dir);
                 lines.Enqueue(new LineRenderSystem.Line(pos.xy, pos.xy - dir.xy, particle.color, particle.width));
-            }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDep)
-        {
-            var job = new ParticleRenderJob();
-            job.lines = lineQueue;
-            return job.Schedule(this, inputDep);
+            }).ScheduleParallel();
+            m_LineGroup.AddDependency(Dependency);
         }
     }
 
     [UpdateBefore(typeof(ParticleRenderSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public class ParticleAgeSystem : JobComponentSystem
+    public class ParticleAgeSystem : SystemBase
     {
-        private BeginPresentationEntityCommandBufferSystem barrier;
+        private BeginPresentationEntityCommandBufferSystem m_Barrier;
 
         protected override void OnCreate()
         {
-            barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
+            m_Barrier = World.GetOrCreateSystem<BeginPresentationEntityCommandBufferSystem>();
         }
 
-        [BurstCompile]
-        struct ParticleAgeJob : IJobForEachWithEntity<ParticleAgeComponentData>
+        protected override void OnUpdate()
         {
-            public float deltaTime;
-            public EntityCommandBuffer.Concurrent commandBuffer;
-
-            public void Execute(Entity entity, int index, ref ParticleAgeComponentData age)
+            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var deltaTime = Time.DeltaTime;
+            Entities.ForEach((Entity entity, int nativeThreadIndex, ref ParticleAgeComponentData age) =>
             {
                 age.age += deltaTime;
                 if (age.age >= age.maxAge)
                 {
                     age.age = age.maxAge;
-                    commandBuffer.DestroyEntity(index, entity);
+                    commandBuffer.DestroyEntity(nativeThreadIndex, entity);
                 }
-            }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDep)
-        {
-            var job = new ParticleAgeJob();
-            job.commandBuffer = barrier.CreateCommandBuffer().ToConcurrent();
-            job.deltaTime = Time.DeltaTime;
-            var handle = job.Schedule(this, inputDep);
-            barrier.AddJobHandleForProducer(handle);
-            return handle;
+            }).ScheduleParallel();
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 
     [UpdateBefore(typeof(ParticleRenderSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public class ParticleMoveSystem : JobComponentSystem
+    public class ParticleMoveSystem : SystemBase
     {
-        [BurstCompile]
-        struct ParticleMoveJob : IJobForEach<Translation, ParticleVelocityComponentData>
+        protected override void OnUpdate()
         {
-            public float deltaTime;
-
-            public void Execute(ref Translation position, [ReadOnly] ref ParticleVelocityComponentData velocity)
+            var deltaTime = Time.DeltaTime;
+            Entities.ForEach((ref Translation position, in ParticleVelocityComponentData velocity) =>
             {
                 position.Value.x += velocity.velocity.x * deltaTime;
                 position.Value.y += velocity.velocity.y * deltaTime;
-            }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDep)
-        {
-            var job = new ParticleMoveJob();
-            job.deltaTime = Time.DeltaTime;
-            return job.Schedule(this, inputDep);
+            }).ScheduleParallel();
         }
     }
 
     [UpdateBefore(typeof(ParticleRenderSystem))]
     [UpdateAfter(typeof(ParticleAgeSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public class ParticleColorTransitionSystem : JobComponentSystem
+    public class ParticleColorTransitionSystem : SystemBase
     {
-        [BurstCompile]
-        struct ParticleColorJob : IJobForEach<ParticleComponentData, ParticleColorTransitionComponentData, ParticleAgeComponentData>
+        protected override void OnUpdate()
         {
-            public void Execute(ref ParticleComponentData particle, [ReadOnly] ref ParticleColorTransitionComponentData color, [ReadOnly] ref ParticleAgeComponentData age)
+            Entities.ForEach((ref ParticleComponentData particle, in ParticleColorTransitionComponentData color, in ParticleAgeComponentData age) =>
             {
                 float colorScale = age.age / age.maxAge;
                 particle.color = color.startColor + (color.endColor - color.startColor) * colorScale;
-            }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDep)
-        {
-            var job = new ParticleColorJob();
-            return job.Schedule(this, inputDep);
+            }).ScheduleParallel();
         }
     }
 
     [UpdateBefore(typeof(ParticleRenderSystem))]
     [UpdateAfter(typeof(ParticleAgeSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public class ParticleSizeTransitionSystem : JobComponentSystem
+    public class ParticleSizeTransitionSystem : SystemBase
     {
-        [BurstCompile]
-        struct SizeJob : IJobForEach<ParticleComponentData, ParticleSizeTransitionComponentData, ParticleAgeComponentData>
+        protected override void OnUpdate()
         {
-            public void Execute(ref ParticleComponentData particle, [ReadOnly] ref ParticleSizeTransitionComponentData size, [ReadOnly] ref ParticleAgeComponentData age)
+            Entities.ForEach((ref ParticleComponentData particle, in ParticleSizeTransitionComponentData size,
+                in ParticleAgeComponentData age) =>
             {
                 float sizeScale = age.age / age.maxAge;
                 particle.length = size.startLength + (size.endLength - size.startLength) * sizeScale;
                 particle.width = size.startWidth + (size.endWidth - size.startWidth) * sizeScale;
-            }
-        }
-
-        protected override JobHandle OnUpdate(JobHandle inputDep)
-        {
-            var job = new SizeJob();
-            return job.Schedule(this, inputDep);
+            }).ScheduleParallel();
         }
     }
 }

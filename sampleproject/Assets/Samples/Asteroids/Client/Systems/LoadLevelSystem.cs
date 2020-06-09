@@ -1,44 +1,16 @@
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Collections;
 using Unity.NetCode;
 
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
     [UpdateBefore(typeof(RpcSystem))]
-    public class LoadLevelSystem : JobComponentSystem
+    public class LoadLevelSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLevelLoaded> m_RpcQueue;
         private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
-        struct LoadJob : IJobForEachWithEntity<LevelLoadRequest, ReceiveRpcCommandRequestComponent>
-        {
-            public EntityCommandBuffer.Concurrent commandBuffer;
-            public RpcQueue<RpcLevelLoaded> rpcQueue;
-            public BufferFromEntity<OutgoingRpcDataStreamBufferComponent> rpcFromEntity;
-            public Entity levelSingleton;
-            public ComponentDataFromEntity<LevelComponent> levelFromEntity;
-            public void Execute(Entity entity, int index, [ReadOnly] ref LevelLoadRequest request, [ReadOnly] ref ReceiveRpcCommandRequestComponent requestSource)
-            {
-                commandBuffer.DestroyEntity(index, entity);
-                // Check for disconnects
-                if (!rpcFromEntity.Exists(requestSource.SourceConnection))
-                    return;
-                // set the level size - fake loading of level
-                levelFromEntity[levelSingleton] = new LevelComponent
-                {
-                    width = request.width,
-                    height = request.height,
-                    playerForce = request.playerForce,
-                    bulletVelocity = request.bulletVelocity
-                };
-                commandBuffer.AddComponent(index, requestSource.SourceConnection, new PlayerStateComponentData());
-                commandBuffer.AddComponent(index, requestSource.SourceConnection, default(NetworkStreamInGame));
-                rpcQueue.Schedule(rpcFromEntity[requestSource.SourceConnection], new RpcLevelLoaded());
-            }
-        }
 
         protected override void OnCreate()
         {
@@ -52,19 +24,32 @@ namespace Asteroids.Client
             RequireForUpdate(m_LevelGroup);
         }
 
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnUpdate()
         {
-            var job = new LoadJob
+            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var rpcFromEntity = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
+            var levelFromEntity = GetComponentDataFromEntity<LevelComponent>();
+            var levelSingleton = m_LevelSingleton;
+            var rpcQueue = m_RpcQueue;
+            Entities.ForEach((Entity entity, int nativeThreadIndex, in LevelLoadRequest request, in ReceiveRpcCommandRequestComponent requestSource) =>
             {
-                commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent(),
-                rpcQueue = m_RpcQueue,
-                rpcFromEntity = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>(),
-                levelSingleton = m_LevelSingleton,
-                levelFromEntity = GetComponentDataFromEntity<LevelComponent>()
-            };
-            var handle = job.ScheduleSingle(this, inputDeps);
-            m_Barrier.AddJobHandleForProducer(handle);
-            return handle;
+                commandBuffer.DestroyEntity(nativeThreadIndex, entity);
+                // Check for disconnects
+                if (!rpcFromEntity.Exists(requestSource.SourceConnection))
+                    return;
+                // set the level size - fake loading of level
+                levelFromEntity[levelSingleton] = new LevelComponent
+                {
+                    width = request.width,
+                    height = request.height,
+                    playerForce = request.playerForce,
+                    bulletVelocity = request.bulletVelocity
+                };
+                commandBuffer.AddComponent(nativeThreadIndex, requestSource.SourceConnection, new PlayerStateComponentData());
+                commandBuffer.AddComponent(nativeThreadIndex, requestSource.SourceConnection, default(NetworkStreamInGame));
+                rpcQueue.Schedule(rpcFromEntity[requestSource.SourceConnection], new RpcLevelLoaded());
+            }).Schedule();
+            m_Barrier.AddJobHandleForProducer(Dependency);
         }
     }
 }

@@ -8,16 +8,19 @@ public class NetCodeBootstrap : ClientServerBootstrap
 {
     public override bool Initialize(string defaultWorldName)
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Asteroids" ||
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "NetCube" ||
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "LagCompensation")
+        var sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        if (sceneName == "Asteroids" ||
+            sceneName == "NetCube" ||
+            sceneName == "LagCompensation" ||
+            sceneName.StartsWith("BasicPrespawnTest") ||
+            sceneName.StartsWith("Test"))
             return base.Initialize(defaultWorldName);
-
-        var systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default);
-        GenerateSystemLists(systems);
 
         var world = new World(defaultWorldName);
         World.DefaultGameObjectInjectionWorld = world;
+
+        var systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default);
+        GenerateSystemLists(systems);
 
         DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, DefaultWorldSystems);
         ScriptBehaviourUpdateOrder.UpdatePlayerLoop(world);
