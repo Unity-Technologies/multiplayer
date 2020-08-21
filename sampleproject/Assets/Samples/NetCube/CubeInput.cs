@@ -62,7 +62,7 @@ public class SampleCubeInput : ComponentSystem
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<NetworkIdComponent>();
-        RequireSingletonForUpdate<EnableNetCubeGhostReceiveSystemComponent>();
+        RequireSingletonForUpdate<EnableNetCubeGame>();
     }
 
     protected override void OnUpdate()
@@ -71,9 +71,9 @@ public class SampleCubeInput : ComponentSystem
         if (localInput == Entity.Null)
         {
             var localPlayerId = GetSingleton<NetworkIdComponent>().Value;
-            Entities.WithNone<CubeInput>().ForEach((Entity ent, ref MovableCubeComponent cube) =>
+            Entities.WithAll<MovableCubeComponent>().WithNone<CubeInput>().ForEach((Entity ent, ref GhostOwnerComponent ghostOwner) =>
             {
-                if (cube.PlayerId == localPlayerId)
+                if (ghostOwner.NetworkId == localPlayerId)
                 {
                     PostUpdateCommands.AddBuffer<CubeInput>(ent);
                     PostUpdateCommands.SetComponent(GetSingletonEntity<CommandTargetComponent>(), new CommandTargetComponent {targetEntity = ent});

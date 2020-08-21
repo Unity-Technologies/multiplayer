@@ -42,7 +42,7 @@ namespace Asteroids.Server
             var commandBuffer = m_Barrier.CreateCommandBuffer();
             var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelDep);
 
-            var requestLoadJob = Entities.WithNone<LevelRequestedTag>().WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+            var requestLoadJob = Entities.WithNone<LevelRequestedTag>().WithReadOnly(level).WithDisposeOnCompletion(level).
                 ForEach((Entity entity, in NetworkIdComponent netId) =>
             {
                 commandBuffer.AddComponent(entity, new LevelRequestedTag());

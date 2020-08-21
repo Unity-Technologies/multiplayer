@@ -13,7 +13,7 @@ namespace Asteroids.Server
     [UpdateAfter(typeof(GhostSimulationSystemGroup))]
     [UpdateAfter(typeof(BulletAgeSystem))]
     // If this was a ghost which was just spawned the ghost system needs to see it before we can destroy it
-    [UpdateAfter(typeof(AsteroidsGhostSendSystem))]
+    [UpdateAfter(typeof(GhostSendSystem))]
     public class CollisionSystem : JobComponentSystem
     {
         private EntityQuery shipGroup;
@@ -21,6 +21,7 @@ namespace Asteroids.Server
         private EntityQuery asteroidGroup;
         private EntityQuery m_LevelGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
+        private ServerSimulationSystemGroup m_ServerSimulationSystemGroup;
         private NativeQueue<Entity> playerClearQueue;
         private EntityQuery settingsGroup;
 
@@ -34,6 +35,7 @@ namespace Asteroids.Server
             asteroidGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponent>(), ComponentType.ReadOnly<AsteroidTagComponentData>());
             barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_ServerSimulationSystemGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
             playerClearQueue = new NativeQueue<Entity>(Allocator.Persistent);
 
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
@@ -50,46 +52,66 @@ namespace Asteroids.Server
         [BurstCompile]
         struct DestroyAsteroidJob : IJobChunk
         {
-            public EntityCommandBuffer.Concurrent commandBuffer;
+            public EntityCommandBuffer.ParallelWriter commandBuffer;
             [ReadOnly] public NativeArray<ArchetypeChunk> bulletChunks;
-            [ReadOnly] public ArchetypeChunkComponentType<BulletAgeComponent> bulletAgeType;
-            [ReadOnly] public ArchetypeChunkComponentType<Translation> positionType;
-            [ReadOnly] public ArchetypeChunkComponentType<CollisionSphereComponent> sphereType;
-            [ReadOnly] public ArchetypeChunkEntityType entityType;
+            [ReadOnly] public ComponentTypeHandle<BulletAgeComponent> bulletAgeType;
+            [ReadOnly] public ComponentTypeHandle<Translation> positionType;
+            [ReadOnly] public ComponentTypeHandle<StaticAsteroid> staticAsteroidType;
+            [ReadOnly] public ComponentTypeHandle<CollisionSphereComponent> sphereType;
+            [ReadOnly] public EntityTypeHandle entityType;
 
             [ReadOnly] public NativeArray<LevelComponent> level;
+            public uint tick;
+            public float frameTime;
             public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
             {
-                var asteroidPos = chunk.GetNativeArray(positionType);
                 var asteroidSphere = chunk.GetNativeArray(sphereType);
                 var asteroidEntity = chunk.GetNativeArray(entityType);
-                for (int asteroid = 0; asteroid < asteroidPos.Length; ++asteroid)
+                if (chunk.Has(staticAsteroidType))
                 {
-                    var firstPos = asteroidPos[asteroid].Value.xy;
-                    var firstRadius = asteroidSphere[asteroid].radius;
-                    if (firstPos.x - firstRadius < 0 || firstPos.y - firstRadius < 0 ||
-                        firstPos.x + firstRadius > level[0].width ||
-                        firstPos.y + firstRadius > level[0].height)
+                    var staticAsteroid = chunk.GetNativeArray(staticAsteroidType);
+                    for (int asteroid = 0; asteroid < asteroidEntity.Length; ++asteroid)
                     {
-                        commandBuffer.DestroyEntity(chunkIndex, asteroidEntity[asteroid]);
-                        continue;
+                        var firstPos = staticAsteroid[asteroid].GetPosition(tick, 1, frameTime).xy;
+                        var firstRadius = asteroidSphere[asteroid].radius;
+                        CheckCollisions(chunkIndex, asteroidEntity[asteroid], firstPos, firstRadius);
                     }
-                    // TODO: can check asteroid / asteroid here if required
-                    for (int bc = 0; bc < bulletChunks.Length; ++bc)
+                }
+                else
+                {
+                    var asteroidPos = chunk.GetNativeArray(positionType);
+                    for (int asteroid = 0; asteroid < asteroidPos.Length; ++asteroid)
                     {
-                        var bulletAge = bulletChunks[bc].GetNativeArray(bulletAgeType);
-                        var bulletPos = bulletChunks[bc].GetNativeArray(positionType);
-                        var bulletSphere = bulletChunks[bc].GetNativeArray(sphereType);
-                        for (int bullet = 0; bullet < bulletAge.Length; ++bullet)
+                        var firstPos = asteroidPos[asteroid].Value.xy;
+                        var firstRadius = asteroidSphere[asteroid].radius;
+                        CheckCollisions(chunkIndex, asteroidEntity[asteroid], firstPos, firstRadius);
+                    }
+                }
+            }
+            private void CheckCollisions(int chunkIndex, Entity asteroidEntity, float2 firstPos, float firstRadius)
+            {
+                if (firstPos.x - firstRadius < 0 || firstPos.y - firstRadius < 0 ||
+                    firstPos.x + firstRadius > level[0].width ||
+                    firstPos.y + firstRadius > level[0].height)
+                {
+                    commandBuffer.DestroyEntity(chunkIndex, asteroidEntity);
+                    return;
+                }
+                // TODO: can check asteroid / asteroid here if required
+                for (int bc = 0; bc < bulletChunks.Length; ++bc)
+                {
+                    var bulletAge = bulletChunks[bc].GetNativeArray(bulletAgeType);
+                    var bulletPos = bulletChunks[bc].GetNativeArray(positionType);
+                    var bulletSphere = bulletChunks[bc].GetNativeArray(sphereType);
+                    for (int bullet = 0; bullet < bulletAge.Length; ++bullet)
+                    {
+                        if (bulletAge[bullet].age > bulletAge[bullet].maxAge)
+                            return;
+                        var secondPos = bulletPos[bullet].Value.xy;
+                        var secondRadius = bulletSphere[bullet].radius;
+                        if (Intersect(firstRadius, secondRadius, firstPos, secondPos))
                         {
-                            if (bulletAge[bullet].age > bulletAge[bullet].maxAge)
-                                continue;
-                            var secondPos = bulletPos[bullet].Value.xy;
-                            var secondRadius = bulletSphere[bullet].radius;
-                            if (Intersect(firstRadius, secondRadius, firstPos, secondPos))
-                            {
-                                commandBuffer.DestroyEntity(chunkIndex, asteroidEntity[asteroid]);
-                            }
+                            commandBuffer.DestroyEntity(chunkIndex, asteroidEntity);
                         }
                     }
                 }
@@ -98,20 +120,23 @@ namespace Asteroids.Server
         [BurstCompile]
         struct DestroyShipJob : IJobChunk
         {
-            public EntityCommandBuffer.Concurrent commandBuffer;
+            public EntityCommandBuffer.ParallelWriter commandBuffer;
             [ReadOnly] public NativeArray<ArchetypeChunk> asteroidChunks;
             [ReadOnly] public NativeArray<ArchetypeChunk> bulletChunks;
-            [ReadOnly] public ArchetypeChunkComponentType<BulletAgeComponent> bulletAgeType;
-            [ReadOnly] public ArchetypeChunkComponentType<Translation> positionType;
-            [ReadOnly] public ArchetypeChunkComponentType<CollisionSphereComponent> sphereType;
-            [ReadOnly] public ArchetypeChunkComponentType<PlayerIdComponentData> playerIdType;
-            [ReadOnly] public ArchetypeChunkEntityType entityType;
+            [ReadOnly] public ComponentTypeHandle<BulletAgeComponent> bulletAgeType;
+            [ReadOnly] public ComponentTypeHandle<Translation> positionType;
+            [ReadOnly] public ComponentTypeHandle<StaticAsteroid> staticAsteroidType;
+            [ReadOnly] public ComponentTypeHandle<CollisionSphereComponent> sphereType;
+            [ReadOnly] public ComponentTypeHandle<PlayerIdComponentData> playerIdType;
+            [ReadOnly] public EntityTypeHandle entityType;
 
             [DeallocateOnJobCompletion] [ReadOnly] public NativeArray<ServerSettings> serverSettings;
 
             public NativeQueue<Entity>.ParallelWriter playerClearQueue;
 
             [ReadOnly] public NativeArray<LevelComponent> level;
+            public uint tick;
+            public float frameTime;
             public void Execute(ArchetypeChunk chunk, int chunkIndex, int firstEntityIndex)
             {
                 var shipPos = chunk.GetNativeArray(positionType);
@@ -133,7 +158,7 @@ namespace Asteroids.Server
                         continue;
                     }
 
-                    if (serverSettings.Length > 0 && serverSettings[0].damageShips == 0)
+                    if (serverSettings.Length > 0 && !serverSettings[0].damageShips)
                         continue;
                     /*for (int bc = 0; bc < bulletChunks.Length && alive != 0; ++bc)
                     {
@@ -158,19 +183,39 @@ namespace Asteroids.Server
                     }*/
                     for (int ac = 0; ac < asteroidChunks.Length && alive != 0; ++ac)
                     {
-                        var asteroidPos = asteroidChunks[ac].GetNativeArray(positionType);
                         var asteroidSphere = asteroidChunks[ac].GetNativeArray(sphereType);
-                        for (int asteroid = 0; asteroid < asteroidPos.Length; ++asteroid)
+                        if (asteroidChunks[ac].Has(staticAsteroidType))
                         {
-                            var secondPos = asteroidPos[asteroid].Value.xy;
-                            var secondRadius = asteroidSphere[asteroid].radius;
-                            if (Intersect(firstRadius, secondRadius, firstPos, secondPos))
+                            var staticAsteroid = asteroidChunks[ac].GetNativeArray(staticAsteroidType);
+                            for (int asteroid = 0; asteroid < staticAsteroid.Length; ++asteroid)
                             {
-                                if (shipPlayerId.IsCreated)
-                                    playerClearQueue.Enqueue(shipPlayerId[ship].PlayerEntity);
-                                commandBuffer.DestroyEntity(chunkIndex, shipEntity[ship]);
-                                alive = 0;
-                                break;
+                                var secondPos = staticAsteroid[asteroid].GetPosition(tick, 1, frameTime).xy;
+                                var secondRadius = asteroidSphere[asteroid].radius;
+                                if (Intersect(firstRadius, secondRadius, firstPos, secondPos))
+                                {
+                                    if (shipPlayerId.IsCreated)
+                                        playerClearQueue.Enqueue(shipPlayerId[ship].PlayerEntity);
+                                    commandBuffer.DestroyEntity(chunkIndex, shipEntity[ship]);
+                                    alive = 0;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var asteroidPos = asteroidChunks[ac].GetNativeArray(positionType);
+                            for (int asteroid = 0; asteroid < asteroidPos.Length; ++asteroid)
+                            {
+                                var secondPos = asteroidPos[asteroid].Value.xy;
+                                var secondRadius = asteroidSphere[asteroid].radius;
+                                if (Intersect(firstRadius, secondRadius, firstPos, secondPos))
+                                {
+                                    if (shipPlayerId.IsCreated)
+                                        playerClearQueue.Enqueue(shipPlayerId[ship].PlayerEntity);
+                                    commandBuffer.DestroyEntity(chunkIndex, shipEntity[ship]);
+                                    alive = 0;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -188,7 +233,7 @@ namespace Asteroids.Server
                 Entity ent;
                 while (playerClearQueue.TryDequeue(out ent))
                 {
-                    if (commandTarget.Exists(ent))
+                    if (commandTarget.HasComponent(ent))
                     {
                         var state = commandTarget[ent];
                         state.targetEntity = Entity.Null;
@@ -217,27 +262,33 @@ namespace Asteroids.Server
 
             var asteroidJob = new DestroyAsteroidJob
             {
-                commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
+                commandBuffer = barrier.CreateCommandBuffer().AsParallelWriter(),
                 bulletChunks = bulletGroup.CreateArchetypeChunkArrayAsync(Allocator.TempJob, out bulletHandle),
-                bulletAgeType = GetArchetypeChunkComponentType<BulletAgeComponent>(true),
-                positionType = GetArchetypeChunkComponentType<Translation>(true),
-                sphereType = GetArchetypeChunkComponentType<CollisionSphereComponent>(true),
-                entityType = GetArchetypeChunkEntityType(),
-                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle)
+                bulletAgeType = GetComponentTypeHandle<BulletAgeComponent>(true),
+                positionType = GetComponentTypeHandle<Translation>(true),
+                staticAsteroidType = GetComponentTypeHandle<StaticAsteroid>(true),
+                sphereType = GetComponentTypeHandle<CollisionSphereComponent>(true),
+                entityType = GetEntityTypeHandle(),
+                level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle),
+                tick = m_ServerSimulationSystemGroup.ServerTick,
+                frameTime = Time.DeltaTime
             };
             var shipJob = new DestroyShipJob
             {
-                commandBuffer = barrier.CreateCommandBuffer().ToConcurrent(),
+                commandBuffer = barrier.CreateCommandBuffer().AsParallelWriter(),
                 asteroidChunks = asteroidGroup.CreateArchetypeChunkArrayAsync(Allocator.TempJob, out asteroidHandle),
                 bulletChunks = asteroidJob.bulletChunks,
                 bulletAgeType = asteroidJob.bulletAgeType,
                 positionType = asteroidJob.positionType,
+                staticAsteroidType = asteroidJob.staticAsteroidType,
                 sphereType = asteroidJob.sphereType,
-                playerIdType = GetArchetypeChunkComponentType<PlayerIdComponentData>(),
+                playerIdType = GetComponentTypeHandle<PlayerIdComponentData>(),
                 entityType = asteroidJob.entityType,
                 serverSettings = settingsGroup.ToComponentDataArrayAsync<ServerSettings>(Allocator.TempJob, out settingsHandle),
                 playerClearQueue = playerClearQueue.AsParallelWriter(),
-                level = asteroidJob.level
+                level = asteroidJob.level,
+                tick = m_ServerSimulationSystemGroup.ServerTick,
+                frameTime = Time.DeltaTime
             };
             var asteroidDep = JobHandle.CombineDependencies(inputDeps, bulletHandle, levelHandle);
             var shipDep = JobHandle.CombineDependencies(asteroidDep, asteroidHandle, settingsHandle);

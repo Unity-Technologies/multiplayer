@@ -35,17 +35,25 @@ namespace Asteroids.Client
     public class InputSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
-        private GhostPredictionSystemGroup m_GhostPredict;
+        private ClientSimulationSystemGroup m_ClientSimulationSystemGroup;
         private int m_FrameCount;
 
         protected override void OnCreate()
         {
-            m_GhostPredict = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
+            m_ClientSimulationSystemGroup = World.GetOrCreateSystem<ClientSimulationSystemGroup>();
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            RequireSingletonForUpdate<NetworkStreamInGame>();
         }
 
         protected override void OnUpdate()
         {
+            if (HasSingleton<CommandTargetComponent>() && GetSingleton<CommandTargetComponent>().targetEntity == Entity.Null)
+            {
+                Entities.WithoutBurst().ForEach((Entity ent, DynamicBuffer<ShipCommandData> data) =>
+                {
+                    SetSingleton(new CommandTargetComponent {targetEntity = ent});
+                }).Run();
+            }
             byte left, right, thrust, shoot;
             left = right = thrust = shoot = 0;
 
@@ -77,9 +85,9 @@ namespace Asteroids.Client
                 }
             }
 
-            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var inputFromEntity = GetBufferFromEntity<ShipCommandData>();
-            var inputTargetTick = m_GhostPredict.PredictingTick;
+            var inputTargetTick = m_ClientSimulationSystemGroup.ServerTick;
             Entities.WithAll<OutgoingRpcDataStreamBufferComponent>().WithNone<NetworkStreamDisconnected>()
                 .ForEach((Entity entity, int nativeThreadIndex, in CommandTargetComponent state) =>
             {
@@ -95,7 +103,7 @@ namespace Asteroids.Client
                 else
                 {
                     // If ship, store commands in network command buffer
-                    if (inputFromEntity.Exists(state.targetEntity))
+                    if (inputFromEntity.HasComponent(state.targetEntity))
                     {
                         var input = inputFromEntity[state.targetEntity];
                         input.AddCommandData(new ShipCommandData{tick = inputTargetTick, left = left, right = right, thrust = thrust, shoot = shoot});

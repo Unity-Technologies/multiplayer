@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3732852230206842192}
   - component: {fileID: 2643699210625179272}
   - component: {fileID: 5848949645686389091}
+  - component: {fileID: 1778489662894405007}
   m_Layer: 0
   m_Name: LagPlayer
   m_TagString: Untagged
@@ -45,71 +46,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DefaultClientInstantiationType: 2
-  RootPath: /Samples/LagCompensation
-  SnapshotDataPath: Generated/LagPlayerSnapshotData.cs
-  UpdateSystemPath: Generated/LagPlayerGhostUpdateSystem.cs
-  SerializerPath: Generated/LagPlayerGhostSerializer.cs
+  DefaultGhostMode: 2
+  SupportedGhostModes: 3
   Importance: 1
-  PredictingPlayerNetworkId: LagPlayer.playerId
-  Components:
-  - name: LagPlayer
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: playerId
-      quantization: -1
-      interpolate: 0
-    manualFieldList: 0
-    entityIndex: 0
-  - name: RayTraceCommand
-    interpolatedClient: 0
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.NetCode.CommandDataInterpolationDelay
-    interpolatedClient: 0
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.LocalToWorld
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Rotation
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 0
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 1000
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Translation
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 0
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 100
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
   prefabId: c56a7162007b441e3bbc2d11f8d71615
   Name: LagPlayer
   doNotStrip: 0
@@ -138,3 +77,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Delay: 0
+--- !u!114 &1778489662894405007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5053077343967271982}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1fea7091bb9848b191c018d3718ec0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NetworkId: 0

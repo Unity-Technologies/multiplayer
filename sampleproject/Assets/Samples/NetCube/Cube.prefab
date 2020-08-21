@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 2552174147846842480}
   - component: {fileID: 5304272404096775568}
   - component: {fileID: 1710426002176190917}
+  - component: {fileID: 9050123105121648703}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -108,79 +109,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DefaultClientInstantiationType: 2
-  RootPath: /Samples/NetCube/Generated
-  SnapshotDataPath: CubeSnapshotData.cs
-  UpdateSystemPath: CubeGhostUpdateSystem.cs
-  SerializerPath: CubeGhostSerializer.cs
+  DefaultGhostMode: 2
+  SupportedGhostModes: 3
   Importance: 1
-  PredictingPlayerNetworkId: MovableCubeComponent.PlayerId
-  Components:
-  - name: MovableCubeComponent
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: PlayerId
-      quantization: -1
-      interpolate: 0
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Rendering.PerInstanceCullingTag
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Rendering.RenderBounds
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Rendering.RenderMesh
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.LocalToWorld
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Rotation
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 1000
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Translation
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 100
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
   prefabId: bd05f2145763d425091243a36d80d893
   Name: Cube
   doNotStrip: 0
@@ -245,4 +176,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e91240793e28424a83c4ecdd08909a5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerId: 0
+--- !u!114 &9050123105121648703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2469323487610213414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1fea7091bb9848b191c018d3718ec0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NetworkId: 0

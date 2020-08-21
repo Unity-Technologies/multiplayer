@@ -7,7 +7,7 @@ public struct ShipTagComponentData : IComponentData
 
 public struct ShipStateComponentData : IComponentData
 {
-    [GhostDefaultField]
+    [GhostField]
     public int State;
     public uint WeaponCooldown;
 }

@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using Unity.Networking.Transport;
 using Unity.Jobs;
 
+[GhostComponent(PrefabType = GhostPrefabType.AllPredicted)]
 public struct RayTraceCommand : ICommandData<RayTraceCommand>
 {
     public uint Tick => tick;
@@ -55,7 +56,7 @@ public class SampleRayTraceCommandSystem : JobComponentSystem
     ClientSimulationSystemGroup m_systemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGhostReceiveSystemComponent>();
+        RequireSingletonForUpdate<EnableLagCompensationGame>();
         RequireSingletonForUpdate<CommandTargetComponent>();
         m_systemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
     }

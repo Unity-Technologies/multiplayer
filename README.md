@@ -19,6 +19,7 @@ your own real-time multiplayer games.
 - `sampleproject/Assets/Samples/NetCube` - Sample showing basic netcode usage.
 - `sampleproject/Assets/Samples/Ping` - Sample showing basic transport usage.
 - `sampleproject/Assets/Samples/Soaker` - A soak tester for the transport, for testing typical production load.
+- `sampleproject/Assets/Samples/CustomNetworkInterface` - A sample showing how to use a game specific socket implementation in Unity Transport.
 
 ### Unity Transport Package
 The new Unity Transport Package which will replace the UNet low-level API.

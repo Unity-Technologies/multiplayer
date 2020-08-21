@@ -22,6 +22,8 @@ namespace Asteroids.Server
             [ReadOnly] [DeallocateOnJobCompletion] public NativeArray<LevelComponent> level;
 
             public Unity.Mathematics.Random rand;
+            public uint tick;
+            public bool useStaticAsteroid;
 
             public void Execute()
             {
@@ -32,7 +34,8 @@ namespace Asteroids.Server
                     var padding = 2 * asteroidRadius;
                     var pos = new Translation{Value = new float3(rand.NextFloat(padding, level[0].width-padding),
                         rand.NextFloat(padding, level[0].height-padding), 0)};
-                    var rot = new Rotation{Value = quaternion.RotateZ(math.radians(rand.NextFloat(-0.0f, 359.0f)))};
+                    float angle = rand.NextFloat(-0.0f, 359.0f);
+                    var rot = new Rotation{Value = quaternion.RotateZ(math.radians(angle))};
 
                     var vel = new Velocity {Value = math.mul(rot.Value, new float3(0, asteroidVelocity, 0)).xy};
 
@@ -40,7 +43,10 @@ namespace Asteroids.Server
 
                     commandBuffer.SetComponent(e, pos);
                     commandBuffer.SetComponent(e, rot);
-                    commandBuffer.SetComponent(e, vel);
+                    if (useStaticAsteroid)
+                        commandBuffer.SetComponent(e, new StaticAsteroid{InitialPosition = pos.Value.xy, InitialVelocity = vel.Value, InitialAngle = angle, SpawnTick = tick});
+                    else
+                        commandBuffer.SetComponent(e, vel);
                 }
             }
         }
@@ -49,6 +55,7 @@ namespace Asteroids.Server
         {
             asteroidGroup = GetEntityQuery(ComponentType.ReadWrite<AsteroidTagComponentData>());
             barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            m_ServerSimulationSystemGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
 
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
@@ -58,10 +65,12 @@ namespace Asteroids.Server
         private NativeArray<int> count;
         private EntityQuery asteroidGroup;
         private BeginSimulationEntityCommandBufferSystem barrier;
+        private ServerSimulationSystemGroup m_ServerSimulationSystemGroup;
         private EntityQuery m_LevelGroup;
         private EntityQuery m_connectionGroup;
         private Entity m_Prefab;
         private float m_Radius;
+        private bool m_useStaticAsteroid;
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             if (m_connectionGroup.IsEmptyIgnoreFilter)
@@ -72,15 +81,20 @@ namespace Asteroids.Server
                 return default(JobHandle);
             }
 
+            var settings = GetSingleton<ServerSettings>();
             if (m_Prefab == Entity.Null)
             {
+                m_useStaticAsteroid = settings.staticAsteroidOptimization;
                 var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
                 var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
-                m_Prefab = serverPrefabs[AsteroidsGhostSerializerCollection.FindGhostType<AsteroidSnapshotData>()].Value;
+                for (int i = 0; i < serverPrefabs.Length; ++i)
+                {
+                    if (EntityManager.HasComponent<AsteroidTagComponentData>(serverPrefabs[i].Value) && (EntityManager.HasComponent<StaticAsteroid>(serverPrefabs[i].Value) == m_useStaticAsteroid))
+                        m_Prefab = serverPrefabs[i].Value;
+                }
                 m_Radius = EntityManager.GetComponentData<CollisionSphereComponent>(m_Prefab).radius;
 
             }
-            var settings = GetSingleton<ServerSettings>();
             var maxAsteroids = settings.numAsteroids;
 
             JobHandle levelHandle;
@@ -93,7 +107,9 @@ namespace Asteroids.Server
                 asteroidRadius = m_Radius,
                 asteroidVelocity = settings.asteroidVelocity,
                 level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle),
-                rand = new Unity.Mathematics.Random((uint)Stopwatch.GetTimestamp())
+                rand = new Unity.Mathematics.Random((uint)Stopwatch.GetTimestamp()),
+                useStaticAsteroid = m_useStaticAsteroid,
+                tick = m_ServerSimulationSystemGroup.ServerTick
             };
             var handle = spawnJob.Schedule(JobHandle.CombineDependencies(inputDeps, levelHandle));
             barrier.AddJobHandleForProducer(handle);
@@ -126,7 +142,11 @@ namespace Asteroids.Server
             {
                 var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
                 var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
-                m_Prefab = serverPrefabs[AsteroidsGhostSerializerCollection.FindGhostType<ShipSnapshotData>()].Value;
+                for (int i = 0; i < serverPrefabs.Length; ++i)
+                {
+                    if (EntityManager.HasComponent<ShipTagComponentData>(serverPrefabs[i].Value))
+                        m_Prefab = serverPrefabs[i].Value;
+                }
                 m_Radius = EntityManager.GetComponentData<CollisionSphereComponent>(m_Prefab).radius;
             }
 
@@ -140,14 +160,14 @@ namespace Asteroids.Server
             var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
             var rand = new Unity.Mathematics.Random((uint) Stopwatch.GetTimestamp());
 
-            var  spawnJob = Entities.WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+            var  spawnJob = Entities.WithReadOnly(level).WithDisposeOnCompletion(level).
                 ForEach((Entity entity, in PlayerSpawnRequest request,
                 in ReceiveRpcCommandRequestComponent requestSource) =>
             {
                 // Destroy the request
                 commandBuffer.DestroyEntity(entity);
-                if (!playerStateFromEntity.Exists(requestSource.SourceConnection) ||
-                    !commandTargetFromEntity.Exists(requestSource.SourceConnection) ||
+                if (!playerStateFromEntity.HasComponent(requestSource.SourceConnection) ||
+                    !commandTargetFromEntity.HasComponent(requestSource.SourceConnection) ||
                     commandTargetFromEntity[requestSource.SourceConnection].targetEntity != Entity.Null ||
                     playerStateFromEntity[requestSource.SourceConnection].IsSpawning != 0)
                     return;
@@ -163,12 +183,8 @@ namespace Asteroids.Server
 
                 commandBuffer.SetComponent(ship, pos);
                 commandBuffer.SetComponent(ship, rot);
-                commandBuffer.SetComponent(ship,
-                    new PlayerIdComponentData
-                    {
-                        PlayerId = networkIdFromEntity[requestSource.SourceConnection].Value,
-                        PlayerEntity = requestSource.SourceConnection
-                    });
+                commandBuffer.SetComponent(ship, new GhostOwnerComponent {NetworkId = networkIdFromEntity[requestSource.SourceConnection].Value});
+                commandBuffer.SetComponent(ship, new PlayerIdComponentData {PlayerEntity = requestSource.SourceConnection});
 
                 commandBuffer.AddComponent(ship, new ShipSpawnInProgressTag());
 
@@ -181,7 +197,7 @@ namespace Asteroids.Server
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateBefore(typeof(AsteroidsGhostSendSystem))]
+    [UpdateBefore(typeof(GhostSendSystem))]
     public class PlayerCompleteSpawnSystem : SystemBase
     {
         protected override void OnCreate()
@@ -201,7 +217,7 @@ namespace Asteroids.Server
             Entities.WithAll<ShipSpawnInProgressTag>().
                 ForEach((Entity entity, in PlayerIdComponentData player) =>
                 {
-                    if (!playerStateFromEntity.Exists(player.PlayerEntity) ||
+                    if (!playerStateFromEntity.HasComponent(player.PlayerEntity) ||
                         !connectionFromEntity[player.PlayerEntity].Value.IsCreated)
                     {
                         // Player was disconnected during spawn, or other error

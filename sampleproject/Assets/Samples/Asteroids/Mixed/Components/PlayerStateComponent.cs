@@ -8,7 +8,5 @@ public struct PlayerStateComponentData : IComponentData
 
 public struct PlayerIdComponentData : IComponentData
 {
-    [GhostDefaultField]
-    public int PlayerId;
     public Entity PlayerEntity;
 }

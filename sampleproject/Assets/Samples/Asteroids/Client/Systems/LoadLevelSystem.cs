@@ -8,14 +8,14 @@ namespace Asteroids.Client
     public class LoadLevelSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
-        private RpcQueue<RpcLevelLoaded> m_RpcQueue;
+        private RpcQueue<RpcLevelLoaded, RpcLevelLoaded> m_RpcQueue;
         private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
 
         protected override void OnCreate()
         {
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLevelLoaded>();
+            m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLevelLoaded, RpcLevelLoaded>();
 
             // The level always exist, "loading" just resizes it
             m_LevelSingleton = EntityManager.CreateEntity();
@@ -26,7 +26,7 @@ namespace Asteroids.Client
 
         protected override void OnUpdate()
         {
-            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var rpcFromEntity = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
             var levelFromEntity = GetComponentDataFromEntity<LevelComponent>();
             var levelSingleton = m_LevelSingleton;
@@ -35,7 +35,7 @@ namespace Asteroids.Client
             {
                 commandBuffer.DestroyEntity(nativeThreadIndex, entity);
                 // Check for disconnects
-                if (!rpcFromEntity.Exists(requestSource.SourceConnection))
+                if (!rpcFromEntity.HasComponent(requestSource.SourceConnection))
                     return;
                 // set the level size - fake loading of level
                 levelFromEntity[levelSingleton] = new LevelComponent

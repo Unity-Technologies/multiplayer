@@ -9,7 +9,7 @@ public class MoveLagCubeSystem : JobComponentSystem
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGhostSendSystemComponent>();
+        RequireSingletonForUpdate<EnableLagCompensationGame>();
     }
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {

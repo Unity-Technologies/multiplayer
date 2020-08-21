@@ -3,7 +3,7 @@ using Unity.Mathematics;
 using Unity.NetCode;
 
 [System.Serializable]
-[GhostDefaultComponent(GhostDefaultComponentAttribute.Type.Client)]
+[GhostComponent(PrefabType = GhostPrefabType.Client)]
 public struct ParticleEmitterComponentData : IComponentData
 {
     public float particlesPerSecond;

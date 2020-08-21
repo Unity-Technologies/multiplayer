@@ -65,7 +65,7 @@ namespace Asteroids.Client
             while (m_SpawnCountQueue.TryDequeue(out cnt))
                 spawnCount += cnt;
             SetSingleton(new ParticleSpawnCountComponent {spawnCount = spawnCount});
-            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var spawnCountQueue = m_SpawnCountQueue.AsParallelWriter();
             var colorSizeParticleArchetype = m_ColorSizeParticleArchetype;
             var colorParticleArchetype = m_ColorParticleArchetype;
@@ -159,7 +159,7 @@ namespace Asteroids.Client
 
         protected override void OnUpdate()
         {
-            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var emitterComponentType = ComponentType.ReadOnly<ParticleEmitterComponentData>();
             var randomData = m_RandomData;
             var randomBase = m_RandomDataBase;

@@ -15,7 +15,7 @@ namespace Asteroids.Server
             return Entities.WithNativeDisableContainerSafetyRestriction(translationFromEntity).ForEach(
                 (ref GhostConnectionPosition conPos, in CommandTargetComponent target) =>
                 {
-                    if (!translationFromEntity.Exists(target.targetEntity))
+                    if (!translationFromEntity.HasComponent(target.targetEntity))
                         return;
                     conPos = new GhostConnectionPosition
                     {

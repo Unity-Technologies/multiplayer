@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: -3232764338705290451}
   - component: {fileID: 1335036581214971209}
   - component: {fileID: 8842576389108237569}
+  - component: {fileID: -7689999727118842253}
   m_Layer: 0
   m_Name: Bullet
   m_TagString: Untagged
@@ -50,103 +51,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  DefaultClientInstantiationType: 0
-  RootPath: /Samples/Asteroids
-  SnapshotDataPath: Mixed/Generated/BulletSnapshotData.cs
-  UpdateSystemPath: Client/Generated/BulletGhostUpdateSystem.cs
-  SerializerPath: Server/Generated/BulletGhostSerializer.cs
+  DefaultGhostMode: 2
+  SupportedGhostModes: 3
   Importance: 200
-  PredictingPlayerNetworkId: 
-  Components:
-  - name: BulletAgeComponent
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: BulletTagComponent
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: CollisionSphereComponent
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: PlayerIdComponentData
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: PlayerId
-      quantization: -1
-      interpolate: 0
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.NetCode.CurrentSimulatedPosition
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.NetCode.CurrentSimulatedRotation
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.LocalToWorld
-    interpolatedClient: 0
-    predictedClient: 0
-    server: 0
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Rotation
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 1000
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Unity.Transforms.Translation
-    interpolatedClient: 1
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields:
-    - name: Value
-      quantization: 100
-      interpolate: 1
-    manualFieldList: 0
-    entityIndex: 0
-  - name: Velocity
-    interpolatedClient: 0
-    predictedClient: 1
-    server: 1
-    sendDataTo: 0
-    fields: []
-    manualFieldList: 1
-    entityIndex: 0
   prefabId: 76e3e5acde5e440efb5fe01af44afc72
   Name: Bullet
   doNotStrip: 0
@@ -237,3 +144,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a02d0bfe041460eafdbd0af99b85622, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &-7689999727118842253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4440235226870903317}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1fea7091bb9848b191c018d3718ec0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NetworkId: 0

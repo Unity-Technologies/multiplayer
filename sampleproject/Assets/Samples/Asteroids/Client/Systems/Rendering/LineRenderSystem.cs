@@ -88,7 +88,7 @@ namespace Asteroids.Client
             var deltaTime = Time.DeltaTime;
             var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
 
-            var copyToListJob = Entities.WithReadOnly(level).WithDeallocateOnJobCompletion(level).ForEach(
+            var copyToListJob = Entities.WithReadOnly(level).WithDisposeOnCompletion(level).ForEach(
                 (ref LineRendererComponentData lineData) =>
                 {
                     if (level.Length > 0)

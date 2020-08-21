@@ -62,14 +62,14 @@ namespace Asteroids.Client
             var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
             var teleport = m_Teleport;
 
-            var trackJob = Entities.WithReadOnly(shipPosition).WithReadOnly(level).WithDeallocateOnJobCompletion(level).
+            var trackJob = Entities.WithReadOnly(shipPosition).WithReadOnly(level).WithDisposeOnCompletion(level).
                 ForEach((ref LineRendererComponentData target) =>
             {
                 int mapWidth = level[0].width;
                 int mapHeight = level[0].height;
                 int nextTeleport = 1;
 
-                if (shipPosition.Exists(localPlayerShip))
+                if (shipPosition.HasComponent(localPlayerShip))
                 {
                     float3 pos = shipPosition[localPlayerShip].Value;
                     pos.x -= screenWidth / 2;

@@ -2,6 +2,9 @@
 using Unity.NetCode;
 using Unity.Networking.Transport;
 
+public struct EnableLagCompensationGame : IComponentData
+{}
+
 // Control system updating in the default world
 [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
 public class LagCompensationGame : ComponentSystem
@@ -28,6 +31,7 @@ public class LagCompensationGame : ComponentSystem
             var network = world.GetExistingSystem<NetworkStreamReceiveSystem>();
             if (world.GetExistingSystem<ClientSimulationSystemGroup>() != null)
             {
+                world.EntityManager.CreateEntity(typeof(EnableLagCompensationGame));
                 // Client worlds automatically connect to localhost
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = 7979;
@@ -36,6 +40,7 @@ public class LagCompensationGame : ComponentSystem
             #if UNITY_EDITOR
             else if (world.GetExistingSystem<ServerSimulationSystemGroup>() != null)
             {
+                world.EntityManager.CreateEntity(typeof(EnableLagCompensationGame));
                 var tickRate = world.EntityManager.CreateEntity();
                 world.EntityManager.AddComponentData(tickRate, new ClientServerTickRate
                 {
@@ -56,7 +61,7 @@ public class GoInGameLagClientSystem : ComponentSystem
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGhostReceiveSystemComponent>();
+        RequireSingletonForUpdate<EnableLagCompensationGame>();
     }
 
     protected override void OnUpdate()
@@ -72,7 +77,7 @@ public class GoInGameLagServerSystem : ComponentSystem
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGhostSendSystemComponent>();
+        RequireSingletonForUpdate<EnableLagCompensationGame>();
     }
 
     protected override void OnUpdate()
@@ -80,10 +85,16 @@ public class GoInGameLagServerSystem : ComponentSystem
         Entities.WithNone<NetworkStreamInGame>().ForEach((Entity ent, ref NetworkIdComponent id) =>
         {
             PostUpdateCommands.AddComponent<NetworkStreamInGame>(ent);
-            var ghostId = LagCompensationGhostSerializerCollection.FindGhostType<LagPlayerSnapshotData>();
-            var playerPrefab = EntityManager.GetBuffer<GhostPrefabBuffer>(GetSingleton<GhostPrefabCollectionComponent>().serverPrefabs)[ghostId].Value;
+            var ghostId = -1;
+            var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(GetSingleton<GhostPrefabCollectionComponent>().serverPrefabs);
+            for (int i = 0; i < serverPrefabs.Length; ++i)
+            {
+                if (EntityManager.HasComponent<LagPlayer>(serverPrefabs[i].Value))
+                    ghostId = i;
+            }
+            var playerPrefab = serverPrefabs[ghostId].Value;
             var player = PostUpdateCommands.Instantiate(playerPrefab);
-            PostUpdateCommands.SetComponent(player, new LagPlayer{playerId = id.Value});
+            PostUpdateCommands.SetComponent(player, new GhostOwnerComponent{NetworkId = id.Value});
             PostUpdateCommands.SetComponent(ent, new CommandTargetComponent{targetEntity = player});
         });
     }
@@ -91,6 +102,4 @@ public class GoInGameLagServerSystem : ComponentSystem
 
 public struct LagPlayer : IComponentData
 {
-    [GhostDefaultField]
-    public int playerId;
 }

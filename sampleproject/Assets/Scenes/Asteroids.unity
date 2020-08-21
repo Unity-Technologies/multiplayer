@@ -158,6 +158,7 @@ MonoBehaviour:
   levelWidth: 2048
   levelHeight: 2048
   damageShips: 1
+  relevancyRadius: 0
 --- !u!4 &83804743
 Transform:
   m_ObjectHideFlags: 0
@@ -215,10 +216,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c75b8787d8624691813514d3823a59f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  RootPath: /Samples/Asteroids
-  SerializerCollectionPath: Server/Generated/GhostSerializerCollection.cs
-  DeserializerCollectionPath: Client/Generated/GhostDeserializerCollection.cs
-  NamePrefix: Asteroids
   Ghosts:
   - prefab: {fileID: -7054750042840138153, guid: adc60907807514fb7954a1aa25776eec,
       type: 3}
@@ -227,6 +224,9 @@ MonoBehaviour:
       type: 3}
     enabled: 1
   - prefab: {fileID: 5807320614624497876, guid: 76e3e5acde5e440efb5fe01af44afc72,
+      type: 3}
+    enabled: 1
+  - prefab: {fileID: 3267712304274771985, guid: aea37a48812f1450ea3b7b06c3ca209d,
       type: 3}
     enabled: 1
 --- !u!114 &513007913
@@ -349,47 +349,4 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1304615156
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1304615158}
-  - component: {fileID: 1304615157}
-  m_Layer: 0
-  m_Name: GhostValueTypes
-  m_TagString: EditorOnly
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1304615157
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1304615156}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1fbbb8bee8c4281856eabeeb53ec831, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &1304615158
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1304615156}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

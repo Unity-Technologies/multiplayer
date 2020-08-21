@@ -146,7 +146,7 @@ public class PingDriverSystem : SystemBase
             var acceptJob = new DriverAcceptJob
                 {driver = ServerDriver, commandBuffer = commandBuffer};
             serverDep = acceptJob.Schedule(serverDep);
-            var cleanupCommandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var cleanupCommandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             serverDep = Entities.ForEach((Entity entity, int nativeThreadIndex, in PingServerConnectionComponentData connection) =>
             {
                 // Cleanup old connections

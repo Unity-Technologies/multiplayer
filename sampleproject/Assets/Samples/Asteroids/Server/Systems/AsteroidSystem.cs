@@ -11,7 +11,7 @@ namespace Asteroids.Server
         protected override void OnUpdate()
         {
             var deltaTime = Time.DeltaTime;
-            Entities.WithAll<AsteroidTagComponentData>().ForEach((ref Translation position, ref Rotation rotation, in Velocity velocity) =>
+            Entities.WithNone<StaticAsteroid>().WithAll<AsteroidTagComponentData>().ForEach((ref Translation position, ref Rotation rotation, in Velocity velocity) =>
             {
                 position.Value.xy += velocity.Value * deltaTime;
                 rotation.Value = math.mul(rotation.Value, quaternion.RotateZ(math.radians(100 * deltaTime)));

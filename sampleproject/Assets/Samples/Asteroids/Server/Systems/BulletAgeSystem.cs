@@ -4,6 +4,7 @@ using Unity.NetCode;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
+    [UpdateAfter(typeof(GhostSendSystem))]
     public class BulletAgeSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem barrier;
@@ -15,7 +16,7 @@ namespace Asteroids.Server
 
         protected override void OnUpdate()
         {
-            var commandBuffer = barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = barrier.CreateCommandBuffer().AsParallelWriter();
             var deltaTime = Time.DeltaTime;
             Entities.ForEach((Entity entity, int nativeThreadIndex, ref BulletAgeComponent age) =>
             {

@@ -8,8 +8,6 @@ public class PingMainThreadServerBehaviour : MonoBehaviour
     public NetworkDriver m_ServerDriver;
     private NativeList<NetworkConnection> m_connections;
 
-    private JobHandle m_updateHandle;
-
     void Start()
     {
         // Create the server driver, bind it to a port and start listening for incoming connections
@@ -26,8 +24,6 @@ public class PingMainThreadServerBehaviour : MonoBehaviour
 
     void OnDestroy()
     {
-        // All jobs must be completed before we can dispose the data they use
-        m_updateHandle.Complete();
         m_ServerDriver.Dispose();
         m_connections.Dispose();
     }

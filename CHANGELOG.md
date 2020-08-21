@@ -1,3 +1,13 @@
+# 2020-08-21
+## Changes
+* Upraded Unity NetCode to 0.3.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.3/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.4.0 see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.4/changelog/CHANGELOG.html)
+* Added a new sample showing how to write custom network interfaces in the transport.
+* Added support for switching between fixed and dynamic timestep in asteroids.
+* Added a relevancy implementation to asteroids which can be used to only show ghosts within a specific radius of the player ship.
+* Added a mode to asteroids which uses the new static optimization mode along with moving some calculations to the client for a massive bandwidth optimization.
+* Rewrote predictive spawning of projectiles and "on spawn" handling in asteroids to be compatible with the new NetCode package.
+
 # 2020-06-09
 ## Changes
 * Upgraded Unity NetCode to 0.2.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.2/changelog/CHANGELOG.html)

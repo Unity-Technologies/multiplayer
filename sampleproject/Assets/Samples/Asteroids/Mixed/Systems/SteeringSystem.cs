@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
 using Unity.Networking.Transport.Utilities;
+using Unity.Collections;
 
 namespace Asteroids.Mixed
 {
@@ -14,7 +15,6 @@ namespace Asteroids.Mixed
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private GhostPredictionSystemGroup m_PredictionGroup;
         private Entity m_BulletPrefab;
-        private EntityArchetype m_BulletSpawnArchetype;
 
         protected override void OnCreate()
         {
@@ -25,11 +25,11 @@ namespace Asteroids.Mixed
 
         protected override void OnUpdate()
         {
-            if (m_BulletPrefab == Entity.Null && m_BulletSpawnArchetype == default)
+            if (m_BulletPrefab == Entity.Null)
             {
+                var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
                 if (World.GetExistingSystem<ServerSimulationSystemGroup>() != null)
                 {
-                    var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
                     var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
                     for (int i = 0; i < serverPrefabs.Length; ++i)
                     {
@@ -39,26 +39,32 @@ namespace Asteroids.Mixed
                 }
                 else
                 {
-                    m_BulletSpawnArchetype = EntityManager.CreateArchetype(
-                        ComponentType.ReadWrite<PredictedGhostSpawnRequestComponent>(),
-                        ComponentType.ReadWrite<BulletSnapshotData>());
+                    var clientPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.clientPredictedPrefabs).ToNativeArray(Allocator.Temp);
+                    for (int i = 0; i < clientPrefabs.Length; ++i)
+                    {
+                        if (EntityManager.HasComponent<BulletTagComponent>(clientPrefabs[i].Value))
+                        {
+                            m_BulletPrefab = EntityManager.Instantiate(clientPrefabs[i].Value);
+                            EntityManager.AddComponentData(m_BulletPrefab, default(Prefab));
+                            EntityManager.AddComponentData(m_BulletPrefab, default(PredictedGhostSpawnRequestComponent));
+                        }
+                    }
                 }
             }
 
             var level = GetSingleton<LevelComponent>();
-            var commandBuffer = m_Barrier.CreateCommandBuffer().ToConcurrent();
+            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var deltaTime = Time.DeltaTime;
             var displacement = 100.0f;
             var playerForce = level.playerForce;
             var bulletVelocity = level.bulletVelocity;
             var bulletPrefab = m_BulletPrefab;
-            var bulletSpawnArchetype = m_BulletSpawnArchetype;
             var currentTick = m_PredictionGroup.PredictingTick;
             var inputFromEntity = GetBufferFromEntity<ShipCommandData>(true);
             Entities.WithReadOnly(inputFromEntity).WithAll<ShipTagComponentData, ShipCommandData>().
                 ForEach((Entity entity, int nativeThreadIndex, ref Translation position, ref Rotation rotation,
                 ref Velocity velocity, ref ShipStateComponentData state,
-                in PlayerIdComponentData playerIdData, in PredictedGhostComponent prediction) =>
+                in GhostOwnerComponent ghostOwner, in PredictedGhostComponent prediction) =>
             {
                 if (!GhostPredictionSystemGroup.ShouldPredict(currentTick, prediction))
                     return;
@@ -103,30 +109,16 @@ namespace Asteroids.Mixed
                             {Value = math.mul(rotation.Value, new float3(0, bulletVelocity, 0)).xy};
 
                         commandBuffer.SetComponent(nativeThreadIndex, e,
-                            new PlayerIdComponentData {PlayerId = playerIdData.PlayerId});
+                            new GhostOwnerComponent {NetworkId = ghostOwner.NetworkId});
                         commandBuffer.SetComponent(nativeThreadIndex, e, vel);
-                    }
-                    else
-                    {
-                        var e = commandBuffer.CreateEntity(nativeThreadIndex, bulletSpawnArchetype);
-                        var bulletData = default(BulletSnapshotData);
-                        bulletData.tick = currentTick;
-                        bulletData.SetRotationValue(rotation.Value);
-                        bulletData.SetTranslationValue(position.Value);
-                        // Offset bullets for debugging spawn prediction
-                        //bulletData.SetTranslationValue(position.Value + new float3(0,10,0));
-                        bulletData.SetPlayerIdComponentDataPlayerId(playerIdData.PlayerId,
-                            default(GhostSerializerState));
-                        var bulletSnapshots = commandBuffer.SetBuffer<BulletSnapshotData>(nativeThreadIndex, e);
-                        bulletSnapshots.Add(bulletData);
                     }
 
                     state.WeaponCooldown = currentTick + k_CoolDownTicksCount;
                 }
-                else if (canShoot)
+                /*else if (canShoot)
                 {
                     state.WeaponCooldown = 0;
-                }
+                }*/
             }).ScheduleParallel();
             m_Barrier.AddJobHandleForProducer(Dependency);
         }

@@ -1,7 +1,7 @@
 using Unity.Networking.Transport;
 using Unity.NetCode;
 
-[GhostDefaultComponent(GhostDefaultComponentAttribute.Type.PredictedClient)]
+[GhostComponent(PrefabType = GhostPrefabType.AllPredicted)]
 public struct ShipCommandData : ICommandData<ShipCommandData>
 {
     public uint Tick => tick;

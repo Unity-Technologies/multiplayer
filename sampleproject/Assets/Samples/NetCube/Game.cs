@@ -5,6 +5,9 @@ using Unity.NetCode;
 using Unity.Networking.Transport;
 using Unity.Burst;
 
+public struct EnableNetCubeGame : IComponentData
+{}
+
 // Control system updating in the default world
 [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
 public class Game : ComponentSystem
@@ -31,6 +34,7 @@ public class Game : ComponentSystem
             var network = world.GetExistingSystem<NetworkStreamReceiveSystem>();
             if (world.GetExistingSystem<ClientSimulationSystemGroup>() != null)
             {
+                world.EntityManager.CreateEntity(typeof(EnableNetCubeGame));
                 // Client worlds automatically connect to localhost
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = 7979;
@@ -42,6 +46,7 @@ public class Game : ComponentSystem
             #if UNITY_EDITOR || UNITY_SERVER
             else if (world.GetExistingSystem<ServerSimulationSystemGroup>() != null)
             {
+                world.EntityManager.CreateEntity(typeof(EnableNetCubeGame));
                 // Server world automatically listen for connections from any host
                 NetworkEndPoint ep = NetworkEndPoint.AnyIpv4;
                 ep.Port = 7979;
@@ -53,40 +58,9 @@ public class Game : ComponentSystem
 }
 
 // RPC request from client to server for game to go "in game" and send snapshots / inputs
-[BurstCompile]
 public struct GoInGameRequest : IRpcCommand
 {
-    // Unused integer for demonstration
-    public int value;
-    public void Deserialize(ref DataStreamReader reader)
-    {
-        value = reader.ReadInt();
-    }
-
-    public void Serialize(ref DataStreamWriter writer)
-    {
-        writer.WriteInt(value);
-    }
-    [BurstCompile]
-    [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
-    private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
-    {
-        RpcExecutor.ExecuteCreateRequestComponent<GoInGameRequest>(ref parameters);
-    }
-
-    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
-        new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
-    public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
-    {
-        return InvokeExecuteFunctionPointer;
-    }
 }
-
-// The system that makes the RPC request component transfer
-public class GoInGameRequestSystem : RpcCommandRequestSystem<GoInGameRequest>
-{
-}
-
 
 // When client has a connection with network id, go in game and tell server to also go in game
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
@@ -94,7 +68,7 @@ public class GoInGameClientSystem : ComponentSystem
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableNetCubeGhostReceiveSystemComponent>();
+        RequireSingletonForUpdate<EnableNetCubeGame>();
     }
 
     protected override void OnUpdate()
@@ -115,7 +89,7 @@ public class GoInGameServerSystem : ComponentSystem
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableNetCubeGhostSendSystemComponent>();
+        RequireSingletonForUpdate<EnableNetCubeGame>();
     }
 
     protected override void OnUpdate()
@@ -126,10 +100,15 @@ public class GoInGameServerSystem : ComponentSystem
             UnityEngine.Debug.Log(String.Format("Server setting connection {0} to in game", EntityManager.GetComponentData<NetworkIdComponent>(reqSrc.SourceConnection).Value));
 #if true
             var ghostCollection = GetSingleton<GhostPrefabCollectionComponent>();
-            var ghostId = NetCubeGhostSerializerCollection.FindGhostType<CubeSnapshotData>();
-            var prefab = EntityManager.GetBuffer<GhostPrefabBuffer>(ghostCollection.serverPrefabs)[ghostId].Value;
+            var prefab = Entity.Null;
+            var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(ghostCollection.serverPrefabs);
+            for (int ghostId = 0; ghostId < serverPrefabs.Length; ++ghostId)
+            {
+                if (EntityManager.HasComponent<MovableCubeComponent>(serverPrefabs[ghostId].Value))
+                    prefab = serverPrefabs[ghostId].Value;
+            }
             var player = EntityManager.Instantiate(prefab);
-            EntityManager.SetComponentData(player, new MovableCubeComponent { PlayerId = EntityManager.GetComponentData<NetworkIdComponent>(reqSrc.SourceConnection).Value});
+            EntityManager.SetComponentData(player, new GhostOwnerComponent { NetworkId = EntityManager.GetComponentData<NetworkIdComponent>(reqSrc.SourceConnection).Value});
 
             PostUpdateCommands.AddBuffer<CubeInput>(player);
             PostUpdateCommands.SetComponent(reqSrc.SourceConnection, new CommandTargetComponent {targetEntity = player});
