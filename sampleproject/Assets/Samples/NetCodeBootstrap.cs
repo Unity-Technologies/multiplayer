@@ -23,7 +23,9 @@ public class NetCodeBootstrap : ClientServerBootstrap
         GenerateSystemLists(systems);
 
         DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(world, DefaultWorldSystems);
+#if !UNITY_DOTSRUNTIME
         ScriptBehaviourUpdateOrder.AddWorldToCurrentPlayerLoop(world);
+#endif
         return true;
     }
 }

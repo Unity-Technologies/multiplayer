@@ -1,3 +1,10 @@
+# 2020-09-17
+## Changes
+* Upraded Unity NetCode to 0.4.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.4/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.4.1 see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.4/changelog/CHANGELOG.html)
+* Upgraded all NetCode samples to use subscenes instead of ConvertToEntity. This means you now have to use the files in BuildSettings to make a standalone build.
+* Upgraded all samples to use SystemBase and most of them to use Entities.ForEach.
+
 # 2020-08-21
 ## Changes
 * Upraded Unity NetCode to 0.3.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.3/changelog/CHANGELOG.html)

@@ -14,5 +14,4 @@ public struct ServerSettings : IComponentData
     public bool damageShips;
     public int relevancyRadius;
     public bool staticAsteroidOptimization;
-    public bool clientFixedFrameTime;
 }

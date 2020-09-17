@@ -94,6 +94,9 @@ public struct SoakClientJob : IJob
             }
         }
 
+        if (ctx.Connected == 0)
+            return;
+
         if (fixedTime - ctx.StartedAt > ctx.Duration)
         {
             ctx.Done = 1;

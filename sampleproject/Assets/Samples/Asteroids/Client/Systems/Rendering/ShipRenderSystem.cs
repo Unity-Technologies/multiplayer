@@ -8,7 +8,6 @@ using Unity.NetCode;
 
 namespace Asteroids.Client
 {
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(ParticleEmitterSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ShipThrustParticleSystem : SystemBase
@@ -22,7 +21,6 @@ namespace Asteroids.Client
         }
     }
 
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(LineRenderSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ShipTrackingSystem : SystemBase
@@ -94,7 +92,6 @@ namespace Asteroids.Client
     }
 
     [UpdateBefore(typeof(LineRenderSystem))]
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ShipRenderSystem : SystemBase
     {

@@ -9,7 +9,6 @@ namespace Asteroids.Client
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private RpcQueue<RpcLevelLoaded, RpcLevelLoaded> m_RpcQueue;
-        private EntityQuery m_LevelGroup;
         private Entity m_LevelSingleton;
 
         protected override void OnCreate()
@@ -17,15 +16,19 @@ namespace Asteroids.Client
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_RpcQueue = World.GetOrCreateSystem<RpcSystem>().GetRpcQueue<RpcLevelLoaded, RpcLevelLoaded>();
 
-            // The level always exist, "loading" just resizes it
-            m_LevelSingleton = EntityManager.CreateEntity();
-            EntityManager.AddComponentData(m_LevelSingleton, new LevelComponent {width = 0, height = 0});
-            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
-            RequireForUpdate(m_LevelGroup);
+            RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<LevelLoadRequest>(), ComponentType.ReadOnly<ReceiveRpcCommandRequestComponent>()));
+            // This is just here to make sure the subscen is streamed in before the client sets up the level data
+            RequireSingletonForUpdate<GhostPrefabCollectionComponent>();
         }
 
         protected override void OnUpdate()
         {
+            if (!HasSingleton<LevelComponent>())
+            {
+                // The level always exist, "loading" just resizes it
+                m_LevelSingleton = EntityManager.CreateEntity();
+                EntityManager.AddComponentData(m_LevelSingleton, new LevelComponent {width = 0, height = 0});
+            }
             var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var rpcFromEntity = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
             var levelFromEntity = GetComponentDataFromEntity<LevelComponent>();

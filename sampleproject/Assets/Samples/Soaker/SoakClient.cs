@@ -74,6 +74,21 @@ public class SoakClient : IDisposable
     public void Start(NetworkEndPoint endpoint)
     {
         ServerEndPoint = endpoint;
+        //Reset the context
+        var ctx = SoakJobContextsHandle[0];
+        SoakJobContextsHandle[0] = new SoakJobContext
+        {
+            Duration = ctx.Duration,
+            PacketSize = ctx.PacketSize,
+            SendInterval = ctx.SendInterval
+        };
+        ConnectionHandle[0] = default(NetworkConnection);
+    }
+
+    public void Stop()
+    {
+        UpdateHandle.Complete();
+        ConnectionHandle[0].Disconnect(DriverHandle);
     }
 
     public SoakStatisticsPoint Sample()

@@ -13,7 +13,6 @@ namespace Asteroids.Client
     }
 
     [UpdateBefore(typeof(ParticleUpdateSystemGroup))]
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class ParticleEmitterSystem : SystemBase
     {

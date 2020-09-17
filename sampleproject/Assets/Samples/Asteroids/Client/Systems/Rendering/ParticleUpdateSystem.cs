@@ -8,7 +8,6 @@ namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     [UpdateBefore(typeof(LineRenderSystem))]
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     public class ParticleUpdateSystemGroup : ComponentSystemGroup
     {
     }

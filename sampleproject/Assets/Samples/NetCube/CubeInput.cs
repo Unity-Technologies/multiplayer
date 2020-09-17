@@ -2,67 +2,27 @@
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
+using Unity.Burst;
+using Unity.Collections;
 using UnityEngine;
 
-#if true
-
-#if SERVER_INPUT_SETUP
-            var ghostCollection = GetSingleton<GhostPrefabCollectionComponent>();
-            var ghostId = GhostSerializerCollection.FindGhostType<CubeSnapshotData>();
-            var prefab = EntityManager.GetBuffer<GhostPrefabBuffer>(ghostCollection.serverPrefabs)[ghostId].Value;
-            var player = EntityManager.Instantiate(prefab);
-            EntityManager.SetComponentData(player, new MovableCubeComponent { PlayerId = EntityManager.GetComponentData<NetworkIdComponent>(req.SourceConnection).Value});
-
-            PostUpdateCommands.AddBuffer<CubeInput>(player);
-            PostUpdateCommands.SetComponent(req.SourceConnection, new CommandTargetComponent {targetEntity = player});
-#endif
-
-public struct CubeInput : ICommandData<CubeInput>
+public struct CubeInput : ICommandData
 {
-    public uint Tick => tick;
-    public uint tick;
+    public uint Tick {get; set;}
     public int horizontal;
     public int vertical;
-
-    public void Deserialize(uint tick, ref DataStreamReader reader)
-    {
-        this.tick = tick;
-        horizontal = reader.ReadInt();
-        vertical = reader.ReadInt();
-    }
-
-    public void Serialize(ref DataStreamWriter writer)
-    {
-        writer.WriteInt(horizontal);
-        writer.WriteInt(vertical);
-    }
-
-    public void Deserialize(uint tick, ref DataStreamReader reader, CubeInput baseline,
-        NetworkCompressionModel compressionModel)
-    {
-        Deserialize(tick, ref reader);
-    }
-
-    public void Serialize(ref DataStreamWriter writer, CubeInput baseline, NetworkCompressionModel compressionModel)
-    {
-        Serialize(ref writer);
-    }
-}
-
-public class NetCubeSendCommandSystem : CommandSendSystem<CubeInput>
-{
-}
-public class NetCubeReceiveCommandSystem : CommandReceiveSystem<CubeInput>
-{
 }
 
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-public class SampleCubeInput : ComponentSystem
+[AlwaysSynchronizeSystem]
+public class SampleCubeInput : SystemBase
 {
+    ClientSimulationSystemGroup m_ClientSimulationSystemGroup;
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<NetworkIdComponent>();
         RequireSingletonForUpdate<EnableNetCubeGame>();
+        m_ClientSimulationSystemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
     }
 
     protected override void OnUpdate()
@@ -71,18 +31,21 @@ public class SampleCubeInput : ComponentSystem
         if (localInput == Entity.Null)
         {
             var localPlayerId = GetSingleton<NetworkIdComponent>().Value;
+            var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
+            var commandTargetEntity = GetSingletonEntity<CommandTargetComponent>();
             Entities.WithAll<MovableCubeComponent>().WithNone<CubeInput>().ForEach((Entity ent, ref GhostOwnerComponent ghostOwner) =>
             {
                 if (ghostOwner.NetworkId == localPlayerId)
                 {
-                    PostUpdateCommands.AddBuffer<CubeInput>(ent);
-                    PostUpdateCommands.SetComponent(GetSingletonEntity<CommandTargetComponent>(), new CommandTargetComponent {targetEntity = ent});
+                    commandBuffer.AddBuffer<CubeInput>(ent);
+                    commandBuffer.SetComponent(commandTargetEntity, new CommandTargetComponent {targetEntity = ent});
                 }
-            });
+            }).Run();
+            commandBuffer.Playback(EntityManager);
             return;
         }
         var input = default(CubeInput);
-        input.tick = World.GetExistingSystem<ClientSimulationSystemGroup>().ServerTick;
+        input.Tick = m_ClientSimulationSystemGroup.ServerTick;
         if (Input.GetKey("a"))
             input.horizontal -= 1;
         if (Input.GetKey("d"))
@@ -95,4 +58,3 @@ public class SampleCubeInput : ComponentSystem
         inputBuffer.AddCommandData(input);
     }
 }
-#endif

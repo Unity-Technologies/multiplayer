@@ -14,7 +14,7 @@ namespace Asteroids.Server
     [UpdateAfter(typeof(BulletAgeSystem))]
     // If this was a ghost which was just spawned the ghost system needs to see it before we can destroy it
     [UpdateAfter(typeof(GhostSendSystem))]
-    public class CollisionSystem : JobComponentSystem
+    public class CollisionSystem : SystemBase
     {
         private EntityQuery shipGroup;
         private EntityQuery bulletGroup;
@@ -253,7 +253,7 @@ namespace Asteroids.Server
             }
         }
 
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnUpdate()
         {
             JobHandle bulletHandle;
             JobHandle asteroidHandle;
@@ -290,7 +290,7 @@ namespace Asteroids.Server
                 tick = m_ServerSimulationSystemGroup.ServerTick,
                 frameTime = Time.DeltaTime
             };
-            var asteroidDep = JobHandle.CombineDependencies(inputDeps, bulletHandle, levelHandle);
+            var asteroidDep = JobHandle.CombineDependencies(Dependency, bulletHandle, levelHandle);
             var shipDep = JobHandle.CombineDependencies(asteroidDep, asteroidHandle, settingsHandle);
 
             var h1 = asteroidJob.Schedule(asteroidGroup, asteroidDep);
@@ -310,7 +310,7 @@ namespace Asteroids.Server
                 asteroidChunks = shipJob.asteroidChunks,
                 level = shipJob.level
             };
-            return JobHandle.CombineDependencies(cleanupShipJob.Schedule(h2), cleanupChunkJob.Schedule(handle));
+            Dependency = JobHandle.CombineDependencies(cleanupShipJob.Schedule(h2), cleanupChunkJob.Schedule(handle));
         }
 
         private static bool Intersect(float firstRadius, float secondRadius, float2 firstPos, float2 secondPos)

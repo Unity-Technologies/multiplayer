@@ -5,20 +5,20 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-public class MoveLagCubeSystem : JobComponentSystem
+public class MoveLagCubeSystem : SystemBase
 {
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<EnableLagCompensationGame>();
     }
-    protected override JobHandle OnUpdate(JobHandle inputDeps)
+    protected override void OnUpdate()
     {
-        return Entities.WithAll<PredictedGhostComponent>().ForEach((ref Translation trans) =>
+        Entities.WithAll<PredictedGhostComponent>().ForEach((ref Translation trans) =>
         {
             if (trans.Value.x >= 5)
                 trans.Value.x = -5;
             else
                 trans.Value.x += 0.1f;
-        }).Schedule(inputDeps);
+        }).Schedule();
     }
 }

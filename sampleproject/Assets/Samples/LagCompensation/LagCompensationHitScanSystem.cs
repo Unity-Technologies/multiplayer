@@ -3,7 +3,7 @@ using Unity.NetCode;
 using Unity.Jobs;
 
 [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-public class LagCompensationHitScanSystem : JobComponentSystem
+public class LagCompensationHitScanSystem : SystemBase
 {
     private PhysicsWorldHistory m_physicsHistory;
     private GhostPredictionSystemGroup m_predictionGroup;
@@ -14,16 +14,16 @@ public class LagCompensationHitScanSystem : JobComponentSystem
         m_predictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
         m_IsServer = World.GetExistingSystem<ServerSimulationSystemGroup>() != null;
     }
-    protected override JobHandle OnUpdate(JobHandle inputDeps)
+    protected override void OnUpdate()
     {
         var collisionHistory = m_physicsHistory.CollisionHistory;
         uint predictingTick = m_predictionGroup.PredictingTick;
         // Do not perform hit-scan when rolling back, only when simulating the latest tick
         if (!m_predictionGroup.IsFinalPredictionTick)
-            return inputDeps;
+            return;
         var isServer = m_IsServer;
         // Not using burst since there is a static used to update the UI
-        var handle = Entities.WithoutBurst().ForEach((DynamicBuffer<RayTraceCommand> commands, in CommandDataInterpolationDelay delay) =>
+        Dependency = Entities.WithoutBurst().ForEach((DynamicBuffer<RayTraceCommand> commands, in CommandDataInterpolationDelay delay) =>
         {
             // If there is no data for the tick or a fire was not requested - do not process anything
             if (!commands.GetDataAtTick(predictingTick, out var cmd))
@@ -48,9 +48,8 @@ public class LagCompensationHitScanSystem : JobComponentSystem
                 LagUI.ClientTick = predictingTick;
                 LagUI.ClientHit = hit;
             }
-        }).Schedule(JobHandle.CombineDependencies(inputDeps, m_physicsHistory.LastPhysicsJobHandle));
+        }).Schedule(JobHandle.CombineDependencies(Dependency, m_physicsHistory.LastPhysicsJobHandle));
 
-        m_physicsHistory.LastPhysicsJobHandle = handle;
-        return handle;
+        m_physicsHistory.LastPhysicsJobHandle = Dependency;
     }
 }

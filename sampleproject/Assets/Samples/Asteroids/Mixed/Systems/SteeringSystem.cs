@@ -21,35 +21,23 @@ namespace Asteroids.Mixed
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_PredictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
             RequireSingletonForUpdate<LevelComponent>();
+            RequireSingletonForUpdate<GhostPrefabCollectionComponent>();
         }
 
         protected override void OnUpdate()
         {
             if (m_BulletPrefab == Entity.Null)
             {
-                var prefabs = GetSingleton<GhostPrefabCollectionComponent>();
-                if (World.GetExistingSystem<ServerSimulationSystemGroup>() != null)
+                var prefabEntity = GetSingletonEntity<GhostPrefabCollectionComponent>();
+                var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabEntity);
+                var foundPrefab = Entity.Null;
+                for (int i = 0; i < prefabs.Length; ++i)
                 {
-                    var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.serverPrefabs);
-                    for (int i = 0; i < serverPrefabs.Length; ++i)
-                    {
-                        if (EntityManager.HasComponent<BulletTagComponent>(serverPrefabs[i].Value))
-                            m_BulletPrefab = serverPrefabs[i].Value;
-                    }
+                    if (EntityManager.HasComponent<BulletTagComponent>(prefabs[i].Value))
+                        foundPrefab = prefabs[i].Value;
                 }
-                else
-                {
-                    var clientPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabs.clientPredictedPrefabs).ToNativeArray(Allocator.Temp);
-                    for (int i = 0; i < clientPrefabs.Length; ++i)
-                    {
-                        if (EntityManager.HasComponent<BulletTagComponent>(clientPrefabs[i].Value))
-                        {
-                            m_BulletPrefab = EntityManager.Instantiate(clientPrefabs[i].Value);
-                            EntityManager.AddComponentData(m_BulletPrefab, default(Prefab));
-                            EntityManager.AddComponentData(m_BulletPrefab, default(PredictedGhostSpawnRequestComponent));
-                        }
-                    }
-                }
+                if (foundPrefab != Entity.Null)
+                    m_BulletPrefab = GhostCollectionSystem.CreatePredictedSpawnPrefab(EntityManager, foundPrefab);
             }
 
             var level = GetSingleton<LevelComponent>();

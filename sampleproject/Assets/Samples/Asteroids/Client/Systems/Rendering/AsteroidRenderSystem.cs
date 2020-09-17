@@ -6,7 +6,6 @@ using Unity.NetCode;
 
 namespace Asteroids.Client
 {
-    [UpdateAfter(typeof(RenderInterpolationSystem))]
     [UpdateBefore(typeof(LineRenderSystem))]
     [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
     public class AsteroidRenderSystem : SystemBase

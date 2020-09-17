@@ -56,6 +56,10 @@ public class SoakClientJobManager : IDisposable
     public void Stop()
     {
         m_Started = false;
+        foreach (var client in m_SoakClients)
+        {
+            client.Stop();
+        }
     }
 
     public bool Done()

@@ -4,13 +4,15 @@ using Unity.Entities;
 using Unity.NetCode;
 using Unity.Networking.Transport;
 using Unity.Burst;
+using Unity.Collections;
 
 public struct EnableNetCubeGame : IComponentData
 {}
 
 // Control system updating in the default world
 [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
-public class Game : ComponentSystem
+[AlwaysSynchronizeSystem]
+public class Game : SystemBase
 {
     // Singleton component to trigger connections once from a control system
     struct InitGameComponent : IComponentData
@@ -64,58 +66,66 @@ public struct GoInGameRequest : IRpcCommand
 
 // When client has a connection with network id, go in game and tell server to also go in game
 [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-public class GoInGameClientSystem : ComponentSystem
+[AlwaysSynchronizeSystem]
+public class GoInGameClientSystem : SystemBase
 {
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<EnableNetCubeGame>();
+        RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<NetworkIdComponent>(), ComponentType.Exclude<NetworkStreamInGame>()));
     }
 
     protected override void OnUpdate()
     {
-        Entities.WithNone<NetworkStreamInGame>().ForEach((Entity ent, ref NetworkIdComponent id) =>
+        var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
+        Entities.WithNone<NetworkStreamInGame>().ForEach((Entity ent, in NetworkIdComponent id) =>
         {
-            PostUpdateCommands.AddComponent<NetworkStreamInGame>(ent);
-            var req = PostUpdateCommands.CreateEntity();
-            PostUpdateCommands.AddComponent<GoInGameRequest>(req);
-            PostUpdateCommands.AddComponent(req, new SendRpcCommandRequestComponent { TargetConnection = ent });
-        });
+            commandBuffer.AddComponent<NetworkStreamInGame>(ent);
+            var req = commandBuffer.CreateEntity();
+            commandBuffer.AddComponent<GoInGameRequest>(req);
+            commandBuffer.AddComponent(req, new SendRpcCommandRequestComponent { TargetConnection = ent });
+        }).Run();
+        commandBuffer.Playback(EntityManager);
     }
 }
 
 // When server receives go in game request, go in game and delete request
 [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-public class GoInGameServerSystem : ComponentSystem
+[AlwaysSynchronizeSystem]
+public class GoInGameServerSystem : SystemBase
 {
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<EnableNetCubeGame>();
+        RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<GoInGameRequest>(), ComponentType.ReadOnly<ReceiveRpcCommandRequestComponent>()));
     }
 
     protected override void OnUpdate()
     {
-        Entities.WithNone<SendRpcCommandRequestComponent>().ForEach((Entity reqEnt, ref GoInGameRequest req, ref ReceiveRpcCommandRequestComponent reqSrc) =>
+        var ghostCollection = GetSingletonEntity<GhostPrefabCollectionComponent>();
+        var prefab = Entity.Null;
+        var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(ghostCollection);
+        for (int ghostId = 0; ghostId < prefabs.Length; ++ghostId)
         {
-            PostUpdateCommands.AddComponent<NetworkStreamInGame>(reqSrc.SourceConnection);
-            UnityEngine.Debug.Log(String.Format("Server setting connection {0} to in game", EntityManager.GetComponentData<NetworkIdComponent>(reqSrc.SourceConnection).Value));
-#if true
-            var ghostCollection = GetSingleton<GhostPrefabCollectionComponent>();
-            var prefab = Entity.Null;
-            var serverPrefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(ghostCollection.serverPrefabs);
-            for (int ghostId = 0; ghostId < serverPrefabs.Length; ++ghostId)
-            {
-                if (EntityManager.HasComponent<MovableCubeComponent>(serverPrefabs[ghostId].Value))
-                    prefab = serverPrefabs[ghostId].Value;
-            }
-            var player = EntityManager.Instantiate(prefab);
-            EntityManager.SetComponentData(player, new GhostOwnerComponent { NetworkId = EntityManager.GetComponentData<NetworkIdComponent>(reqSrc.SourceConnection).Value});
+            if (EntityManager.HasComponent<MovableCubeComponent>(prefabs[ghostId].Value))
+                prefab = prefabs[ghostId].Value;
+        }
 
-            PostUpdateCommands.AddBuffer<CubeInput>(player);
-            PostUpdateCommands.SetComponent(reqSrc.SourceConnection, new CommandTargetComponent {targetEntity = player});
-#endif
+        var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
+        var networkIdFromEntity = GetComponentDataFromEntity<NetworkIdComponent>(true);
+        Entities.WithReadOnly(networkIdFromEntity).ForEach((Entity reqEnt, in GoInGameRequest req, in ReceiveRpcCommandRequestComponent reqSrc) =>
+        {
+            commandBuffer.AddComponent<NetworkStreamInGame>(reqSrc.SourceConnection);
+            UnityEngine.Debug.Log(String.Format("Server setting connection {0} to in game", networkIdFromEntity[reqSrc.SourceConnection].Value));
 
+            var player = commandBuffer.Instantiate(prefab);
+            commandBuffer.SetComponent(player, new GhostOwnerComponent { NetworkId = networkIdFromEntity[reqSrc.SourceConnection].Value});
 
-            PostUpdateCommands.DestroyEntity(reqEnt);
-        });
+            commandBuffer.AddBuffer<CubeInput>(player);
+            commandBuffer.SetComponent(reqSrc.SourceConnection, new CommandTargetComponent {targetEntity = player});
+
+            commandBuffer.DestroyEntity(reqEnt);
+        }).Run();
+        commandBuffer.Playback(EntityManager);
     }
 }

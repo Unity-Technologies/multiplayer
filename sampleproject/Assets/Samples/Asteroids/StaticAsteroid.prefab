@@ -12,8 +12,6 @@ GameObject:
   - component: {fileID: 8206435575118897717}
   - component: {fileID: 2828708048439677972}
   - component: {fileID: 3267712304274771985}
-  - component: {fileID: 4240888566170834663}
-  - component: {fileID: 2379706315119662157}
   - component: {fileID: -9072090844857450856}
   m_Layer: 0
   m_Name: StaticAsteroid
@@ -54,6 +52,7 @@ MonoBehaviour:
   InitialVelocity:
     x: 0
     y: 0
+  InitialAngle: 0
   SpawnTick: 0
 --- !u!114 &2828708048439677972
 MonoBehaviour:
@@ -86,30 +85,6 @@ MonoBehaviour:
   prefabId: aea37a48812f1450ea3b7b06c3ca209d
   Name: StaticAsteroid
   doNotStrip: 0
---- !u!114 &4240888566170834663
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9104124667427830497}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd8c631add7341c28cd8ff08ab179177, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &2379706315119662157
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9104124667427830497}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b40a686630c0401fb889a766e1b99ad2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &-9072090844857450856
 MonoBehaviour:
   m_ObjectHideFlags: 0

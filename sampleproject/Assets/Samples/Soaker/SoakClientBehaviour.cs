@@ -47,6 +47,7 @@ public class SoakClientBehaviour : MonoBehaviour
         {
             Debug.Log("Soak done!");
             m_Running = false;
+            m_Manager.Stop();
             Log();
         }
 

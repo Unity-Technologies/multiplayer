@@ -14,7 +14,7 @@ using Unity.NetCode.Editor;
 [UpdateBefore(typeof(TickClientSimulationSystem))]
 #endif
 [UpdateInWorld(UpdateInWorld.TargetWorld.Default)]
-public class AsteroidsClientServerControlSystem : ComponentSystem
+public class AsteroidsClientServerControlSystem : SystemBase
 {
     private const ushort networkPort = 50001;
 
@@ -40,10 +40,6 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
             if (world.GetExistingSystem<ServerSimulationSystemGroup>() != null)
             {
                 var entityManager = world.EntityManager;
-                var settings = entityManager.CreateEntity();
-                var settingsData = GetSingleton<ServerSettings>();
-                entityManager.AddComponentData(settings, settingsData);
-
                 var grid = entityManager.CreateEntity();
                 entityManager.AddComponentData(grid, new GhostDistanceImportance
                 {
@@ -61,10 +57,6 @@ public class AsteroidsClientServerControlSystem : ComponentSystem
             // Auto connect all clients to the server
             if (world.GetExistingSystem<ClientSimulationSystemGroup>() != null)
             {
-                // Enable fixed tick rate
-                var settingsData = GetSingleton<ServerSettings>();
-                if (settingsData.clientFixedFrameTime)
-                    world.EntityManager.CreateEntity(typeof(FixedClientTickRate));
                 NetworkEndPoint ep = NetworkEndPoint.LoopbackIpv4;
                 ep.Port = networkPort;
 #if UNITY_EDITOR
@@ -89,7 +81,6 @@ public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
     public bool damageShips = true;
     public int relevancyRadius = 0;
     public bool staticAsteroidOptimization = false;
-    public bool clientFixedFrameTime = true;
     public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
     {
 #if !UNITY_CLIENT || UNITY_SERVER || UNITY_EDITOR
@@ -105,7 +96,6 @@ public class GameMain : UnityEngine.MonoBehaviour, IConvertGameObjectToEntity
         settings.damageShips = damageShips;
         settings.relevancyRadius = relevancyRadius;
         settings.staticAsteroidOptimization = staticAsteroidOptimization;
-        settings.clientFixedFrameTime = clientFixedFrameTime;
         dstManager.AddComponentData(entity, settings);
 #endif
     }

@@ -6,6 +6,7 @@
 **/Assets/StreamingAssets*
 
 **/Assets/NetCodeGenerated*
+**/Assets/SceneDependencyCache*
 
 sampleproject/Asset/Samples/CustomNetworkInterface/network.bindings~/artifacts/
 sampleproject/Asset/Samples/CustomNetworkInterfacenetwork.bindings~/build.gen.csproj
