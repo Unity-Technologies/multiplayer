@@ -65,9 +65,12 @@ public class PingClientBehaviour : MonoBehaviour
                     // Set the ping id to a sequence number for the new ping we are about to send
                     pendingPings[0] = new PendingPing {id = pingStats[0], time = fixedTime};
                     // Create a 4 byte data stream which we can store our ping sequence number in
-                    var pingData = driver.BeginSend(connection[0]);
-                    pingData.WriteInt(pingStats[0]);
-                    driver.EndSend(pingData);
+
+                    if (driver.BeginSend(connection[0], out var pingData) == 0)
+                    {
+                        pingData.WriteInt(pingStats[0]);
+                        driver.EndSend(pingData);
+                    }
                     // Update the number of sent pings
                     pingStats[0] = pingStats[0] + 1;
                 }

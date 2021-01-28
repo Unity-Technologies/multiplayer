@@ -172,7 +172,7 @@ namespace Asteroids.Server
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateBefore(typeof(GhostSendSystem))]
+    [UpdateBefore(typeof(CollisionSystem))]
     public class PlayerCompleteSpawnSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;

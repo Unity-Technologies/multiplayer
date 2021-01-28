@@ -6,7 +6,6 @@ using Unity.NetCode;
 namespace Asteroids.Client
 {
     [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    [UpdateAfter(typeof(GhostSimulationSystemGroup))]
     [UpdateBefore(typeof(TransformSystemGroup))]
     public class StaticAsteroidSystem : SystemBase
     {

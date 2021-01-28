@@ -82,23 +82,19 @@ public class GoInGameLagClientSystem : SystemBase
 [AlwaysSynchronizeSystem]
 public class GoInGameLagServerSystem : SystemBase
 {
+    BeginSimulationEntityCommandBufferSystem m_Barrier;
     protected override void OnCreate()
     {
         RequireSingletonForUpdate<EnableLagCompensationGame>();
+        RequireSingletonForUpdate<LagCompensationSpawner>();
         RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<NetworkIdComponent>(), ComponentType.Exclude<NetworkStreamInGame>()));
+        m_Barrier = World.GetExistingSystem<BeginSimulationEntityCommandBufferSystem>();
     }
 
     protected override void OnUpdate()
     {
-        var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
-        var ghostId = -1;
-        var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(GetSingletonEntity<GhostPrefabCollectionComponent>());
-        for (int i = 0; i < prefabs.Length; ++i)
-        {
-            if (EntityManager.HasComponent<LagPlayer>(prefabs[i].Value))
-                ghostId = i;
-        }
-        var playerPrefab = prefabs[ghostId].Value;
+        var commandBuffer = m_Barrier.CreateCommandBuffer();
+        var playerPrefab = GetSingleton<LagCompensationSpawner>().prefab;
         Entities.WithNone<NetworkStreamInGame>().ForEach((Entity ent, in NetworkIdComponent id) =>
         {
             commandBuffer.AddComponent<NetworkStreamInGame>(ent);
@@ -106,7 +102,6 @@ public class GoInGameLagServerSystem : SystemBase
             commandBuffer.SetComponent(player, new GhostOwnerComponent{NetworkId = id.Value});
             commandBuffer.SetComponent(ent, new CommandTargetComponent{targetEntity = player});
         }).Run();
-        commandBuffer.Playback(EntityManager);
     }
 }
 

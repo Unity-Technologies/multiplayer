@@ -57,6 +57,7 @@ MeshRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -81,6 +82,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &4845699790510573066
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -106,9 +108,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ForcePrefabConversion: 0
   DefaultGhostMode: 0
   SupportedGhostModes: 1
+  OptimizationMode: 0
   Importance: 1
   prefabId: d87b8dd41a4604dd7bfb08763aa5174c
   Name: LagCube
-  doNotStrip: 0

@@ -78,13 +78,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ForcePrefabConversion: 0
   DefaultGhostMode: 0
   SupportedGhostModes: 1
   OptimizationMode: 1
   Importance: 1
   prefabId: aea37a48812f1450ea3b7b06c3ca209d
   Name: StaticAsteroid
-  doNotStrip: 0
+  RefGameObjects:
+  - {fileID: 9104124667427830497}
+  - {fileID: 9104124667427830497}
+  ComponentNames:
+  - Unity.Transforms.Translation
+  - Unity.Transforms.Rotation
+  PrefabTypeOverrides: []
+  SendTypeOverrides: []
+  VariantOverrides:
+  - Value: 13104952152866038036
+    OverrideIndex: 0
+  - Value: 16634488357454249010
+    OverrideIndex: 1
 --- !u!114 &-9072090844857450856
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -51,13 +51,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  ForcePrefabConversion: 0
   DefaultGhostMode: 2
   SupportedGhostModes: 3
   OptimizationMode: 0
   Importance: 200
   prefabId: adc60907807514fb7954a1aa25776eec
   Name: Ship
-  doNotStrip: 0
+  RefGameObjects:
+  - {fileID: 700954011552825696}
+  - {fileID: 700954011552825696}
+  ComponentNames:
+  - Unity.Transforms.Translation
+  - Unity.Transforms.Rotation
+  PrefabTypeOverrides: []
+  SendTypeOverrides: []
+  VariantOverrides:
+  - Value: 13104952152866038036
+    OverrideIndex: 0
+  - Value: 16634488357454249010
+    OverrideIndex: 1
 --- !u!114 &2551604517845114601
 MonoBehaviour:
   m_ObjectHideFlags: 0

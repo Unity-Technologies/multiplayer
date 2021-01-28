@@ -66,10 +66,11 @@ struct SoakServerUpdateClientsJob : IJobParallelForDefer
                         outbound.id = inbound.id;
                         outbound.sequence = ctx.NextSequenceId++;
 
-                        var soakData = driver.BeginSend(pipeline, connections[i].Connection);
-                        soakData.WriteBytes(outbound.data, SoakMessage.HeaderLength);
-
-                        driver.EndSend(soakData);
+                        if (driver.BeginSend(pipeline, connections[i].Connection, out var soakData) == 0)
+                        {
+                            soakData.WriteBytes(outbound.data, SoakMessage.HeaderLength);
+                            driver.EndSend(soakData);
+                        }
                     }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)

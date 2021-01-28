@@ -4,14 +4,13 @@ using Unity.NetCode;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateAfter(typeof(GhostSendSystem))]
     public class BulletAgeSystem : SystemBase
     {
-        private BeginSimulationEntityCommandBufferSystem barrier;
+        private EndSimulationEntityCommandBufferSystem barrier;
 
         protected override void OnCreate()
         {
-            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
         protected override void OnUpdate()

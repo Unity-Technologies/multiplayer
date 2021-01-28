@@ -13,7 +13,7 @@ public struct CubeInput : ICommandData
     public int vertical;
 }
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+[UpdateInGroup(typeof(GhostInputSystemGroup))]
 [AlwaysSynchronizeSystem]
 public class SampleCubeInput : SystemBase
 {

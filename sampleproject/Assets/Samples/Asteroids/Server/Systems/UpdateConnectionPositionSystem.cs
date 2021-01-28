@@ -6,7 +6,6 @@ using Unity.Transforms;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateBefore(typeof(GhostSimulationSystemGroup))]
     public class UpdateConnectionPositionSystem : SystemBase
     {
         protected override void OnUpdate()

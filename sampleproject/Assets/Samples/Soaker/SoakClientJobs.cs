@@ -34,14 +34,14 @@ public struct SoakClientJob : IJob
             sequence = ctx.NextSequenceNumber++,
             length = packetData.Length
         };
-        var streamWriter = driver.BeginSend(pipeline, connection[0]);
+        if (driver.BeginSend(pipeline, connection[0], out var streamWriter) == 0)
+        {
+            streamWriter.WriteBytes(message.data, SoakMessage.HeaderLength);
+            streamWriter.WriteBytes((byte*)packetData.GetUnsafeReadOnlyPtr(), packetData.Length);
+            stats.SentBytes += driver.EndSend(streamWriter);
+        }
 
-        streamWriter.WriteBytes(message.data, SoakMessage.HeaderLength);
-        streamWriter.WriteBytes((byte*)packetData.GetUnsafeReadOnlyPtr(), packetData.Length);
-
-        stats.SentBytes += driver.EndSend(streamWriter);
         stats.SentPackets++;
-
         pendingSoaks[message.id % pendingSoaks.Length] = message;
     }
 

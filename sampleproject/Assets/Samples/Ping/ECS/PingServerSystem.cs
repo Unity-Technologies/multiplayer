@@ -25,9 +25,11 @@ public class PingServerSystem : SystemBase
                 if (cmd == NetworkEvent.Type.Data)
                 {
                     int id = strm.ReadInt();
-                    var pongData = driver.BeginSend(connection.connection);
-                    pongData.WriteInt(id);
-                    driver.EndSend(pongData);
+                    if (driver.BeginSend(connection.connection, out var pongData) == 0)
+                    {
+                        pongData.WriteInt(id);
+                        driver.EndSend(pongData);
+                    }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {

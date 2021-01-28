@@ -79,9 +79,12 @@ public class CustomNetworkInterfaceConnect : MonoBehaviour
                 // Set the ping id to a sequence number for the new ping we are about to send
                 m_pendingPing = new PendingPing {id = m_numPingsSent, time = Time.fixedTime};
                 // Create a 4 byte data stream which we can store our ping sequence number in
-                var pingData = m_ClientDriver.BeginSend(m_clientToServerConnection);
-                pingData.WriteInt(m_numPingsSent);
-                m_ClientDriver.EndSend(pingData);
+
+                if (m_ClientDriver.BeginSend(m_clientToServerConnection, out var pingData) == 0)
+                {
+                    pingData.WriteInt(m_numPingsSent);
+                    m_ClientDriver.EndSend(pingData);
+                }
                 // Update the number of sent pings
                 ++m_numPingsSent;
             }
@@ -128,10 +131,12 @@ public class CustomNetworkInterfaceConnect : MonoBehaviour
                     // For ping requests we reply with a pong message
                     int id = strm.ReadInt();
                     // Create a temporary DataStreamWriter to keep our serialized pong message
-                    var pongData = m_ServerDriver.BeginSend(m_serverConnections[i]);
-                    pongData.WriteInt(id);
-                    // Send the pong message with the same id as the ping
-                    m_ServerDriver.EndSend(pongData);
+                    if (m_ServerDriver.BeginSend(m_serverConnections[i], out var pongData) == 0)
+                    {
+                        pongData.WriteInt(id);
+                        // Send the pong message with the same id as the ping
+                        m_ServerDriver.EndSend(pongData);
+                    }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {

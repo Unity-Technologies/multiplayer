@@ -71,9 +71,12 @@ public class PingClientSystem : SystemBase
                 if (cmd == NetworkEvent.Type.Connect)
                 {
                     pendingPings[0] = new PendingPing {id = pingStats[0], time = frameTime};
-                    var pingData = driver.BeginSend(connection.connection);
-                    pingData.WriteInt(pingStats[0]);
-                    driver.EndSend(pingData);
+
+                    if (driver.BeginSend(connection.connection, out var pingData) == 0)
+                    {
+                        pingData.WriteInt(pingStats[0]);
+                        driver.EndSend(pingData);
+                    }
                     pingStats[0] = pingStats[0] + 1;
                 }
                 else if (cmd == NetworkEvent.Type.Data)

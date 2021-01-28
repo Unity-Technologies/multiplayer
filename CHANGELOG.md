@@ -1,3 +1,9 @@
+# 2021-01-28
+## Changes
+* Upraded Unity NetCode to 0.6.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.6/changelog/CHANGELOG.html)
+* Upgraded Unity Transport to 0.6.0 see the [Unity Transport changelog](https://docs.unity3d.com/Packages/com.unity.transport@0.6/changelog/CHANGELOG.html)
+* Brought back the custom 2d serialization rules for translation and rotation in asteroids.
+
 # 2020-09-17
 ## Changes
 * Upraded Unity NetCode to 0.4.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.4/changelog/CHANGELOG.html)

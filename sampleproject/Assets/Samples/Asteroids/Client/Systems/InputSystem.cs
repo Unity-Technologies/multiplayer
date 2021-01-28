@@ -4,9 +4,7 @@ using Unity.NetCode;
 
 namespace Asteroids.Client
 {
-    [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    [UpdateBefore(typeof(CommandSendSystemGroup))]
-    [UpdateBefore(typeof(GhostSimulationSystemGroup))]
+    [UpdateInGroup(typeof(GhostInputSystemGroup))]
     public class InputSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;

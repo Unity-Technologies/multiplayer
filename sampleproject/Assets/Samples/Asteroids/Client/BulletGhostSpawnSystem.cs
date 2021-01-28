@@ -6,7 +6,8 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Networking.Transport.Utilities;
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+[UpdateInWorld(UpdateInWorld.TargetWorld.Client)]
+[UpdateInGroup(typeof(GhostSimulationSystemGroup))]
 [UpdateAfter(typeof(GhostSpawnClassificationSystem))]
 public class BulletGhostSpawnClassificationSystem : SystemBase
 {

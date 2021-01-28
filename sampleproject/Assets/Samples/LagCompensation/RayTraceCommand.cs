@@ -15,8 +15,7 @@ public struct RayTraceCommand : ICommandData
 }
 
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-[UpdateBefore(typeof(GhostSimulationSystemGroup))]
+[UpdateInGroup(typeof(GhostInputSystemGroup))]
 [AlwaysSynchronizeSystem]
 public class SampleRayTraceCommandSystem : SystemBase
 {

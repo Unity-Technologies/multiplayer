@@ -1,16 +1,16 @@
 {
-    "name": "Asteroids.Mixed",
+    "name": "Samples.NetCodeGen",
     "rootNamespace": "",
     "references": [
-        "Unity.Burst",
-        "Unity.Entities",
-        "Unity.Transforms",
-        "Unity.Collections",
+        "Unity.NetCode",
+        "Unity.NetCode.Editor",
+        "Unity.NetCode.Authoring.Hybrid",
         "Unity.Mathematics",
-        "Unity.Networking.Transport",
-        "Unity.NetCode"
+        "Asteroids.Mixed"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

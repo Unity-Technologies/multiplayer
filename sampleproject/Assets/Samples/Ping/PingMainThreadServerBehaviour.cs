@@ -55,10 +55,12 @@ public class PingMainThreadServerBehaviour : MonoBehaviour
                     // For ping requests we reply with a pong message
                     int id = strm.ReadInt();
                     // Create a temporary DataStreamWriter to keep our serialized pong message
-                    var pongData = m_ServerDriver.BeginSend(m_connections[i]);
-                    pongData.WriteInt(id);
-                    // Send the pong message with the same id as the ping
-                    m_ServerDriver.EndSend(pongData);
+                    if (m_ServerDriver.BeginSend(m_connections[i], out var pongData) == 0)
+                    {
+                        pongData.WriteInt(id);
+                        // Send the pong message with the same id as the ping
+                        m_ServerDriver.EndSend(pongData);
+                    }
                 }
                 else if (cmd == NetworkEvent.Type.Disconnect)
                 {

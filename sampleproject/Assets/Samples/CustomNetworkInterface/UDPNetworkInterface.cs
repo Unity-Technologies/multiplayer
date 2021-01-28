@@ -88,12 +88,14 @@ namespace Unity.Networking.Transport
             ep.dataLength = sizeof(network_address);
             return ep;
         }
-        public unsafe NetworkInterfaceEndPoint CreateInterfaceEndPoint(NetworkEndPoint endPoint)
+
+        public int CreateInterfaceEndPoint(NetworkEndPoint address, out NetworkInterfaceEndPoint endpoint)
         {
-            if (endPoint.Family != NetworkFamily.Ipv4)
+            if (address.Family != NetworkFamily.Ipv4)
                 throw new ArgumentException("Invalid family type");
 
-            return ParseNetworkAddress(endPoint);
+            endpoint = ParseNetworkAddress(address);
+            return 0;
         }
 
         public unsafe NetworkEndPoint GetGenericEndPoint(NetworkInterfaceEndPoint endpoint)
@@ -111,16 +113,25 @@ namespace Unity.Networking.Transport
             return address;
         }
 
-        public unsafe void Initialize(params INetworkParameter[] param)
+        public unsafe int Initialize(params INetworkParameter[] param)
         {
             NativeBindings.network_initialize();
-            var ep = CreateInterfaceEndPoint(NetworkEndPoint.AnyIpv4);
+
+            var ep = default(NetworkInterfaceEndPoint);
+            var result = 0;
+
+            if ((result = CreateInterfaceEndPoint(NetworkEndPoint.AnyIpv4, out ep)) != (int)Error.StatusCode.Success)
+                return result;
+
             long sockHand;
             int ret = CreateAndBindSocket(out sockHand, *(network_address*)ep.data);
-            if (ret != 0)
-                throw new NetworkInterfaceException(ret);
-            m_UserData = new NativeArray<long>(1, Allocator.Persistent);
-            m_UserData[0] = sockHand;
+
+            if (ret == 0)
+            {
+                m_UserData = new NativeArray<long>(1, Allocator.Persistent);
+                m_UserData[0] = sockHand;
+            }
+            return ret;
         }
 
         public void Dispose()
@@ -202,6 +213,7 @@ namespace Unity.Networking.Transport
             var job = new ReceiveJob {receiver = receiver, socket = m_UserData[0]};
             return job.Schedule(dep);
         }
+
         public JobHandle ScheduleSend(NativeQueue<QueuedSendMessage> sendQueue, JobHandle dep)
         {
             return dep;

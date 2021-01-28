@@ -60,9 +60,11 @@ public class PingMainThreadClientBehaviour : MonoBehaviour
                 // Set the ping id to a sequence number for the new ping we are about to send
                 m_pendingPing = new PendingPing {id = m_numPingsSent, time = Time.fixedTime};
                 // Create a 4 byte data stream which we can store our ping sequence number in
-                var pingData = m_ClientDriver.BeginSend(m_clientToServerConnection);
-                pingData.WriteInt(m_numPingsSent);
-                m_ClientDriver.EndSend(pingData);
+                if (m_ClientDriver.BeginSend(m_clientToServerConnection, out var pingData) == 0)
+                {
+                    pingData.WriteInt(m_numPingsSent);
+                    m_ClientDriver.EndSend(pingData);
+                }
                 // Update the number of sent pings
                 ++m_numPingsSent;
             }

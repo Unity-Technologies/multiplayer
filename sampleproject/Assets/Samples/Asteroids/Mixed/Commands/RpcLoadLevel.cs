@@ -15,11 +15,11 @@ public struct LevelLoadRequest : IRpcCommand
 [BurstCompile]
 public struct RpcLevelLoaded : IComponentData, IRpcCommandSerializer<RpcLevelLoaded>
 {
-    public void Serialize(ref DataStreamWriter writer, in RpcLevelLoaded data)
+    public void Serialize(ref DataStreamWriter writer, in RpcSerializerState state, in RpcLevelLoaded data)
     {
     }
 
-    public void Deserialize(ref DataStreamReader reader, ref RpcLevelLoaded data)
+    public void Deserialize(ref DataStreamReader reader, in RpcDeserializerState state, ref RpcLevelLoaded data)
     {
     }
 
@@ -28,7 +28,7 @@ public struct RpcLevelLoaded : IComponentData, IRpcCommandSerializer<RpcLevelLoa
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {
         var rpcData = default(RpcLevelLoaded);
-        rpcData.Deserialize(ref parameters.Reader, ref rpcData);
+        rpcData.Deserialize(ref parameters.Reader, parameters.DeserializerState, ref rpcData);
 
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, new PlayerStateComponentData());
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, default(NetworkStreamInGame));

@@ -5,6 +5,6 @@ using Unity.NetCode;
 [GhostComponent(PrefabType = GhostPrefabType.AllPredicted, OwnerPredictedSendType = GhostSendType.Predicted)]
 public struct Velocity : IComponentData
 {
-    [GhostField(Quantization=100, Interpolate=true)]
+    [GhostField(Quantization=100, Smoothing=SmoothingAction.InterpolateAndExtrapolate)]
     public float2 Value;
 }

@@ -10,17 +10,14 @@ namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateAfter(typeof(AsteroidSystem))]
-    [UpdateAfter(typeof(GhostSimulationSystemGroup))]
     [UpdateAfter(typeof(BulletAgeSystem))]
-    // If this was a ghost which was just spawned the ghost system needs to see it before we can destroy it
-    [UpdateAfter(typeof(GhostSendSystem))]
     public class CollisionSystem : SystemBase
     {
         private EntityQuery shipGroup;
         private EntityQuery bulletGroup;
         private EntityQuery asteroidGroup;
         private EntityQuery m_LevelGroup;
-        private BeginSimulationEntityCommandBufferSystem barrier;
+        private EndSimulationEntityCommandBufferSystem barrier;
         private ServerSimulationSystemGroup m_ServerSimulationSystemGroup;
         private NativeQueue<Entity> playerClearQueue;
         private EntityQuery settingsGroup;
@@ -34,7 +31,7 @@ namespace Asteroids.Server
                 ComponentType.ReadOnly<BulletAgeComponent>());
             asteroidGroup = GetEntityQuery(ComponentType.ReadOnly<Translation>(),
                 ComponentType.ReadOnly<CollisionSphereComponent>(), ComponentType.ReadOnly<AsteroidTagComponentData>());
-            barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+            barrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
             m_ServerSimulationSystemGroup = World.GetExistingSystem<ServerSimulationSystemGroup>();
             playerClearQueue = new NativeQueue<Entity>(Allocator.Persistent);
 

@@ -1,0 +1,24 @@
+{
+    "Dependencies": [
+        "GlobalObjectId_V1-1-efd815fb310344e61bf5fa7dc0f06555-93214019566545601-0"
+    ],
+    "Components": [
+        {
+            "$type": "Unity.Build.Classic.ClassicScriptingSettings, Unity.Build.Classic",
+            "ScriptingBackend": 1,
+            "Il2CppCompilerConfiguration": 1,
+            "UseIncrementalGC": false
+        },
+        {
+            "$type": "Unity.Build.Classic.ClassicBuildProfile, Unity.Build.Classic",
+            "$version": 1,
+            "Platform": "ios",
+            "Configuration": 2
+        },
+        {
+            "$type": "Unity.Build.Classic.ClassicCodeStrippingOptions, Unity.Build.Classic",
+            "StripEngineCode": false,
+            "ManagedStrippingLevel": 1
+        }
+    ]
+}

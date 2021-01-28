@@ -77,10 +77,12 @@ public class PingServerBehaviour : MonoBehaviour
                 // For ping requests we reply with a pong message
                 int id = strm.ReadInt();
                 // Create a temporary DataStreamWriter to keep our serialized pong message
-                var pongData = driver.BeginSend(connection);
-                pongData.WriteInt(id);
-                // Send the pong message with the same id as the ping
-                driver.EndSend(pongData);
+                if (driver.BeginSend(connection, out var pongData) == 0)
+                {
+                    pongData.WriteInt(id);
+                    // Send the pong message with the same id as the ping
+                    driver.EndSend(pongData);
+                }
             }
             else if (cmd == NetworkEvent.Type.Disconnect)
             {

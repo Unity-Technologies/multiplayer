@@ -31,10 +31,13 @@ namespace Asteroids.Client
             }
             var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
             var rpcFromEntity = GetBufferFromEntity<OutgoingRpcDataStreamBufferComponent>();
+            var ghostFromEntity = GetComponentDataFromEntity<GhostComponent>(true);
             var levelFromEntity = GetComponentDataFromEntity<LevelComponent>();
             var levelSingleton = m_LevelSingleton;
             var rpcQueue = m_RpcQueue;
-            Entities.ForEach((Entity entity, int nativeThreadIndex, in LevelLoadRequest request, in ReceiveRpcCommandRequestComponent requestSource) =>
+            Entities
+                .WithReadOnly(ghostFromEntity)
+                .ForEach((Entity entity, int nativeThreadIndex, in LevelLoadRequest request, in ReceiveRpcCommandRequestComponent requestSource) =>
             {
                 commandBuffer.DestroyEntity(nativeThreadIndex, entity);
                 // Check for disconnects
@@ -50,7 +53,7 @@ namespace Asteroids.Client
                 };
                 commandBuffer.AddComponent(nativeThreadIndex, requestSource.SourceConnection, new PlayerStateComponentData());
                 commandBuffer.AddComponent(nativeThreadIndex, requestSource.SourceConnection, default(NetworkStreamInGame));
-                rpcQueue.Schedule(rpcFromEntity[requestSource.SourceConnection], new RpcLevelLoaded());
+                rpcQueue.Schedule(rpcFromEntity[requestSource.SourceConnection], ghostFromEntity, new RpcLevelLoaded());
             }).Schedule();
             m_Barrier.AddJobHandleForProducer(Dependency);
         }

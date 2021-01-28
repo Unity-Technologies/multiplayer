@@ -1,22 +1,24 @@
 using Unity.Entities;
 using Unity.NetCode;
-#if UNITY_EDITOR
-using Unity.NetCode.Editor;
-#endif
 
 public class NetCodeBootstrap : ClientServerBootstrap
 {
     public override bool Initialize(string defaultWorldName)
     {
         var sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-        if (sceneName == "Asteroids" ||
-            sceneName == "NetCube" ||
-            sceneName == "LagCompensation" ||
-            sceneName.StartsWith("BasicPrespawnTest") ||
-            sceneName.StartsWith("Test"))
-            return base.Initialize(defaultWorldName);
+        bool isSampleScene = (sceneName == "Asteroids" || sceneName == "NetCube" || sceneName == "LagCompensation");
+        bool isTestScene = (sceneName.StartsWith("BasicPrespawnTest") || sceneName.StartsWith("Test"));
+        if (isSampleScene || isTestScene)
+        {
+            // For the sample scenes we use a dynamic assembly list so we can build a server with a subset of the assemblies
+            // (only including one of the samples instead of all)
+            RpcSystem.DynamicAssemblyList = isSampleScene;
+            var success = base.Initialize(defaultWorldName);
+            RpcSystem.DynamicAssemblyList = false;
+            return success;
+        }
 
-        var world = new World(defaultWorldName);
+        var world = new World(defaultWorldName, WorldFlags.Game);
         World.DefaultGameObjectInjectionWorld = world;
 
         var systems = DefaultWorldInitialization.GetAllSystems(WorldSystemFilterFlags.Default);

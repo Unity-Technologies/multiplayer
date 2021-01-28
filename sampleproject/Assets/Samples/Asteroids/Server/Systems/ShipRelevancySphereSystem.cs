@@ -8,7 +8,6 @@ using Unity.Jobs;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateBefore(typeof(GhostSendSystem))]
     public class ShipRelevancySphereSystem : SystemBase
     {
         struct ConnectionRelevancy
@@ -60,7 +59,7 @@ namespace Asteroids.Server
             var connectionHandle = Entities
                 .WithReadOnly(transFromEntity)
                 .ForEach((in NetworkIdComponent netId, in CommandTargetComponent target) => {
-                if (target.targetEntity == Entity.Null)
+                if (target.targetEntity == Entity.Null || !transFromEntity.HasComponent(target.targetEntity))
                     return;
                 var pos = transFromEntity[target.targetEntity].Value;
                 connections.Add(new ConnectionRelevancy{ConnectionId = netId.Value, Position = pos});
