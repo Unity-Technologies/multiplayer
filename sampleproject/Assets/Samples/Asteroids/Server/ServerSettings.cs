@@ -1,7 +1,6 @@
 using Unity.Entities;
-using Unity.Transforms;
-using Unity.NetCode;
 
+[GenerateAuthoringComponent]
 public struct ServerSettings : IComponentData
 {
     public float asteroidVelocity;

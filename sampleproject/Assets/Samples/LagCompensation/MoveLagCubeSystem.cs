@@ -5,11 +5,12 @@ using Unity.NetCode;
 using Unity.Transforms;
 
 [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-public class MoveLagCubeSystem : SystemBase
+public partial class MoveLagCubeSystem : SystemBase
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGame>();
+        RequireSingletonForUpdate<LagCompensationSpawner>();
+        RequireSingletonForUpdate<NetworkStreamInGame>();
     }
     protected override void OnUpdate()
     {

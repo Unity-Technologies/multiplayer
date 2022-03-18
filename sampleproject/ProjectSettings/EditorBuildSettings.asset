@@ -5,10 +5,22 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/PingServer.unity
-    guid: b02c4d8131da54d0cb45319d0498cbd0
+  - enabled: 1
+    path: Assets/Scenes/Frontend.unity
+    guid: 78517606c5abc4802a5a988a3f3fc2bf
+  - enabled: 1
+    path: Assets/Scenes/FrontendHUD.unity
+    guid: 06ff0d515097f4e60973d2ca8d13eb39
   - enabled: 1
     path: Assets/Scenes/Asteroids.unity
     guid: e1d9a388defac7049a631b0047b4278e
+  - enabled: 1
+    path: Assets/Scenes/NetCube.unity
+    guid: 46d38099d1fc14425a0f07eff0d05a93
+  - enabled: 1
+    path: Assets/Scenes/LagCompensation.unity
+    guid: 80a09ad7ebee045798cf4626fc46fc99
+  - enabled: 1
+    path: Assets/Scenes/PredictionSwitching.unity
+    guid: 87e39eaa89fb14d36836ac169c4259e0
   m_configObjects: {}

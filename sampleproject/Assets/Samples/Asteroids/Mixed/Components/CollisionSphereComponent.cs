@@ -1,8 +1,8 @@
 using Unity.Entities;
 using Unity.NetCode;
 
-[GhostComponent(PrefabType = GhostPrefabType.Server)]
 [GenerateAuthoringComponent]
+[GhostComponent(PrefabType = GhostPrefabType.Server)]
 public struct CollisionSphereComponent : IComponentData
 {
     public float radius;

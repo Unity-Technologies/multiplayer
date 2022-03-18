@@ -9,7 +9,7 @@ using Unity.NetCode;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public class AsteroidSpawnSystem : SystemBase
+    public partial class AsteroidSpawnSystem : SystemBase
     {
         private EntityQuery m_AsteroidGroup;
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
@@ -28,6 +28,7 @@ namespace Asteroids.Server
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
             m_ConnectionGroup = GetEntityQuery(ComponentType.ReadWrite<NetworkStreamConnection>());
+            RequireSingletonForUpdate<AsteroidsSpawner>();
         }
 
         protected override void OnUpdate()
@@ -42,13 +43,7 @@ namespace Asteroids.Server
             var settings = GetSingleton<ServerSettings>();
             if (m_Prefab == Entity.Null)
             {
-                var prefabEntity = GetSingletonEntity<GhostPrefabCollectionComponent>();
-                var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabEntity);
-                for (int i = 0; i < prefabs.Length; ++i)
-                {
-                    if (EntityManager.HasComponent<AsteroidTagComponentData>(prefabs[i].Value) && (EntityManager.HasComponent<StaticAsteroid>(prefabs[i].Value) == settings.staticAsteroidOptimization))
-                        m_Prefab = prefabs[i].Value;
-                }
+                m_Prefab = settings.staticAsteroidOptimization ? GetSingleton<AsteroidsSpawner>().StaticAsteroid : GetSingleton<AsteroidsSpawner>().Asteroid;
                 if (m_Prefab == Entity.Null)
                     return;
                 m_Radius = EntityManager.GetComponentData<CollisionSphereComponent>(m_Prefab).radius;
@@ -95,7 +90,7 @@ namespace Asteroids.Server
     }
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public class PlayerSpawnSystem : SystemBase
+    public partial class PlayerSpawnSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private EntityQuery m_LevelGroup;
@@ -107,20 +102,14 @@ namespace Asteroids.Server
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
-            RequireSingletonForUpdate<GhostPrefabCollectionComponent>();
+            RequireSingletonForUpdate<AsteroidsSpawner>();
         }
 
         protected override void OnUpdate()
         {
             if (m_Prefab == Entity.Null)
             {
-                var prefabEntity = GetSingletonEntity<GhostPrefabCollectionComponent>();
-                var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabEntity);
-                for (int i = 0; i < prefabs.Length; ++i)
-                {
-                    if (EntityManager.HasComponent<ShipTagComponentData>(prefabs[i].Value))
-                        m_Prefab = prefabs[i].Value;
-                }
+                m_Prefab = GetSingleton<AsteroidsSpawner>().Ship;
                 if (m_Prefab == Entity.Null)
                     return;
                 m_Radius = EntityManager.GetComponentData<CollisionSphereComponent>(m_Prefab).radius;
@@ -173,7 +162,7 @@ namespace Asteroids.Server
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateBefore(typeof(CollisionSystem))]
-    public class PlayerCompleteSpawnSystem : SystemBase
+    public partial class PlayerCompleteSpawnSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
 
@@ -188,6 +177,7 @@ namespace Asteroids.Server
             var playerStateFromEntity = GetComponentDataFromEntity<PlayerStateComponentData>();
             var commandTargetFromEntity = GetComponentDataFromEntity<CommandTargetComponent>();
             var connectionFromEntity = GetComponentDataFromEntity<NetworkStreamConnection>();
+            var linkedEntityGroupFromEntity = GetBufferFromEntity<LinkedEntityGroup>();
 
             Entities.WithAll<ShipSpawnInProgress>().
                 ForEach((Entity entity, in PlayerIdComponentData player) =>
@@ -203,6 +193,8 @@ namespace Asteroids.Server
                     commandBuffer.RemoveComponent<ShipSpawnInProgress>(entity);
                     commandTargetFromEntity[player.PlayerEntity] = new CommandTargetComponent {targetEntity = entity};
                     playerStateFromEntity[player.PlayerEntity] = new PlayerStateComponentData {IsSpawning = 0};
+                    var linkedEntityGroup = linkedEntityGroupFromEntity[player.PlayerEntity];
+                    linkedEntityGroup.Add(new LinkedEntityGroup {Value = entity});
                 }).Schedule();
             m_Barrier.AddJobHandleForProducer(Dependency);
         }

@@ -5,7 +5,7 @@ using Unity.NetCode;
 namespace Asteroids.Mixed
 {
     [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-    public class BulletSystem : SystemBase
+    public partial class BulletSystem : SystemBase
     {
         protected override void OnUpdate()
         {

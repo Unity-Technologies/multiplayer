@@ -1,8 +1,10 @@
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using System.Collections.Generic;
 
-public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
+#if !UNITY_SERVER
+public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
 {
     public float particlesPerSecond;
     public float angleSpread;
@@ -19,9 +21,14 @@ public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObje
     public float endWidth;
     public float4 endColor;
     public bool active;
+    public GameObject particlePrefab;
+    public void DeclareReferencedPrefabs(List<GameObject> referencedPrefabs)
+    {
+        if (particlePrefab != null)
+            referencedPrefabs.Add(particlePrefab);
+    }
     public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
     {
-        #if !UNITY_SERVER
         dstManager.AddComponentData(entity, new ParticleEmitterComponentData
         {
             particlesPerSecond = particlesPerSecond,
@@ -37,8 +44,9 @@ public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObje
             endLength = endLength,
             endWidth = endWidth,
             endColor = endColor,
-            active = active?1:0
+            active = active?1:0,
+            particlePrefab = conversionSystem.GetPrimaryEntity(particlePrefab)
         });
-        #endif
     }
 }
+#endif

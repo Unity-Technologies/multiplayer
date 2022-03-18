@@ -1,3 +1,11 @@
+# 2022-03-18
+## Changes
+* Upgraded to Netcode for Entities 0.50.0, see the [Netcode for Entities changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.50/changelog/CHANGELOG.html).
+* Added a sample for prediction switching.
+* Added a frontend sample, it is used for standalone builds and can launch all other samples in client-only or client/server mode.
+* Modified asteroids to use the Hybrid Renderer package.
+* Removed the transport samples.
+
 # 2021-01-28
 ## Changes
 * Upraded Unity NetCode to 0.6.0, see the [Unity NetCode changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.6/changelog/CHANGELOG.html)

@@ -15,7 +15,8 @@ GameObject:
   - component: {fileID: 2552174147846842480}
   - component: {fileID: 5304272404096775568}
   - component: {fileID: 1710426002176190917}
-  - component: {fileID: 9050123105121648703}
+  - component: {fileID: 4391510766907920481}
+  - component: {fileID: 1910438530075170756}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -60,10 +61,11 @@ MeshRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: de2c3f52869644d139ebebcbb3ee41a6, type: 2}
+  - {fileID: 2100000, guid: 535cd186b02de480c9c4631b8a9ac2d6, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -84,6 +86,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!65 &2469323487610213413
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -111,10 +114,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DefaultGhostMode: 2
   SupportedGhostModes: 3
+  OptimizationMode: 0
   Importance: 1
   prefabId: bd05f2145763d425091243a36d80d893
   Name: Cube
-  doNotStrip: 0
+  HasOwner: 1
+  SupportAutoCommandTarget: 1
+  UsePreSerialization: 0
+  RefGameObjects: []
+  RefGuids: 
+  ComponentNames: []
+  PrefabTypeOverrides: []
+  SendTypeOverrides: []
+  VariantOverrides: []
+  SendForChild: []
 --- !u!114 &5304272404096775568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -128,6 +141,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_MotionType: 0
+  m_Smoothing: 0
   m_Mass: 1
   m_LinearDamping: 0.01
   m_AngularDamping: 0.05
@@ -155,6 +169,7 @@ MonoBehaviour:
     x: 0.4
     y: 0.4
     z: 0.4
+  m_WorldIndex: 0
   m_CustomTags:
     Tag00: 0
     Tag01: 0
@@ -176,7 +191,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e91240793e28424a83c4ecdd08909a5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &9050123105121648703
+--- !u!114 &4391510766907920481
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -185,7 +200,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 2469323487610213414}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1fea7091bb9848b191c018d3718ec0d, type: 3}
+  m_Script: {fileID: 11500000, guid: 54b6467bcd530cd4d809fae70ea0ca9d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  NetworkId: 0
+  Value:
+    x: 1
+    y: 1
+    z: 1
+    w: 1
+--- !u!114 &1910438530075170756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2469323487610213414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e10dad513234abaa8df516bfb168273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Values: []

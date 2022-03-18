@@ -23,7 +23,7 @@ public struct RpcLevelLoaded : IComponentData, IRpcCommandSerializer<RpcLevelLoa
     {
     }
 
-    [BurstCompile]
+    [BurstCompile(DisableDirectCall = true)]
     [MonoPInvokeCallback(typeof(RpcExecutor.ExecuteDelegate))]
     private static void InvokeExecute(ref RpcExecutor.Parameters parameters)
     {

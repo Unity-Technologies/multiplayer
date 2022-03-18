@@ -22,4 +22,6 @@ public struct ParticleEmitterComponentData : IComponentData
     public float4 endColor;
 
     public int active;
+
+    public Entity particlePrefab;
 }

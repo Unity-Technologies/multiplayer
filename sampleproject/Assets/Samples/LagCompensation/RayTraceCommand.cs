@@ -17,28 +17,19 @@ public struct RayTraceCommand : ICommandData
 
 [UpdateInGroup(typeof(GhostInputSystemGroup))]
 [AlwaysSynchronizeSystem]
-public class SampleRayTraceCommandSystem : SystemBase
+public partial class SampleRayTraceCommandSystem : SystemBase
 {
     ClientSimulationSystemGroup m_systemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<EnableLagCompensationGame>();
-        RequireSingletonForUpdate<CommandTargetComponent>();
+        RequireSingletonForUpdate<LagCompensationSpawner>();
         m_systemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
     }
     protected override void OnUpdate()
     {
-        var target = GetSingleton<CommandTargetComponent>();
-        if (target.targetEntity == Entity.Null)
-        {
-            Entities.WithoutBurst().WithAll<PredictedGhostComponent>().ForEach((Entity entity, in LagPlayer player) => {
-                target.targetEntity = entity;
-                SetSingleton(target);
-            }).Run();
-        }
-        if (target.targetEntity == Entity.Null || m_systemGroup.ServerTick == 0 || !EntityManager.HasComponent<RayTraceCommand>(target.targetEntity))
+        if (!TryGetSingletonEntity<RayTraceCommand>(out var targetEntity) || m_systemGroup.ServerTick == 0)
             return;
-        var buffer = EntityManager.GetBuffer<RayTraceCommand>(target.targetEntity);
+        var buffer = EntityManager.GetBuffer<RayTraceCommand>(targetEntity);
         var cmd = default(RayTraceCommand);
         cmd.Tick = m_systemGroup.ServerTick;
         if (UnityEngine.Input.GetMouseButtonDown(0))

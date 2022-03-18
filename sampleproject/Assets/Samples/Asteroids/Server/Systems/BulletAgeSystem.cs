@@ -4,7 +4,7 @@ using Unity.NetCode;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public class BulletAgeSystem : SystemBase
+    public partial class BulletAgeSystem : SystemBase
     {
         private EndSimulationEntityCommandBufferSystem barrier;
 

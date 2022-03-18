@@ -8,7 +8,7 @@ using Unity.Jobs;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public class ShipRelevancySphereSystem : SystemBase
+    public partial class ShipRelevancySphereSystem : SystemBase
     {
         struct ConnectionRelevancy
         {

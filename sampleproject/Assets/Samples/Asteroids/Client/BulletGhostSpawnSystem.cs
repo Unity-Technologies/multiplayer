@@ -6,10 +6,10 @@ using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Networking.Transport.Utilities;
 
-[UpdateInWorld(UpdateInWorld.TargetWorld.Client)]
+[UpdateInWorld(TargetWorld.Client)]
 [UpdateInGroup(typeof(GhostSimulationSystemGroup))]
 [UpdateAfter(typeof(GhostSpawnClassificationSystem))]
-public class BulletGhostSpawnClassificationSystem : SystemBase
+public partial class BulletGhostSpawnClassificationSystem : SystemBase
 {
     protected override void OnCreate()
     {

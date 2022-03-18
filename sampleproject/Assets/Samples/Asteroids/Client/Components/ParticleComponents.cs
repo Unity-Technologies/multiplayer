@@ -1,23 +1,13 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
 
-public struct ParticleComponentData : IComponentData
+public struct Particle : IComponentData
+{}
+
+public struct ParticleAge : IComponentData
 {
-    public ParticleComponentData(float len, float w, float4 col)
-    {
-        length = len;
-        width = w;
-        color = col;
-    }
-
-    public float length;
-    public float width;
-    public float4 color;
-}
-
-public struct ParticleAgeComponentData : IComponentData
-{
-    public ParticleAgeComponentData(float maxAge)
+    public ParticleAge(float maxAge)
     {
         this.maxAge = maxAge;
         age = 0;
@@ -27,9 +17,9 @@ public struct ParticleAgeComponentData : IComponentData
     public float age;
 }
 
-public struct ParticleVelocityComponentData : IComponentData
+public struct ParticleVelocity : IComponentData
 {
-    public ParticleVelocityComponentData(float2 velocity)
+    public ParticleVelocity(float2 velocity)
     {
         this.velocity = velocity;
     }
@@ -37,9 +27,9 @@ public struct ParticleVelocityComponentData : IComponentData
     public float2 velocity;
 }
 
-public struct ParticleColorTransitionComponentData : IComponentData
+public struct ParticleColorTransition : IComponentData
 {
-    public ParticleColorTransitionComponentData(float4 start, float4 end)
+    public ParticleColorTransition(float4 start, float4 end)
     {
         startColor = start;
         endColor = end;
@@ -49,9 +39,9 @@ public struct ParticleColorTransitionComponentData : IComponentData
     public float4 endColor;
 }
 
-public struct ParticleSizeTransitionComponentData : IComponentData
+public struct ParticleSizeTransition : IComponentData
 {
-    public ParticleSizeTransitionComponentData(float startL, float startW, float endL, float endW)
+    public ParticleSizeTransition(float startL, float startW, float endL, float endW)
     {
         startLength = startL;
         startWidth = startW;

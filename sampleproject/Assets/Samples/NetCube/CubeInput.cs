@@ -6,6 +6,8 @@ using Unity.Burst;
 using Unity.Collections;
 using UnityEngine;
 
+[GhostComponent(PrefabType=GhostPrefabType.AllPredicted)]
+[GenerateAuthoringComponent]
 public struct CubeInput : ICommandData
 {
     public uint Tick {get; set;}
@@ -15,44 +17,28 @@ public struct CubeInput : ICommandData
 
 [UpdateInGroup(typeof(GhostInputSystemGroup))]
 [AlwaysSynchronizeSystem]
-public class SampleCubeInput : SystemBase
+public partial class SampleCubeInput : SystemBase
 {
     ClientSimulationSystemGroup m_ClientSimulationSystemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<NetworkIdComponent>();
-        RequireSingletonForUpdate<EnableNetCubeGame>();
+        RequireSingletonForUpdate<NetCubeSpawner>();
         m_ClientSimulationSystemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
     }
 
     protected override void OnUpdate()
     {
-        var localInput = GetSingleton<CommandTargetComponent>().targetEntity;
-        if (localInput == Entity.Null)
-        {
-            var localPlayerId = GetSingleton<NetworkIdComponent>().Value;
-            var commandBuffer = new EntityCommandBuffer(Allocator.Temp);
-            var commandTargetEntity = GetSingletonEntity<CommandTargetComponent>();
-            Entities.WithAll<MovableCubeComponent>().WithNone<CubeInput>().ForEach((Entity ent, ref GhostOwnerComponent ghostOwner) =>
-            {
-                if (ghostOwner.NetworkId == localPlayerId)
-                {
-                    commandBuffer.AddBuffer<CubeInput>(ent);
-                    commandBuffer.SetComponent(commandTargetEntity, new CommandTargetComponent {targetEntity = ent});
-                }
-            }).Run();
-            commandBuffer.Playback(EntityManager);
+        if (!TryGetSingletonEntity<CubeInput>(out var localInput))
             return;
-        }
         var input = default(CubeInput);
         input.Tick = m_ClientSimulationSystemGroup.ServerTick;
-        if (Input.GetKey("a"))
+        if (Input.GetKey("left") || TouchInput.GetKey(TouchInput.KeyCode.Left))
             input.horizontal -= 1;
-        if (Input.GetKey("d"))
+        if (Input.GetKey("right") || TouchInput.GetKey(TouchInput.KeyCode.Right))
             input.horizontal += 1;
-        if (Input.GetKey("s"))
+        if (Input.GetKey("down") || TouchInput.GetKey(TouchInput.KeyCode.Down))
             input.vertical -= 1;
-        if (Input.GetKey("w"))
+        if (Input.GetKey("up") || TouchInput.GetKey(TouchInput.KeyCode.Up))
             input.vertical += 1;
         var inputBuffer = EntityManager.GetBuffer<CubeInput>(localInput);
         inputBuffer.AddCommandData(input);

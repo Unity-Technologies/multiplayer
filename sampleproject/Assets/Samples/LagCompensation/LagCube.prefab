@@ -61,7 +61,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 5dc3f11d9a12a47dd96fbfd5889a7877, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -108,10 +108,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c79d771cedb4794bf100ce60df5f764, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ForcePrefabConversion: 0
   DefaultGhostMode: 0
   SupportedGhostModes: 1
   OptimizationMode: 0
   Importance: 1
   prefabId: d87b8dd41a4604dd7bfb08763aa5174c
   Name: LagCube
+  UsePreSerialization: 0
+  RefGameObjects: []
+  RefGuids: 
+  ComponentNames: []
+  PrefabTypeOverrides: []
+  SendTypeOverrides: []
+  VariantOverrides: []
+  SendForChild: []

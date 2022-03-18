@@ -8,7 +8,7 @@ using Unity.Collections;
 namespace Asteroids.Mixed
 {
     [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-    public class SteeringSystem : SystemBase
+    public partial class SteeringSystem : SystemBase
     {
         private const int k_CoolDownTicksCount = 10;
 
@@ -21,21 +21,14 @@ namespace Asteroids.Mixed
             m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
             m_PredictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
             RequireSingletonForUpdate<LevelComponent>();
-            RequireSingletonForUpdate<GhostPrefabCollectionComponent>();
+            RequireSingletonForUpdate<AsteroidsSpawner>();
         }
 
         protected override void OnUpdate()
         {
             if (m_BulletPrefab == Entity.Null)
             {
-                var prefabEntity = GetSingletonEntity<GhostPrefabCollectionComponent>();
-                var prefabs = EntityManager.GetBuffer<GhostPrefabBuffer>(prefabEntity);
-                var foundPrefab = Entity.Null;
-                for (int i = 0; i < prefabs.Length; ++i)
-                {
-                    if (EntityManager.HasComponent<BulletTagComponent>(prefabs[i].Value))
-                        foundPrefab = prefabs[i].Value;
-                }
+                var foundPrefab = GetSingleton<AsteroidsSpawner>().Bullet;
                 if (foundPrefab != Entity.Null)
                     m_BulletPrefab = GhostCollectionSystem.CreatePredictedSpawnPrefab(EntityManager, foundPrefab);
             }

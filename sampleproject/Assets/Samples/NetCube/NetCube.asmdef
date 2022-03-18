@@ -1,13 +1,17 @@
 {
     "name": "NetCube",
+    "rootNamespace": "",
     "references": [
         "Unity.Burst",
         "Unity.Entities",
+        "Unity.Entities.Hybrid",
         "Unity.Transforms",
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.Networking.Transport",
-        "Unity.NetCode"
+        "Unity.NetCode",
+        "Unity.Rendering.Hybrid",
+        "SamplesCommon"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

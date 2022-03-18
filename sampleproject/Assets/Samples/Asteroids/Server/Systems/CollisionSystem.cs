@@ -9,9 +9,8 @@ using Unity.NetCode;
 namespace Asteroids.Server
 {
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    [UpdateAfter(typeof(AsteroidSystem))]
     [UpdateAfter(typeof(BulletAgeSystem))]
-    public class CollisionSystem : SystemBase
+    public partial class CollisionSystem : SystemBase
     {
         private EntityQuery shipGroup;
         private EntityQuery bulletGroup;
@@ -224,6 +223,7 @@ namespace Asteroids.Server
         {
             public NativeQueue<Entity> playerClearQueue;
             public ComponentDataFromEntity<CommandTargetComponent> commandTarget;
+            public BufferFromEntity<LinkedEntityGroup> linkedEntityGroupFromEntity;
 
             public void Execute()
             {
@@ -235,6 +235,8 @@ namespace Asteroids.Server
                         var state = commandTarget[ent];
                         state.targetEntity = Entity.Null;
                         commandTarget[ent] = state;
+                        var linkedEntityGroup = linkedEntityGroupFromEntity[ent];
+                        linkedEntityGroup.RemoveAt(1);
                     }
                 }
             }
@@ -299,7 +301,8 @@ namespace Asteroids.Server
             var cleanupShipJob = new ClearShipPointerJob
             {
                 playerClearQueue = playerClearQueue,
-                commandTarget = GetComponentDataFromEntity<CommandTargetComponent>()
+                commandTarget = GetComponentDataFromEntity<CommandTargetComponent>(),
+                linkedEntityGroupFromEntity = GetBufferFromEntity<LinkedEntityGroup>()
             };
             var cleanupChunkJob = new ChunkCleanupJob
             {

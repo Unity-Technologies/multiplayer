@@ -9,7 +9,7 @@ namespace Asteroids.Mixed
     public struct Translation2d
     {
         //Will serialize just x,y positions
-        [GhostField(Quantization=1000, Smoothing=SmoothingAction.InterpolateAndExtrapolate, SubType=SubTypes.Float3_XY)] public float3 Value;
+        [GhostField(Quantization=1000, Smoothing=SmoothingAction.InterpolateAndExtrapolate, SubType=GhostFieldSubType.Translation2D)] public float3 Value;
     }
 
     [GhostComponentVariation(typeof(Rotation), "Rotation - 2D")]
@@ -17,6 +17,6 @@ namespace Asteroids.Mixed
     public struct Rotation2d
     {
         //Will serialize just the one angle
-        [GhostField(Quantization=1000, Smoothing=SmoothingAction.InterpolateAndExtrapolate, SubType=SubTypes.Rotation2D)] public quaternion Value;
+        [GhostField(Quantization=1000, Smoothing=SmoothingAction.InterpolateAndExtrapolate, SubType=GhostFieldSubType.Rotation2D)] public quaternion Value;
     }
 }

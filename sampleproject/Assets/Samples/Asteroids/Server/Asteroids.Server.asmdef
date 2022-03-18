@@ -3,6 +3,7 @@
     "references": [
         "Unity.Burst",
         "Unity.Entities",
+        "Unity.Entities.Hybrid",
         "Unity.Transforms",
         "Unity.Collections",
         "Unity.Mathematics",
@@ -16,7 +17,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "!UNITY_CLIENT"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

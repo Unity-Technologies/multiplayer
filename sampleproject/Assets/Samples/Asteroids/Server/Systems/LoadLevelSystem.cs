@@ -2,6 +2,7 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Collections;
 using Unity.NetCode;
+using Unity.Mathematics;
 
 namespace Asteroids.Server
 {
@@ -11,7 +12,7 @@ namespace Asteroids.Server
 
     [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
     [UpdateBefore(typeof(RpcSystem))]
-    public class LoadLevelSystem : SystemBase
+    public partial class LoadLevelSystem : SystemBase
     {
         private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private EntityQuery m_LevelGroup;
@@ -25,6 +26,24 @@ namespace Asteroids.Server
 
         protected override void OnUpdate()
         {
+            if (!HasSingleton<GhostDistanceImportance>())
+            {
+                var settings = GetSingleton<ServerSettings>();
+                // Try to store a bit less than full chunks to avoid fragmenting the data too much
+                var maxAsteroidsPerTile = 25;
+                var minTileSize = 256;
+                float asteroidsPerPx = (float)settings.numAsteroids / (float)(settings.levelWidth*settings.levelHeight);
+                // We want to make sure that asteroidsPerPx * tileSize * tileSize = maxAsteroidsPerTile
+                int tileSize = math.max(minTileSize, (int)math.ceil(math.sqrt((float)maxAsteroidsPerTile / asteroidsPerPx)));
+                var grid = EntityManager.CreateEntity();
+                EntityManager.AddComponentData(grid, new GhostDistanceImportance
+                {
+                    ScaleImportanceByDistance = GhostDistanceImportance.DefaultScaleFunctionPointer,
+                    TileSize = new int3(tileSize, tileSize, 256),
+                    TileCenter = new int3(0, 0, 128),
+                    TileBorderWidth = new float3(1f, 1f, 1f)
+                });
+            }
             if (m_LevelGroup.IsEmptyIgnoreFilter)
             {
                 var settings = GetSingleton<ServerSettings>();

@@ -1,5 +1,6 @@
 {
     "name": "Asteroids.Client",
+    "rootNamespace": "",
     "references": [
         "Unity.Burst",
         "Unity.Entities",
@@ -9,7 +10,9 @@
         "Unity.Mathematics",
         "Unity.Networking.Transport",
         "Unity.NetCode",
-        "Asteroids.Mixed"
+        "Asteroids.Mixed",
+        "Unity.Rendering.Hybrid",
+        "SamplesCommon"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -17,7 +20,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "!UNITY_SERVER"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }
