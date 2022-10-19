@@ -1,15 +1,14 @@
 using AOT;
 using Unity.Burst;
-using Unity.Networking.Transport;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
 using Unity.NetCode;
 using Unity.Entities;
+using UnityEngine.Assertions;
 
 public struct LevelLoadRequest : IRpcCommand
 {
-    public int width;
-    public int height;
-    public float playerForce;
-    public float bulletVelocity;
+    public LevelComponent levelData;
 }
 
 [BurstCompile]
@@ -35,27 +34,40 @@ public struct RpcLevelLoaded : IComponentData, IRpcCommandSerializer<RpcLevelLoa
         parameters.CommandBuffer.AddComponent(parameters.JobIndex, parameters.Connection, default(GhostConnectionPosition));
     }
 
-    static PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
+    static readonly PortableFunctionPointer<RpcExecutor.ExecuteDelegate> InvokeExecuteFunctionPointer =
         new PortableFunctionPointer<RpcExecutor.ExecuteDelegate>(InvokeExecute);
     public PortableFunctionPointer<RpcExecutor.ExecuteDelegate> CompileExecute()
     {
         return InvokeExecuteFunctionPointer;
     }
 }
-class LevelLoadedRpcCommandRequestSystem : RpcCommandRequestSystem<RpcLevelLoaded, RpcLevelLoaded>
+[UpdateInGroup(typeof(RpcCommandRequestSystemGroup))]
+[CreateAfter(typeof(RpcSystem))]
+[BurstCompile]
+partial struct LevelLoadedRpcCommandRequestSystem : ISystem
 {
+    RpcCommandRequest<RpcLevelLoaded, RpcLevelLoaded> m_Request;
     [BurstCompile]
-    protected struct SendRpc : IJobEntityBatch
+    struct SendRpc : IJobChunk
     {
-        public SendRpcData data;
-        public void Execute(ArchetypeChunk chunk, int orderIndex)
+        public RpcCommandRequest<RpcLevelLoaded, RpcLevelLoaded>.SendRpcData data;
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
         {
-            data.Execute(chunk, orderIndex);
+            Assert.IsFalse(useEnabledMask);
+            data.Execute(chunk, unfilteredChunkIndex);
         }
     }
-    protected override void OnUpdate()
+    public void OnCreate(ref SystemState state)
     {
-        var sendJob = new SendRpc{data = InitJobData()};
-        ScheduleJobData(sendJob);
+        m_Request.OnCreate(ref state);
+    }
+    [BurstCompile]
+    public void OnDestroy(ref SystemState state)
+    {}
+    [BurstCompile]
+    public void OnUpdate(ref SystemState state)
+    {
+        var sendJob = new SendRpc{data = m_Request.InitJobData(ref state)};
+        state.Dependency = sendJob.Schedule(m_Request.Query, state.Dependency);
     }
 }

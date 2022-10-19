@@ -6,35 +6,44 @@ using Unity.Transforms;
 using UnityEngine;
 using Unity.NetCode;
 using UnityEngine.Rendering;
+using Unity.Burst;
 
 namespace Asteroids.Client
 {
+    [RequireMatchingQueriesForUpdate]
+    [WorldSystemFilter(WorldSystemFilterFlags.Presentation)]
     [UpdateBefore(typeof(ParticleEmitterSystem))]
-    [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    public partial class ShipThrustParticleSystem : SystemBase
+    [BurstCompile]
+    public partial struct ShipThrustParticleSystem : ISystem
     {
-        override protected void OnUpdate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {}
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {}
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
-            Entities.ForEach((ref ParticleEmitterComponentData emitter, in ShipStateComponentData state) =>
+            var job = new ShipThrustParticle();
+            state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+        [BurstCompile]
+        partial struct ShipThrustParticle : IJobEntity
+        {
+            public void Execute(ref ParticleEmitterComponentData emitter, in ShipStateComponentData state)
             {
                 emitter.active = state.State;
-            }).ScheduleParallel();
+            }
         }
     }
 
-    [UpdateInGroup(typeof(ClientPresentationSystemGroup))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial class ShipTrackingSystem : SystemBase
     {
-        private EntityQuery m_LevelGroup;
-        private NativeArray<int> m_Teleport;
+        EntityQuery m_LevelGroup;
+        NativeArray<int> m_Teleport;
         NativeArray<float2> m_RenderOffset;
-        Matrix4x4 m_Scale = Matrix4x4.Scale(new Vector3(1, -1, 1));
-
-        void BeginRendering(ScriptableRenderContext ctx, Camera cam)
-        {
-            cam.ResetProjectionMatrix();
-            cam.projectionMatrix = cam.projectionMatrix * m_Scale;
-        }
 
         protected override void OnCreate()
         {
@@ -43,15 +52,6 @@ namespace Asteroids.Client
             m_RenderOffset = new NativeArray<float2>(2, Allocator.Persistent);
             m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
             RequireForUpdate(m_LevelGroup);
-        }
-
-        protected override void OnStartRunning()
-        {
-            RenderPipelineManager.beginCameraRendering += BeginRendering;
-        }
-        protected override void OnStopRunning()
-        {
-            RenderPipelineManager.beginCameraRendering -= BeginRendering;
         }
 
         protected override void OnDestroy()
@@ -64,40 +64,44 @@ namespace Asteroids.Client
         {
             JobHandle levelHandle;
             TryGetSingletonEntity<ShipCommandData>(out var localPlayerShip);
-            var shipPosition = GetComponentDataFromEntity<Translation>(true);
+            var shipPosition = GetComponentLookup<Translation>(true);
             var screenWidth = Screen.width;
             var screenHeight = Screen.height;
-            var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelHandle);
+            var screenWidthHalf = Screen.width/2;
+            var screenHeightHalf = Screen.height/2;
+
+            var level = m_LevelGroup.ToComponentDataListAsync<LevelComponent>(World.UpdateAllocator.ToAllocator,
+                out levelHandle);
             var teleport = m_Teleport;
 
             var renderOffset = m_RenderOffset;
             var curOffset = renderOffset[0];
-            Camera.main.orthographicSize = screenHeight / 2;
-            Camera.main.transform.position = new Vector3(curOffset.x + Screen.width/2, curOffset.y + Screen.height/2, 0);
+            var camera = Camera.main;
+            camera.orthographicSize = screenHeightHalf;
+            camera.transform.position = new Vector3(curOffset.x + screenWidthHalf, curOffset.y + screenHeightHalf, -0.5f);
 
-            var deltaTime = Time.DeltaTime;
+            var deltaTime = SystemAPI.Time.DeltaTime;
 
-            var trackJob = Job.WithReadOnly(shipPosition).WithReadOnly(level).WithDisposeOnCompletion(level).
+            var trackJob = Job.WithReadOnly(shipPosition).WithReadOnly(level).
                 WithCode(() =>
             {
-                int mapWidth = level[0].width;
-                int mapHeight = level[0].height;
+                const float mapEdgePaddingPercent = .2f;
+                float mapEdgeCameraPadding = screenHeight * mapEdgePaddingPercent;
+                int mapWidth = level[0].levelHeight;
+                int mapHeight = level[0].levelHeight;
                 int nextTeleport = 1;
 
                 if (shipPosition.HasComponent(localPlayerShip))
                 {
-                    float3 pos = shipPosition[localPlayerShip].Value;
-                    pos.x -= screenWidth / 2;
-                    pos.y -= screenHeight / 2;
-                    if (pos.x + screenWidth > mapWidth)
-                        pos.x = mapWidth - screenWidth;
-                    if (pos.y + screenHeight > mapHeight)
-                        pos.y = mapHeight - screenHeight;
-                    if (pos.x < 0)
-                        pos.x = 0;
-                    if (pos.y < 0)
-                        pos.y = 0;
-                    renderOffset[1] = pos.xy;
+                    float3 desiredCamPos = shipPosition[localPlayerShip].Value;
+
+                    desiredCamPos.x = math.clamp(desiredCamPos.x, -mapEdgeCameraPadding + screenWidthHalf, mapWidth + mapEdgeCameraPadding - screenWidthHalf);
+                    desiredCamPos.y = math.clamp(desiredCamPos.y, -mapEdgeCameraPadding + screenHeightHalf, mapHeight + mapEdgeCameraPadding - screenHeightHalf);
+
+                    desiredCamPos.x -= screenWidthHalf;
+                    desiredCamPos.y -= screenHeightHalf;
+
+                    renderOffset[1] = desiredCamPos.xy;
                     nextTeleport = 0;
                 }
 
@@ -124,7 +128,10 @@ namespace Asteroids.Client
 
                 teleport[0] = nextTeleport;
             }).Schedule(JobHandle.CombineDependencies(Dependency, levelHandle));
-            Dependency = trackJob;
+            // The one frame latency for updating hte camera position can cause stutter, so do a sync update of the offset of now
+            trackJob.Complete();
+            curOffset = renderOffset[0];
+            camera.transform.position = new Vector3(curOffset.x + screenWidthHalf, curOffset.y + screenHeightHalf, -0.5f);
         }
     }
 }

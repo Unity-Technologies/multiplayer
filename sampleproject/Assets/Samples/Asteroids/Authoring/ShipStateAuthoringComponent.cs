@@ -1,10 +1,14 @@
 using Unity.Entities;
 using UnityEngine;
 
-public class ShipStateAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
+public class ShipStateAuthoringComponent : MonoBehaviour
 {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+}
+
+public class ShipStateAuthoringComponentBaker : Baker<ShipStateAuthoringComponent>
+{
+    public override void Bake(ShipStateAuthoringComponent authoring)
     {
-        dstManager.AddComponentData(entity, new ShipStateComponentData());
+        AddComponent(new ShipStateComponentData());
     }
 }

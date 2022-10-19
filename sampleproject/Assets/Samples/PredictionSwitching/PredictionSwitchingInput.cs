@@ -2,14 +2,15 @@ using Unity.Entities;
 using Unity.NetCode;
 using Unity.Transforms;
 using Unity.Mathematics;
+using Unity.NetCode.Samples.Common;
 using Unity.Physics;
 using Unity.Physics.Systems;
+using UnityEngine;
 
-[GenerateAuthoringComponent]
 [GhostComponent(OwnerSendType = SendToOwnerType.SendToNonOwner)]
 public struct PredictionSwitchingInput : ICommandData
 {
-    [GhostField] public uint Tick{get; set;}
+    [GhostField] public NetworkTick Tick{get; set;}
     [GhostField] public int horizontal;
     [GhostField] public int vertical;
 }
@@ -17,24 +18,21 @@ public struct PredictionSwitchingInput : ICommandData
 [UpdateInGroup(typeof(GhostInputSystemGroup))]
 public partial class PredictionSwitchingSampleInputSystem : SystemBase
 {
-    private ClientSimulationSystemGroup m_ClientSimulationSystemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<PredictionSwitchingSpawner>();
-        RequireSingletonForUpdate<NetworkIdComponent>();
-        m_ClientSimulationSystemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
+        RequireForUpdate<PredictionSwitchingSettings>();
+        RequireForUpdate<NetworkIdComponent>();
     }
 
     protected override void OnUpdate()
     {
         var myConnection = GetSingleton<NetworkIdComponent>().Value;
-        var tick = m_ClientSimulationSystemGroup.ServerTick;
+        var tick = GetSingleton<NetworkTime>().ServerTick;
         var connection = GetSingletonEntity<CommandTargetComponent>();
         Entities
             .WithoutBurst()
+            .WithAll<GhostOwnerIsLocal>()
             .ForEach((Entity entity, DynamicBuffer<PredictionSwitchingInput> inputBuffer, in GhostOwnerComponent owner) => {
-            if (owner.NetworkId == myConnection)
-            {
                 var input = default(PredictionSwitchingInput);
                 input.Tick = tick;
                 if (UnityEngine.Input.GetKey("left") || TouchInput.GetKey(TouchInput.KeyCode.Left))
@@ -50,31 +48,28 @@ public partial class PredictionSwitchingSampleInputSystem : SystemBase
                 {
                     EntityManager.SetComponentData(connection, new CommandTargetComponent{targetEntity = entity});
                 }
-            }
         }).Run();
     }
 }
 
-[UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-[UpdateBefore(typeof(BuildPhysicsWorld))]
+[UpdateInGroup(typeof(PhysicsSystemGroup))]
+[UpdateBefore(typeof(PhysicsInitializeGroup))]
 public partial class PredictionSwitchingApplyInputSystem : SystemBase
 {
-    private GhostPredictionSystemGroup m_GhostPredictionSystemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<PredictionSwitchingSpawner>();
-        m_GhostPredictionSystemGroup = World.GetExistingSystem<GhostPredictionSystemGroup>();
+        RequireForUpdate<PredictionSwitchingSettings>();
+        RequireForUpdate<NetworkTime>();
     }
 
     protected override void OnUpdate()
     {
-        var tick = m_GhostPredictionSystemGroup.PredictingTick;
-        var deltaTime = Time.DeltaTime;
-        float speed = 5;
+        var tick = GetSingleton<NetworkTime>().ServerTick;
+        var speed = SystemAPI.GetSingleton<PredictionSwitchingSettings>().PlayerSpeed;
+
         Entities
-            .ForEach((DynamicBuffer<PredictionSwitchingInput> inputBuffer, ref PhysicsVelocity vel, in PredictedGhostComponent prediction) => {
-            if (!GhostPredictionSystemGroup.ShouldPredict(tick, prediction))
-                return;
+            .WithAll<Simulate>()
+            .ForEach((DynamicBuffer<PredictionSwitchingInput> inputBuffer, ref PhysicsVelocity vel) => {
             inputBuffer.GetDataAtTick(tick, out var input);
             float3 dir = default;
             if (input.horizontal > 0)
@@ -97,24 +92,40 @@ public partial class PredictionSwitchingApplyInputSystem : SystemBase
 }
 
 [UpdateAfter(typeof(TransformSystemGroup))]
-[UpdateInWorld(TargetWorld.Client)]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial class PredictionSwitchingCameraFollowSystem : SystemBase
 {
+    Transform m_CameraTransform;
+    float3 m_CameraOffset;
+
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<PredictionSwitchingSpawner>();
-        RequireSingletonForUpdate<NetworkIdComponent>();
+        RequireForUpdate<PredictionSwitchingSettings>();
+        RequireForUpdate<NetworkIdComponent>();
     }
 
     protected override void OnUpdate()
     {
+        if (!m_CameraTransform)
+        {
+            var camera = Camera.main;
+            if (camera)
+            {
+                m_CameraTransform = camera.transform;
+                m_CameraOffset = m_CameraTransform.position;
+            }
+            else return;
+        }
+
         var myConnection = GetSingleton<NetworkIdComponent>().Value;
         Entities
             .WithoutBurst()
-            .ForEach((DynamicBuffer<PredictionSwitchingInput> inputBuffer, ref Translation trans, in GhostOwnerComponent owner) => {
+            .WithAll<PredictionSwitchingInput>()
+            .ForEach((ref LocalToWorld trans, in GhostOwnerComponent owner) => {
             if (owner.NetworkId != myConnection)
                 return;
-            UnityEngine.Camera.main.transform.position = trans.Value + new float3(0, 1, -10);
+
+            m_CameraTransform.transform.position = trans.Position + m_CameraOffset;
         }).Run();
     }
 }

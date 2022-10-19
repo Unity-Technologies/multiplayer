@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5428005540854437492}
   - component: {fileID: 5807320614624497876}
+  - component: {fileID: 7355874651087019441}
   - component: {fileID: -3232764338705290451}
   - component: {fileID: 8842576389108237569}
   - component: {fileID: 5797329235442628069}
@@ -17,6 +18,7 @@ GameObject:
   - component: {fileID: 3331244637684336934}
   - component: {fileID: 2033488040994855750}
   - component: {fileID: 5364307117967761725}
+  - component: {fileID: 3214161718838996508}
   m_Layer: 0
   m_Name: Bullet
   m_TagString: Untagged
@@ -34,6 +36,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 10, y: 10, z: 10}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -55,25 +58,32 @@ MonoBehaviour:
   OptimizationMode: 0
   Importance: 200
   prefabId: 76e3e5acde5e440efb5fe01af44afc72
-  Name: Bullet
   HasOwner: 1
   SupportAutoCommandTarget: 0
   UsePreSerialization: 0
-  RefGameObjects:
-  - {fileID: 4440235226870903317}
-  - {fileID: 4440235226870903317}
-  RefGuids: 00000000000000000000000000000000
-  ComponentNames:
-  - Unity.Transforms.Translation
-  - Unity.Transforms.Rotation
-  PrefabTypeOverrides: []
-  SendTypeOverrides: []
-  VariantOverrides:
-  - Value: 17144487048590971967
-    OverrideIndex: 0
-  - Value: 4089331613373081101
-    OverrideIndex: 1
-  SendForChild: []
+--- !u!114 &7355874651087019441
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4440235226870903317}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfdaa6c06fe64fbda2b16e07a4ee0b25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ComponentOverrides:
+  - FullTypeName: Unity.Transforms.Rotation
+    GameObject: {fileID: 4440235226870903317}
+    PrefabType: -1
+    SendTypeOptimization: -1
+    VariantHash: 4089331613373081101
+  - FullTypeName: Unity.Transforms.Translation
+    GameObject: {fileID: 4440235226870903317}
+    PrefabType: -1
+    SendTypeOptimization: -1
+    VariantHash: 17144487048590971967
 --- !u!114 &-3232764338705290451
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148,6 +158,7 @@ MeshRenderer:
   m_CastShadows: 0
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
@@ -186,3 +197,15 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4440235226870903317}
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &3214161718838996508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4440235226870903317}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

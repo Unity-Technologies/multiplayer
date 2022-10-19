@@ -7,8 +7,8 @@ using Unity.Collections;
 public class LagUI : MonoBehaviour
 {
     public static bool EnableLagCompensation = true;
-    public static uint ClientTick;
-    public static uint ServerTick;
+    public static NetworkTick ClientTick;
+    public static NetworkTick ServerTick;
     public static bool ClientHit;
     public static bool ServerHit;
 
@@ -18,14 +18,14 @@ public class LagUI : MonoBehaviour
     private void Update()
     {
         EnableLagCompensation = LagToggle.isOn;
-        ClientStatus.text = $"Client: {(ClientHit?"hit":"miss")} @ tick {ClientTick}";
-        ServerStatus.text = $"Server: {(ServerHit?"hit":"miss")} @ tick {ServerTick}";
+        ClientStatus.text = $"Client: {(ClientHit?"hit":"miss")} @ tick {ClientTick.ToFixedString()}";
+        ServerStatus.text = $"Server: {(ServerHit?"hit":"miss")} @ tick {ServerTick.ToFixedString()}";
     }
 }
 
 public struct LagHitStatus : IRpcCommand
 {
-    public uint Tick;
+    public NetworkTick Tick;
     public bool Hit;
     public bool IsServer;
 }
@@ -36,13 +36,13 @@ public struct ToggleLagCompensationRequest : IRpcCommand
     public Entity Player;
 }
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
 public partial class LagUISystem : SystemBase
 {
     private bool m_prevEnabled = false;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<NetworkIdComponent>();
+        RequireForUpdate<NetworkIdComponent>();
     }
     protected override void OnUpdate()
     {
@@ -72,7 +72,8 @@ public partial class LagUISystem : SystemBase
         cmdBuffer.Playback(EntityManager);
     }
 }
-[UpdateInGroup(typeof(ServerSimulationSystemGroup))]
+[RequireMatchingQueriesForUpdate]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial class LagUIControlSystem : SystemBase
 {
     protected override void OnUpdate()

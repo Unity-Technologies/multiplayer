@@ -1,13 +1,16 @@
 using UnityEngine;
 using Unity.Entities;
 
-
-public class RayTraceCommandAuthoring : MonoBehaviour, IConvertGameObjectToEntity
+public class RayTraceCommandAuthoring : MonoBehaviour
 {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+}
+
+public class RayTraceCommandAuthoringBaker : Baker<RayTraceCommandAuthoring>
+{
+    public override void Bake(RayTraceCommandAuthoring authoring)
     {
-        dstManager.AddBuffer<RayTraceCommand>(entity);
-        dstManager.AddComponentData(entity, new LagPlayer());
+        AddBuffer<RayTraceCommand>();
+        AddComponent(new LagPlayer());
     }
 }
 

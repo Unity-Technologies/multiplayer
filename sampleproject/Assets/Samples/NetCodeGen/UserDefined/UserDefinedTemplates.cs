@@ -16,7 +16,11 @@ namespace Unity.NetCode.Generators
                     Smoothing = SmoothingAction.InterpolateAndExtrapolate,
                     SupportCommand = false,
                     Composite = false,
-                    Template = "Assets/Samples/NetCodeGen/Templates/Translation2d.cs",
+#if UNITY_2021_2_OR_NEWER
+                    Template = "Custom.Translation2d",
+#else
+                    Template = "Assets/Samples/NetCodeGen/Templates/Translation2d.NetCodeSourceGenerator.additionalfile",
+#endif
                     TemplateOverride = "",
                 },
                 new TypeRegistryEntry
@@ -27,7 +31,11 @@ namespace Unity.NetCode.Generators
                     Smoothing = SmoothingAction.InterpolateAndExtrapolate,
                     SupportCommand = false,
                     Composite = false,
-                    Template = "Assets/Samples/NetCodeGen/Templates/Rotation2d.cs",
+#if UNITY_2021_2_OR_NEWER
+                    Template = "Custom.Rotation2d",
+#else
+                    Template = "Assets/Samples/NetCodeGen/Templates/Rotation2d.NetCodeSourceGenerator.additionalfile",
+#endif
                     TemplateOverride = "",
                 },
             });

@@ -1,23 +1,41 @@
 using Unity.Entities;
 using Unity.Transforms;
 using Unity.NetCode;
+using Unity.Collections;
+using Unity.Burst;
 
 namespace Asteroids.Mixed
 {
-    [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-    public partial class BulletSystem : SystemBase
+    [UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
+    [BurstCompile]
+    public partial struct BulletSystem : ISystem
     {
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            var predictionGroup = World.GetExistingSystem<GhostPredictionSystemGroup>();
-            var tick = predictionGroup.PredictingTick;
-            var deltaTime = Time.DeltaTime;
-            Entities.WithAll<BulletTagComponent>().ForEach((ref Translation position, in PredictedGhostComponent prediction, in Velocity velocity) =>
+            state.RequireForUpdate<BulletTagComponent>();
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {}
+        [BurstCompile]
+        [WithAll(typeof(Simulate), typeof(BulletTagComponent))]
+        partial struct BulletJob : IJobEntity
+        {
+            public float deltaTime;
+            public void Execute(ref Translation position, in Velocity velocity)
             {
-                if (!GhostPredictionSystemGroup.ShouldPredict(tick, prediction))
-                    return;
                 position.Value.xy += velocity.Value * deltaTime;
-            }).ScheduleParallel();
+            }
+        }
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var bulletJob = new BulletJob
+            {
+                deltaTime = SystemAPI.Time.DeltaTime
+            };
+            state.Dependency = bulletJob.ScheduleParallel(state.Dependency);
         }
     }
 }

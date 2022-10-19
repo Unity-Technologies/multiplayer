@@ -1,6 +1,5 @@
 using Unity.Entities;
 
-[GenerateAuthoringComponent]
 public struct AsteroidsSpawner : IComponentData
 {
     public Entity Ship;

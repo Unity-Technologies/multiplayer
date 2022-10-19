@@ -1,17 +1,14 @@
 using Unity.Entities;
 using Unity.NetCode;
 using Unity.Mathematics;
-using Unity.Networking.Transport;
-using Unity.Jobs;
-using Unity.Burst;
 
 [GhostComponent(PrefabType = GhostPrefabType.AllPredicted)]
 public struct RayTraceCommand : ICommandData
 {
-    public uint Tick {get; set;}
+    public NetworkTick Tick {get; set;}
     public float3 origin;
     public float3 direction;
-    public uint lastFire;
+    public NetworkTick lastFire;
 }
 
 
@@ -19,19 +16,18 @@ public struct RayTraceCommand : ICommandData
 [AlwaysSynchronizeSystem]
 public partial class SampleRayTraceCommandSystem : SystemBase
 {
-    ClientSimulationSystemGroup m_systemGroup;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<LagCompensationSpawner>();
-        m_systemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
+        RequireForUpdate<LagCompensationSpawner>();
     }
     protected override void OnUpdate()
     {
-        if (!TryGetSingletonEntity<RayTraceCommand>(out var targetEntity) || m_systemGroup.ServerTick == 0)
+        var networkTime = GetSingleton<NetworkTime>();
+        if (!TryGetSingletonEntity<RayTraceCommand>(out var targetEntity) || !networkTime.ServerTick.IsValid)
             return;
         var buffer = EntityManager.GetBuffer<RayTraceCommand>(targetEntity);
         var cmd = default(RayTraceCommand);
-        cmd.Tick = m_systemGroup.ServerTick;
+        cmd.Tick = networkTime.ServerTick;
         if (UnityEngine.Input.GetMouseButtonDown(0))
         {
             var ray = UnityEngine.Camera.main.ScreenPointToRay(UnityEngine.Input.mousePosition);

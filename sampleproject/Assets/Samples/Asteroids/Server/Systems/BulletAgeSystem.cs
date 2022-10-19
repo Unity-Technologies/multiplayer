@@ -1,29 +1,50 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.NetCode;
+using UnityEngine;
 
 namespace Asteroids.Server
 {
-    [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
-    public partial class BulletAgeSystem : SystemBase
+    [BurstCompile]
+    [RequireMatchingQueriesForUpdate]
+    [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
+    public partial struct BulletAgeSystem : ISystem
     {
-        private EndSimulationEntityCommandBufferSystem barrier;
-
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            barrier = World.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
         }
 
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
         {
-            var commandBuffer = barrier.CreateCommandBuffer().AsParallelWriter();
-            var deltaTime = Time.DeltaTime;
-            Entities.ForEach((Entity entity, int nativeThreadIndex, ref BulletAgeComponent age) =>
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var ageJob = new BulletAgeJob()
+            {
+                ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                    .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+                deltaTime = SystemAPI.Time.DeltaTime,
+            };
+            state.Dependency = ageJob.ScheduleParallel(state.Dependency);
+        }
+
+        [BurstCompile]
+        internal partial struct BulletAgeJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter ecb;
+            public float deltaTime;
+
+            [BurstCompile]
+            public void Execute(Entity entity, [EntityInQueryIndex] int entityInQueryIndex, ref BulletAgeComponent age)
             {
                 age.age += deltaTime;
                 if (age.age > age.maxAge)
-                    commandBuffer.DestroyEntity(nativeThreadIndex, entity);
-
-            }).ScheduleParallel();
+                    ecb.DestroyEntity(entityInQueryIndex, entity);
+            }
         }
     }
 }

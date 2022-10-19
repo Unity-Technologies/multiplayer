@@ -1,11 +1,15 @@
 using Unity.Entities;
 using UnityEngine;
 
-public class VelocityAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
+public class VelocityAuthoringComponent : MonoBehaviour
 {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+}
+
+public class VelocityAuthoringComponentBaker : Baker<VelocityAuthoringComponent>
+{
+    public override void Bake(VelocityAuthoringComponent authoring)
     {
-        dstManager.AddComponentData(entity, new Velocity());
+        AddComponent(new Velocity());
     }
 }
 

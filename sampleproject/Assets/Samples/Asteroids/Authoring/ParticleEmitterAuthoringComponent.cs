@@ -3,8 +3,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using System.Collections.Generic;
 
-#if !UNITY_SERVER
-public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity, IDeclareReferencedPrefabs
+public class ParticleEmitterAuthoringComponent : MonoBehaviour
 {
     public float particlesPerSecond;
     public float angleSpread;
@@ -22,31 +21,29 @@ public class ParticleEmitterAuthoringComponent : MonoBehaviour, IConvertGameObje
     public float4 endColor;
     public bool active;
     public GameObject particlePrefab;
-    public void DeclareReferencedPrefabs(List<GameObject> referencedPrefabs)
+}
+
+public class ParticleEmitterAuthoringComponentBaker : Baker<ParticleEmitterAuthoringComponent>
+{
+    public override void Bake(ParticleEmitterAuthoringComponent authoring)
     {
-        if (particlePrefab != null)
-            referencedPrefabs.Add(particlePrefab);
-    }
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
-    {
-        dstManager.AddComponentData(entity, new ParticleEmitterComponentData
+        AddComponent(new ParticleEmitterComponentData
         {
-            particlesPerSecond = particlesPerSecond,
-            angleSpread = angleSpread,
-            velocityBase = velocityBase,
-            velocityRandom = velocityRandom,
-            spawnOffset = spawnOffset,
-            spawnSpread = spawnSpread,
-            particleLifetime = particleLifetime,
-            startLength = startLength,
-            startWidth = startWidth,
-            startColor = startColor,
-            endLength = endLength,
-            endWidth = endWidth,
-            endColor = endColor,
-            active = active?1:0,
-            particlePrefab = conversionSystem.GetPrimaryEntity(particlePrefab)
+            particlesPerSecond = authoring.particlesPerSecond,
+            angleSpread = authoring.angleSpread,
+            velocityBase = authoring.velocityBase,
+            velocityRandom = authoring.velocityRandom,
+            spawnOffset = authoring.spawnOffset,
+            spawnSpread = authoring.spawnSpread,
+            particleLifetime = authoring.particleLifetime,
+            startLength = authoring.startLength,
+            startWidth = authoring.startWidth,
+            startColor = authoring.startColor,
+            endLength = authoring.endLength,
+            endWidth = authoring.endWidth,
+            endColor = authoring.endColor,
+            active = authoring.active?1:0,
+            particlePrefab = GetEntity(authoring.particlePrefab)
         });
     }
 }
-#endif

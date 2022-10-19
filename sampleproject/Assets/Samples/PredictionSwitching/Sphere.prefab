@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 4817915621355973663}
   - component: {fileID: 6484595040261728278}
   - component: {fileID: 4928230287054046006}
-  - component: {fileID: 1520572163202498983}
+  - component: {fileID: 911160239378332412}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
@@ -32,6 +32,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -55,6 +56,7 @@ MeshRenderer:
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
   m_MotionVectors: 1
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
@@ -92,10 +94,18 @@ SphereCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4817915621355973661}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: 35de1c1d83a6aa5439dfeee382362737, type: 2}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
   m_IsTrigger: 0
+  m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 2
+  serializedVersion: 3
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &6484595040261728278
@@ -166,16 +176,12 @@ MonoBehaviour:
   OptimizationMode: 0
   Importance: 1
   prefabId: 35d7581636d6e430dae61a46edff9e00
-  Name: Sphere
+  HasOwner: 0
+  SupportAutoCommandTarget: 0
+  TrackInterpolationDelay: 0
+  GhostGroup: 0
   UsePreSerialization: 0
-  RefGameObjects: []
-  RefGuids: 
-  ComponentNames: []
-  PrefabTypeOverrides: []
-  SendTypeOverrides: []
-  VariantOverrides: []
-  SendForChild: []
---- !u!114 &1520572163202498983
+--- !u!114 &911160239378332412
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -184,11 +190,6 @@ MonoBehaviour:
   m_GameObject: {fileID: 4817915621355973661}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 54b6467bcd530cd4d809fae70ea0ca9d, type: 3}
+  m_Script: {fileID: 11500000, guid: c16549610bfe4458aa9389201d072bb6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Value:
-    x: 0.4
-    y: 0.4
-    z: 0.4
-    w: 1

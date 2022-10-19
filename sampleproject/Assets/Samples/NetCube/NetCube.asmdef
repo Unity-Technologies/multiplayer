@@ -10,8 +10,8 @@
         "Unity.Mathematics",
         "Unity.Networking.Transport",
         "Unity.NetCode",
-        "Unity.Rendering.Hybrid",
-        "SamplesCommon"
+        "Unity.Entities.Graphics",
+        "SamplesCommon.Client"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

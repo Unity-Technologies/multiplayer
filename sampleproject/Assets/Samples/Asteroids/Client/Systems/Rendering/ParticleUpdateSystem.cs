@@ -4,84 +4,156 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
 using Unity.Rendering;
+using Unity.Burst;
 
 namespace Asteroids.Client
 {
-    [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.Presentation, WorldSystemFilterFlags.Presentation)]
     [UpdateBefore(typeof(TransformSystemGroup))]
     public class ParticleUpdateSystemGroup : ComponentSystemGroup
     {
     }
 
+    [RequireMatchingQueriesForUpdate]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public partial class ParticleAgeSystem : SystemBase
+    [BurstCompile]
+    public partial struct ParticleAgeSystem : ISystem
     {
-        private BeginSimulationEntityCommandBufferSystem m_Barrier;
-
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
         }
 
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
         {
-            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
-            var deltaTime = Time.DeltaTime;
-            Entities.ForEach((Entity entity, int nativeThreadIndex, ref ParticleAge age) =>
+            var job = new ParticleAgeJob
+            {
+                commandBuffer = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+                deltaTime = SystemAPI.Time.DeltaTime
+            };
+            state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+        [BurstCompile]
+        partial struct ParticleAgeJob : IJobEntity
+        {
+            public EntityCommandBuffer.ParallelWriter commandBuffer;
+            public float deltaTime;
+            public void Execute(Entity entity, [EntityIndexInChunk] int entityIndexInChunk, ref ParticleAge age)
             {
                 age.age += deltaTime;
                 if (age.age >= age.maxAge)
                 {
                     age.age = age.maxAge;
-                    commandBuffer.DestroyEntity(nativeThreadIndex, entity);
+                    commandBuffer.DestroyEntity(entityIndexInChunk, entity);
                 }
-            }).ScheduleParallel();
-            m_Barrier.AddJobHandleForProducer(Dependency);
+            }
         }
     }
 
+    [RequireMatchingQueriesForUpdate]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public partial class ParticleMoveSystem : SystemBase
+    [BurstCompile]
+    public partial struct ParticleMoveSystem : ISystem
     {
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            var deltaTime = Time.DeltaTime;
-            Entities.ForEach((ref Translation position, in ParticleVelocity velocity) =>
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var job = new ParticleMoveJob
+            {
+                deltaTime = SystemAPI.Time.DeltaTime
+            };
+            state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+        [BurstCompile]
+        partial struct ParticleMoveJob : IJobEntity
+        {
+            public float deltaTime;
+            public void Execute(ref Translation position, in ParticleVelocity velocity)
             {
                 position.Value.x += velocity.velocity.x * deltaTime;
                 position.Value.y += velocity.velocity.y * deltaTime;
-            }).ScheduleParallel();
+            }
         }
     }
 
+    [RequireMatchingQueriesForUpdate]
     [UpdateAfter(typeof(ParticleAgeSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public partial class ParticleColorTransitionSystem : SystemBase
+    [BurstCompile]
+    public partial struct ParticleColorTransitionSystem : ISystem
     {
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            Entities.ForEach((ref URPMaterialPropertyBaseColor color, in ParticleColorTransition colorDiff, in ParticleAge age) =>
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var job = new ParticleColorJob();
+            state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+        [BurstCompile]
+        partial struct ParticleColorJob : IJobEntity
+        {
+            public void Execute(ref URPMaterialPropertyBaseColor color, in ParticleColorTransition colorDiff, in ParticleAge age)
             {
                 float colorScale = age.age / age.maxAge;
                 color.Value = colorDiff.startColor + (colorDiff.endColor - colorDiff.startColor) * colorScale;
-            }).ScheduleParallel();
+            }
         }
     }
 
+    [RequireMatchingQueriesForUpdate]
     [UpdateAfter(typeof(ParticleAgeSystem))]
     [UpdateInGroup(typeof(ParticleUpdateSystemGroup))]
-    public partial class ParticleSizeTransitionSystem : SystemBase
+    [BurstCompile]
+    public partial struct ParticleSizeTransitionSystem : ISystem
     {
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            Entities.ForEach((ref NonUniformScale scale, in ParticleSizeTransition size,
-                in ParticleAge age) =>
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var job = new ParticleSizeJob();
+            state.Dependency = job.ScheduleParallel(state.Dependency);
+        }
+        [BurstCompile]
+        partial struct ParticleSizeJob : IJobEntity
+        {
+            public void Execute(ref NonUniformScale scale, in ParticleSizeTransition size,
+                in ParticleAge age)
             {
                 float sizeScale = age.age / age.maxAge;
                 var particleLength = size.startLength + (size.endLength - size.startLength) * sizeScale;
                 var particleWidth = size.startWidth + (size.endWidth - size.startWidth) * sizeScale;
                 scale.Value = new float3(particleWidth, particleWidth + particleLength, particleWidth);
-            }).ScheduleParallel();
+            }
         }
     }
 }

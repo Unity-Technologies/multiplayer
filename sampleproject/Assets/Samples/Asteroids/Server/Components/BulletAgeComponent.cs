@@ -1,7 +1,6 @@
 using Unity.Entities;
 using Unity.NetCode;
 
-[GenerateAuthoringComponent]
 [GhostComponent(PrefabType = GhostPrefabType.Server)]
 public struct BulletAgeComponent : IComponentData
 {

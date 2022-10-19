@@ -1,83 +1,109 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
 using Unity.Collections;
-using Unity.Burst;
+using Unity.Rendering;
 
 namespace Asteroids.Client
 {
-    [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-    public partial class AsteroidSwitchPredictionSystem : SystemBase
+    [BurstCompile]
+    [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+    public partial struct AsteroidSwitchPredictionSystem : ISystem
     {
-        private NativeList<Entity> m_ToPredicted;
-        private NativeList<Entity> m_ToInterpolated;
-        private GhostSpawnSystem m_GhostSpawnSystem;
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            RequireSingletonForUpdate<ClientSettings>();
-            m_ToPredicted = new NativeList<Entity>(16, Allocator.Persistent);
-            m_ToInterpolated = new NativeList<Entity>(16, Allocator.Persistent);
-            m_GhostSpawnSystem = World.GetExistingSystem<GhostSpawnSystem>();
+            state.RequireForUpdate<ClientSettings>();
+            state.RequireForUpdate<ShipCommandData>();
+            state.RequireForUpdate<AsteroidTagComponentData>();
+            state.RequireForUpdate<GhostPredictionSwitchingQueues>();
         }
-        protected override void OnDestroy()
-        {
-            m_ToPredicted.Dispose();
-            m_ToInterpolated.Dispose();
-        }
-        protected override void OnUpdate()
-        {
-            var spawnSystem = m_GhostSpawnSystem;
-            var toPredicted = m_ToPredicted;
-            var toInterpolated = m_ToInterpolated;
-            for (int i = 0; i < toPredicted.Length; ++i)
-            {
-                if (EntityManager.HasComponent<GhostComponent>(toPredicted[i]))
-                    spawnSystem.ConvertGhostToPredicted(toPredicted[i], 1.0f);
-            }
-            for (int i = 0; i < toInterpolated.Length; ++i)
-            {
-                if (EntityManager.HasComponent<GhostComponent>(toInterpolated[i]))
-                    spawnSystem.ConvertGhostToInterpolated(toInterpolated[i], 1.0f);
-            }
-            toPredicted.Clear();
-            toInterpolated.Clear();
 
-            var settings = GetSingleton<ClientSettings>();
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state) { }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var settings = SystemAPI.GetSingleton<ClientSettings>();
             if (settings.predictionRadius <= 0)
                 return;
 
-            if (!TryGetSingletonEntity<ShipCommandData>(out var playerEnt) || !EntityManager.HasComponent<Translation>(playerEnt))
+            var stateEntityManager = state.EntityManager;
+            if (!SystemAPI.TryGetSingletonEntity<ShipCommandData>(out var playerEnt) || !stateEntityManager.HasComponent<Translation>(playerEnt))
                 return;
-            var playerPos = EntityManager.GetComponentData<Translation>(playerEnt).Value;
 
-            var radiusSq = settings.predictionRadius*settings.predictionRadius;
-            Entities
-                .WithNone<StaticAsteroid>()
-                .WithNone<PredictedGhostComponent>()
-                .WithAll<AsteroidTagComponentData>()
-                .ForEach((Entity ent, in Translation position) =>
+            var playerPos = stateEntityManager.GetComponentData<Translation>(playerEnt).Value;
+            var parallelEcb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ghostPredictionSwitchingQueues = SystemAPI.GetSingletonRW<GhostPredictionSwitchingQueues>().ValueRW;
+
+            new SwitchToPredictedGhostViaRange
             {
-                if (math.distancesq(playerPos, position.Value) < radiusSq)
-                {
-                    // convert to predicted
-                    toPredicted.Add(ent);
-                }
-            }).Schedule();
-            radiusSq = settings.predictionRadius + settings.predictionRadiusMargin;
-            radiusSq = radiusSq*radiusSq;
-            Entities
-                .WithNone<StaticAsteroid>()
-                .WithAll<PredictedGhostComponent>()
-                .WithAll<AsteroidTagComponentData>()
-                .ForEach((Entity ent, in Translation position) =>
+                playerPos = playerPos,
+                parallelEcb = parallelEcb,
+                predictedQueue = ghostPredictionSwitchingQueues.ConvertToPredictedQueue,
+                enterRadiusSq = settings.predictionRadius*settings.predictionRadius,
+            }.ScheduleParallel();
+
+            var radiusPlusMargin = settings.predictionRadius + settings.predictionRadiusMargin;
+            new SwitchToInterpolatedGhostViaRange
             {
-                if (math.distancesq(playerPos, position.Value) > radiusSq)
+                playerPos = playerPos,
+                parallelEcb = parallelEcb,
+                interpolatedQueue = ghostPredictionSwitchingQueues.ConvertToInterpolatedQueue,
+                exitRadiusSq = radiusPlusMargin * radiusPlusMargin,
+            }.ScheduleParallel();
+        }
+
+        [BurstCompile]
+        [WithNone(typeof(PredictedGhostComponent), typeof(SwitchPredictionSmoothing))]
+        [WithAll(typeof(AsteroidTagComponentData))]
+        partial struct SwitchToPredictedGhostViaRange : IJobEntity
+        {
+            public float3 playerPos;
+            public float enterRadiusSq;
+            public NativeQueue<ConvertPredictionEntry>.ParallelWriter predictedQueue;
+            public EntityCommandBuffer.ParallelWriter parallelEcb;
+
+            void Execute(Entity ent, [EntityInQueryIndex] int entityInQueryIndex, in Translation position)
+            {
+                if (math.distancesq(playerPos, position.Value) < enterRadiusSq)
                 {
-                    // convert to interpolated
-                    toInterpolated.Add(ent);
+                    predictedQueue.Enqueue(new ConvertPredictionEntry
+                    {
+                        TargetEntity = ent,
+                        TransitionDurationSeconds = 1.0f,
+                    });
+                    parallelEcb.AddComponent(entityInQueryIndex, ent, new URPMaterialPropertyBaseColor { Value = new float4(0, 1, 0, 1) });
                 }
-            }).Schedule();
+            }
+        }
+
+        [BurstCompile]
+        [WithNone(typeof(SwitchPredictionSmoothing))]
+        [WithAll(typeof(PredictedGhostComponent), typeof(AsteroidTagComponentData))]
+        partial struct SwitchToInterpolatedGhostViaRange : IJobEntity
+        {
+            public float3 playerPos;
+            public float exitRadiusSq;
+
+            public NativeQueue<ConvertPredictionEntry>.ParallelWriter interpolatedQueue;
+            public EntityCommandBuffer.ParallelWriter parallelEcb;
+
+            void Execute(Entity ent, [EntityInQueryIndex] int entityInQueryIndex, in Translation position)
+            {
+                if (math.distancesq(playerPos, position.Value) > exitRadiusSq)
+                {
+                    interpolatedQueue.Enqueue(new ConvertPredictionEntry
+                    {
+                        TargetEntity = ent,
+                        TransitionDurationSeconds = 1.0f,
+                    });
+                    parallelEcb.RemoveComponent<URPMaterialPropertyBaseColor>(entityInQueryIndex, ent);
+                }
+            }
         }
     }
 }

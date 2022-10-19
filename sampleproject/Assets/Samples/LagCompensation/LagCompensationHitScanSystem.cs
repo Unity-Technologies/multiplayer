@@ -2,47 +2,46 @@ using Unity.Entities;
 using Unity.NetCode;
 using Unity.Jobs;
 using Unity.Collections;
+using Unity.Physics;
 
 public struct LagCompensationEnabled : IComponentData
 {}
 
-[UpdateInGroup(typeof(GhostPredictionSystemGroup))]
+[UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
 public partial class LagCompensationHitScanSystem : SystemBase
 {
-    private PhysicsWorldHistory m_physicsHistory;
-    private GhostPredictionSystemGroup m_predictionGroup;
     private EndSimulationEntityCommandBufferSystem m_ecbSystem;
     private bool m_IsServer;
     private EntityQuery m_ConnectionQuery;
     protected override void OnCreate()
     {
-        m_physicsHistory = World.GetExistingSystem<PhysicsWorldHistory>();
-        m_predictionGroup = World.GetExistingSystem<GhostPredictionSystemGroup>();
-        m_ecbSystem = World.GetExistingSystem<EndSimulationEntityCommandBufferSystem>();
-        m_IsServer = World.GetExistingSystem<ServerSimulationSystemGroup>() != null;
+        m_ecbSystem = World.GetExistingSystemManaged<EndSimulationEntityCommandBufferSystem>();
+        m_IsServer = World.IsServer();
         m_ConnectionQuery = GetEntityQuery(typeof(NetworkIdComponent));
-        RequireSingletonForUpdate<LagCompensationSpawner>();
+        RequireForUpdate<LagCompensationSpawner>();
         RequireForUpdate(m_ConnectionQuery);
     }
     protected override void OnUpdate()
     {
-        var collisionHistory = m_physicsHistory.CollisionHistory;
-        uint predictingTick = m_predictionGroup.PredictingTick;
+        var collisionHistory = GetSingleton<PhysicsWorldHistorySingleton>();
+        var physicsWorld = GetSingleton<PhysicsWorldSingleton>().PhysicsWorld;
+        var networkTime = GetSingleton<NetworkTime>();
+        var predictingTick = networkTime.ServerTick;
         // Do not perform hit-scan when rolling back, only when simulating the latest tick
-        if (!m_predictionGroup.IsFinalPredictionTick)
+        if (!networkTime.IsFirstTimeFullyPredictingTick)
             return;
         var isServer = m_IsServer;
         var commandBuffer = m_ecbSystem.CreateCommandBuffer();
         // Generate a list of all connections
-        var connectionEntities = m_ConnectionQuery.ToEntityArray(Allocator.TempJob);
-        var connections = m_ConnectionQuery.ToComponentDataArray<NetworkIdComponent>(Allocator.TempJob);
-        var enableFromEntity = GetComponentDataFromEntity<LagCompensationEnabled>(true);
+        var connectionEntities = m_ConnectionQuery.ToEntityArray(World.UpdateAllocator.ToAllocator);
+        var connections = m_ConnectionQuery.ToComponentDataArray<NetworkIdComponent>(World.UpdateAllocator.ToAllocator);
+        var enableFromEntity = GetComponentLookup<LagCompensationEnabled>(true);
 
         // Not using burst since there is a static used to update the UI
         Dependency = Entities
-            .WithDisposeOnCompletion(connectionEntities)
-            .WithDisposeOnCompletion(connections)
             .WithReadOnly(enableFromEntity)
+            .WithReadOnly(physicsWorld)
+            .WithAll<Simulate>()
             .ForEach((Entity entity, DynamicBuffer<RayTraceCommand> commands, in CommandDataInterpolationDelay delay, in GhostOwnerComponent owner) =>
         {
             // If there is no data for the tick or a fire was not requested - do not process anything
@@ -52,7 +51,7 @@ public partial class LagCompensationHitScanSystem : SystemBase
                 return;
 
             // Get the collision world to use given the tick currently being predicted and the interpolation delay for the connection
-            collisionHistory.GetCollisionWorldFromTick(predictingTick, enableFromEntity.HasComponent(entity) ? delay.Delay : 0, out var collWorld);
+            collisionHistory.GetCollisionWorldFromTick(predictingTick, enableFromEntity.HasComponent(entity) ? delay.Delay : 0, ref physicsWorld, out var collWorld);
             var rayInput = new Unity.Physics.RaycastInput();
             rayInput.Start = cmd.origin;
             rayInput.End = cmd.origin + cmd.direction * 100;
@@ -68,9 +67,8 @@ public partial class LagCompensationHitScanSystem : SystemBase
                         commandBuffer.AddComponent(ent, new SendRpcCommandRequestComponent{TargetConnection = connectionEntities[i]});
                 }
             }
-        }).Schedule(JobHandle.CombineDependencies(Dependency, m_physicsHistory.LastPhysicsJobHandle));
+        }).Schedule(Dependency);
 
         m_ecbSystem.AddJobHandleForProducer(Dependency);
-        m_physicsHistory.LastPhysicsJobHandle = Dependency;
     }
 }

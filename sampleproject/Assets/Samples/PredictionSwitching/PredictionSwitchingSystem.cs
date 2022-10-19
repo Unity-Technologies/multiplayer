@@ -1,94 +1,133 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
 using Unity.Collections;
-using Unity.Burst;
 using Unity.Rendering;
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
-public partial class PredictionSwitchingSystem : SystemBase
+[BurstCompile]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
+public partial struct PredictionSwitchingSystem : ISystem
 {
-    private NativeList<Entity> m_ToPredicted;
-    private NativeList<Entity> m_ToInterpolated;
-    private GhostSpawnSystem m_GhostSpawnSystem;
-    private float4 m_InterpolatedColor;
-    protected override void OnCreate()
-    {
-        RequireSingletonForUpdate<PredictionSwitchingSpawner>();
-        RequireSingletonForUpdate<CommandTargetComponent>();
-        m_ToPredicted = new NativeList<Entity>(16, Allocator.Persistent);
-        m_ToInterpolated = new NativeList<Entity>(16, Allocator.Persistent);
-        m_GhostSpawnSystem = World.GetExistingSystem<GhostSpawnSystem>();
-    }
-    protected override void OnDestroy()
-    {
-        m_ToPredicted.Dispose();
-        m_ToInterpolated.Dispose();
-    }
-    protected override void OnUpdate()
-    {
-        var spawnSystem = m_GhostSpawnSystem;
-        var toPredicted = m_ToPredicted;
-        var toInterpolated = m_ToInterpolated;
-        for (int i = 0; i < toPredicted.Length; ++i)
-        {
-            if (EntityManager.HasComponent<GhostComponent>(toPredicted[i]) &&
-                EntityManager.GetComponentData<GhostComponent>(toPredicted[i]).ghostType >= 0)
-            {
-                spawnSystem.ConvertGhostToPredicted(toPredicted[i], 1.0f);
-                if (EntityManager.HasComponent<URPMaterialPropertyBaseColor>(toPredicted[i]))
-                {
-                    m_InterpolatedColor = EntityManager.GetComponentData<URPMaterialPropertyBaseColor>(toPredicted[i]).Value;
-                    EntityManager.SetComponentData(toPredicted[i], new URPMaterialPropertyBaseColor{Value = new float4(0,1,0,1)});
-                }
-            }
-        }
-        for (int i = 0; i < toInterpolated.Length; ++i)
-        {
-            if (EntityManager.HasComponent<GhostComponent>(toInterpolated[i]) &&
-                EntityManager.GetComponentData<GhostComponent>(toInterpolated[i]).ghostType >= 0)
-            {
-                spawnSystem.ConvertGhostToInterpolated(toInterpolated[i], 1.0f);
-                if (EntityManager.HasComponent<URPMaterialPropertyBaseColor>(toInterpolated[i]))
-                    EntityManager.SetComponentData(toInterpolated[i], new URPMaterialPropertyBaseColor{Value = m_InterpolatedColor});
-            }
-        }
-        toPredicted.Clear();
-        toInterpolated.Clear();
+    ComponentLookup<GhostOwnerComponent> m_GhostOwnerFromEntity;
 
-        var playerEnt = GetSingleton<CommandTargetComponent>().targetEntity;
+    [BurstCompile]
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<PredictionSwitchingSettings>();
+        state.RequireForUpdate<CommandTargetComponent>();
+        state.RequireForUpdate<GhostPredictionSwitchingQueues>();
+        m_GhostOwnerFromEntity = state.GetComponentLookup<GhostOwnerComponent>(true);
+    }
+
+    [BurstCompile]
+    public void OnDestroy(ref SystemState state) { }
+
+    [BurstCompile]
+    public void OnUpdate(ref SystemState state)
+    {
+        var playerEnt = SystemAPI.GetSingleton<CommandTargetComponent>().targetEntity;
         if (playerEnt == Entity.Null)
             return;
-        var playerPos = EntityManager.GetComponentData<Translation>(playerEnt).Value;
 
-        float radius = 5;
-        // The margin must be large enough that moving from predicted time to interpolated time does not move the ghost back into the prediction sphere
-        float margin = 2.5f;
-        float radiusSq = radius*radius;
-        Entities
-            .WithNone<PredictedGhostComponent>()
-            .WithAll<GhostComponent>()
-            .ForEach((Entity ent, in Translation position) =>
+        var playerPos = state.EntityManager.GetComponentData<Translation>(playerEnt).Value;
+        var ghostPredictionSwitchingQueues = SystemAPI.GetSingletonRW<GhostPredictionSwitchingQueues>().ValueRW;
+        var parallelEcb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+        m_GhostOwnerFromEntity.Update(ref state);
+        var ghostOwnerFromEntity = m_GhostOwnerFromEntity;
+
+        var predictionSwitchingSettings = SystemAPI.GetSingleton<PredictionSwitchingSettings>();
+
+        new SwitchToPredictedGhostViaRange
         {
-            if (math.distancesq(playerPos, position.Value) < radiusSq)
-            {
-                // convert to predicted
-                toPredicted.Add(ent);
-            }
-        }).Schedule();
-        radiusSq = radius + margin;
-        radiusSq = radiusSq*radiusSq;
-        Entities
-            .WithAll<PredictedGhostComponent>()
-            .WithAll<GhostComponent>()
-            .ForEach((Entity ent, in Translation position) =>
+            playerPos = playerPos,
+            parallelEcb = parallelEcb,
+            predictedQueue = ghostPredictionSwitchingQueues.ConvertToPredictedQueue,
+            enterRadiusSq = predictionSwitchingSettings.PredictionSwitchingRadius * predictionSwitchingSettings.PredictionSwitchingRadius,
+            ghostOwnerFromEntity = ghostOwnerFromEntity,
+            transitionDurationSeconds = predictionSwitchingSettings.TransitionDurationSeconds,
+            ballColorChangingEnabled = predictionSwitchingSettings.BallColorChangingEnabled,
+        }.ScheduleParallel();
+
+        var radiusPlusMargin = (predictionSwitchingSettings.PredictionSwitchingRadius + predictionSwitchingSettings.PredictionSwitchingMargin);
+        new SwitchToInterpolatedGhostViaRange
         {
-            if (math.distancesq(playerPos, position.Value) > radiusSq)
+            playerPos = playerPos,
+            parallelEcb = parallelEcb,
+            interpolatedQueue = ghostPredictionSwitchingQueues.ConvertToInterpolatedQueue,
+            exitRadiusSq = radiusPlusMargin * radiusPlusMargin,
+            ghostOwnerFromEntity = ghostOwnerFromEntity,
+            transitionDurationSeconds = predictionSwitchingSettings.TransitionDurationSeconds,
+        }.ScheduleParallel();
+    }
+
+    [BurstCompile]
+    [WithNone(typeof(PredictedGhostComponent), typeof(SwitchPredictionSmoothing))]
+    partial struct SwitchToPredictedGhostViaRange : IJobEntity
+    {
+        public float3 playerPos;
+        public float enterRadiusSq;
+
+        public NativeQueue<ConvertPredictionEntry>.ParallelWriter predictedQueue;
+        public EntityCommandBuffer.ParallelWriter parallelEcb;
+
+        [ReadOnly]
+        public ComponentLookup<GhostOwnerComponent> ghostOwnerFromEntity;
+
+        public float transitionDurationSeconds;
+        public byte ballColorChangingEnabled;
+
+        void Execute(Entity ent, [EntityInQueryIndex] int entityInQueryIndex, in Translation position, in GhostComponent ghostComponent)
+        {
+            if (ghostComponent.ghostType < 0) return;
+
+            if (math.distancesq(playerPos, position.Value) < enterRadiusSq)
             {
-                // convert to interpolated
-                toInterpolated.Add(ent);
+                transitionDurationSeconds = 1.0f;
+                predictedQueue.Enqueue(new ConvertPredictionEntry
+                {
+                    TargetEntity = ent,
+                    TransitionDurationSeconds = transitionDurationSeconds,
+                });
+
+                if (ballColorChangingEnabled == 1 && !ghostOwnerFromEntity.HasComponent(ent))
+                    parallelEcb.AddComponent(entityInQueryIndex, ent, new URPMaterialPropertyBaseColor {Value = new float4(0, 1, 0, 1)});
             }
-        }).Schedule();
+        }
+    }
+
+    [BurstCompile]
+    [WithNone(typeof(SwitchPredictionSmoothing))]
+    [WithAll(typeof(PredictedGhostComponent))]
+    partial struct SwitchToInterpolatedGhostViaRange : IJobEntity
+    {
+        public float3 playerPos;
+        public float exitRadiusSq;
+
+        public NativeQueue<ConvertPredictionEntry>.ParallelWriter interpolatedQueue;
+        public EntityCommandBuffer.ParallelWriter parallelEcb;
+
+        [ReadOnly]
+        public ComponentLookup<GhostOwnerComponent> ghostOwnerFromEntity;
+
+        public float transitionDurationSeconds;
+
+        void Execute(Entity ent, [EntityInQueryIndex] int entityInQueryIndex, in Translation position, in GhostComponent ghostComponent)
+        {
+            if (ghostComponent.ghostType < 0) return;
+
+            if (math.distancesq(playerPos, position.Value) > exitRadiusSq)
+            {
+                interpolatedQueue.Enqueue(new ConvertPredictionEntry
+                {
+                    TargetEntity = ent,
+                    TransitionDurationSeconds = transitionDurationSeconds,
+                });
+                if (!ghostOwnerFromEntity.HasComponent(ent))
+                    parallelEcb.RemoveComponent<URPMaterialPropertyBaseColor>(entityInQueryIndex, ent);
+            }
+        }
     }
 }

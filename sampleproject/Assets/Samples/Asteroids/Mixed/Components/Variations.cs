@@ -5,7 +5,7 @@ using Unity.NetCode;
 namespace Asteroids.Mixed
 {
     [GhostComponentVariation(typeof(Translation), "Translation - 2D")]
-    [GhostComponent(PrefabType = GhostPrefabType.All, OwnerPredictedSendType = GhostSendType.All, SendDataForChildEntity = false)]
+    [GhostComponent(PrefabType = GhostPrefabType.All, SendTypeOptimization = GhostSendType.AllClients, SendDataForChildEntity = false)]
     public struct Translation2d
     {
         //Will serialize just x,y positions
@@ -13,7 +13,7 @@ namespace Asteroids.Mixed
     }
 
     [GhostComponentVariation(typeof(Rotation), "Rotation - 2D")]
-    [GhostComponent(PrefabType = GhostPrefabType.All, OwnerPredictedSendType = GhostSendType.All, SendDataForChildEntity = false)]
+    [GhostComponent(PrefabType = GhostPrefabType.All, SendTypeOptimization = GhostSendType.AllClients, SendDataForChildEntity = false)]
     public struct Rotation2d
     {
         //Will serialize just the one angle

@@ -11,8 +11,8 @@
         "Unity.Networking.Transport",
         "Unity.NetCode",
         "Asteroids.Mixed",
-        "Unity.Rendering.Hybrid",
-        "SamplesCommon"
+        "Unity.Entities.Graphics",
+        "SamplesCommon.Client"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -21,7 +21,7 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [
-        "!UNITY_SERVER"
+        "!UNITY_SERVER || UNITY_EDITOR"
     ],
     "versionDefines": [],
     "noEngineReferences": false

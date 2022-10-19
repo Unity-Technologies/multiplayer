@@ -1,5 +1,6 @@
 {
     "name": "Asteroids.Authoring",
+    "rootNamespace": "",
     "references": [
         "GUID:734d92eba21c94caba915361bd5ac177",
         "GUID:953adc2a6b8b4e3c8df5b728bcd546e9",
@@ -9,7 +10,9 @@
         "GUID:8819f35a0fc84499b990e90a4ca1911f",
         "GUID:9c1216046f20149ca8816d081856eabc",
         "GUID:c52403dffb9bc4f33a799f71eca4ab9a",
-        "GUID:b7d127909f4a04725b3edab4d8700bed"
+        "GUID:b7d127909f4a04725b3edab4d8700bed",
+        "GUID:343deaaf83e0cee4ca978e7df0b80d21",
+        "GUID:2bafac87e7f4b9b418d9448d219b01ab"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -17,7 +20,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "!UNITY_SERVER || UNITY_EDITOR"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

@@ -2,40 +2,50 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
+using Unity.Collections;
+using Unity.Burst;
 
 namespace Asteroids.Client
 {
-    [UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation)]
     [UpdateBefore(typeof(TransformSystemGroup))]
-    public partial class StaticAsteroidSystem : SystemBase
+    [BurstCompile]
+    public partial struct StaticAsteroidSystem : ISystem
     {
-        ClientSimulationSystemGroup m_ClientSimulationSystemGroup;
-        EntityQuery m_Query;
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            m_ClientSimulationSystemGroup = World.GetExistingSystem<ClientSimulationSystemGroup>();
-            RequireForUpdate(m_Query);
+            state.RequireForUpdate<StaticAsteroid>();
         }
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
         {
-            var tickRate = default(ClientServerTickRate);
-            if (HasSingleton<ClientServerTickRate>())
-            {
-                tickRate = GetSingleton<ClientServerTickRate>();
-            }
-
-            tickRate.ResolveDefaults();
-
-            var tick = m_ClientSimulationSystemGroup.InterpolationTick;
-            var tickFraction = m_ClientSimulationSystemGroup.InterpolationTickFraction;
-            var frameTime = 1.0f / (float) tickRate.SimulationTickRate;
-            Entities
-                .WithStoreEntityQueryInField(ref m_Query)
-                .ForEach((ref Translation position, ref Rotation rotation, in StaticAsteroid staticAsteroid) =>
+        }
+        [BurstCompile]
+        partial struct StaticAsteroidJob : IJobEntity
+        {
+            public NetworkTick tick;
+            public float tickFraction;
+            public float frameTime;
+            public void Execute(ref Translation position, ref Rotation rotation, in StaticAsteroid staticAsteroid)
             {
                 position.Value = staticAsteroid.GetPosition(tick, tickFraction, frameTime);
                 rotation.Value = staticAsteroid.GetRotation(tick, tickFraction, frameTime);
-            }).ScheduleParallel();
+            }
+        }
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            SystemAPI.TryGetSingleton<ClientServerTickRate>(out var tickRate);
+            tickRate.ResolveDefaults();
+            var networkTime = SystemAPI.GetSingleton<NetworkTime>();
+            var asteroidJob = new StaticAsteroidJob
+            {
+                tick = networkTime.InterpolationTick,
+                tickFraction = networkTime.InterpolationTickFraction,
+                frameTime = tickRate.SimulationFixedTimeStep
+            };
+            state.Dependency = asteroidJob.ScheduleParallel(state.Dependency);
         }
     }
 }

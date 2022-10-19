@@ -1,10 +1,14 @@
 using Unity.Entities;
 using UnityEngine;
 
-public class ShipTagAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
+public class ShipTagAuthoringComponent : MonoBehaviour
 {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+}
+
+public class ShipTagAuthoringComponentBaker : Baker<ShipTagAuthoringComponent>
+{
+    public override void Bake(ShipTagAuthoringComponent authoring)
     {
-        dstManager.AddComponentData(entity, new ShipTagComponentData());
+        AddComponent(new ShipTagComponentData());
     }
 }

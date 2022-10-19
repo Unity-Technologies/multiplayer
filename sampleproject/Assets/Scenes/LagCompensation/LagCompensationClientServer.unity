@@ -149,11 +149,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 472921630}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef91b339b109457dab3291511728c511, type: 3}
+  m_Script: {fileID: 11500000, guid: 5bd6bf266b32e49ac8c5951317b6b250, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  EnableLagCompensation: 1
   ServerHistorySize: 0
   ClientHistorySize: 0
+  EnablePredictedPhysics: 0
+  PhysicsTicksPerSimTick: 1
+  DisableWhenNoConnections: 0
+  ShareStaticGeometry: 1
+  PredictedPhysicsWorldIndex: 0
+  ClientOnlyPhysicsWorldIndex: 1
 --- !u!4 &472921632
 Transform:
   m_ObjectHideFlags: 0

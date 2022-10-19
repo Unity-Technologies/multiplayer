@@ -1,32 +1,50 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.NetCode;
 using Unity.Transforms;
+using Unity.Collections;
+using Unity.Burst;
 
-[UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-public partial class MoveCubeSystem : SystemBase
+[UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
+[BurstCompile]
+public partial struct MoveCubeSystem : ISystem
 {
-    GhostPredictionSystemGroup m_GhostPredictionSystemGroup;
-    protected override void OnCreate()
+    [BurstCompile]
+    public void OnCreate(ref SystemState state)
     {
-        m_GhostPredictionSystemGroup = World.GetExistingSystem<GhostPredictionSystemGroup>();
+        var builder = new EntityQueryBuilder(Allocator.Temp)
+            .WithAll<Simulate>()
+            .WithAll<CubeInput>()
+            .WithAllRW<Translation>();
+        var query = state.GetEntityQuery(builder);
+        state.RequireForUpdate(query);
     }
-    protected override void OnUpdate()
+    [BurstCompile]
+    public void OnDestroy(ref SystemState state)
     {
-        var tick = m_GhostPredictionSystemGroup.PredictingTick;
-        var fixedCubeSpeed = Time.DeltaTime * 3;
-        Entities.ForEach((DynamicBuffer<CubeInput> inputBuffer, ref Translation trans, in PredictedGhostComponent prediction) =>
+    }
+    [BurstCompile]
+    public void OnUpdate(ref SystemState state)
+    {
+        var moveJob = new MoveCubeJob
         {
-            if (!GhostPredictionSystemGroup.ShouldPredict(tick, prediction))
-                return;
-            inputBuffer.GetDataAtTick(tick, out var input);
-            if (input.horizontal > 0)
-                trans.Value.x += fixedCubeSpeed;
-            if (input.horizontal < 0)
-                trans.Value.x -= fixedCubeSpeed;
-            if (input.vertical > 0)
-                trans.Value.z += fixedCubeSpeed;
-            if (input.vertical < 0)
-                trans.Value.z -= fixedCubeSpeed;
-        }).ScheduleParallel();
+            tick = SystemAPI.GetSingleton<NetworkTime>().ServerTick,
+            fixedCubeSpeed = SystemAPI.Time.DeltaTime * 4
+        };
+        state.Dependency = moveJob.ScheduleParallel(state.Dependency);
+    }
+
+    [BurstCompile]
+    [WithAll(typeof(Simulate))]
+    partial struct MoveCubeJob : IJobEntity
+    {
+        public NetworkTick tick;
+        public float fixedCubeSpeed;
+        public void Execute(CubeInput playerInput, ref Translation trans)
+        {
+            var moveInput = new float2(playerInput.Horizontal, playerInput.Vertical);
+            moveInput = math.normalizesafe(moveInput) * fixedCubeSpeed;
+            trans.Value += new float3(moveInput.x, 0, moveInput.y);
+        }
     }
 }

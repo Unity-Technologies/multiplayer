@@ -7,10 +7,7 @@
 
 **/Assets/NetCodeGenerated*
 **/Assets/SceneDependencyCache*
-
-sampleproject/Asset/Samples/CustomNetworkInterface/network.bindings~/artifacts/
-sampleproject/Asset/Samples/CustomNetworkInterfacenetwork.bindings~/build.gen.csproj
-sampleproject/Asset/Samples/CustomNetworkInterfacenetwork.bindings~/build.gen.sln
+**/Assets/GlobalEntitiesDependencies*
 
 sampleproject/*
 !sampleproject/*/
@@ -53,8 +50,6 @@ x86/
 *.pdb
 *.VC.db
 
-!sampleproject/Assets/Samples/CustomNetworkInterface/Bindings/*.pdb
-
 # Unity3D generated meta files
 *.pidb.meta
 
@@ -74,4 +69,3 @@ build/**
 *~
 *.swp
 sampleproject/Logs
-!Documentation~

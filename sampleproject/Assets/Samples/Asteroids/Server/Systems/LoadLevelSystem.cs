@@ -1,3 +1,4 @@
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Collections;
@@ -10,73 +11,96 @@ namespace Asteroids.Server
     {
     }
 
-    [UpdateInGroup(typeof(ServerSimulationSystemGroup))]
+    [BurstCompile]
+    [WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
     [UpdateBefore(typeof(RpcSystem))]
-    public partial class LoadLevelSystem : SystemBase
+    public partial struct LoadLevelSystem : ISystem
     {
-        private BeginSimulationEntityCommandBufferSystem m_Barrier;
         private EntityQuery m_LevelGroup;
+        private PortableFunctionPointer<GhostImportance.ScaleImportanceDelegate> m_ScaleFunctionPointer;
 
-        protected override void OnCreate()
+        public void OnCreate(ref SystemState state)
         {
-            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            m_LevelGroup = GetEntityQuery(ComponentType.ReadWrite<LevelComponent>());
-            RequireSingletonForUpdate<ServerSettings>();
+            var builder = new EntityQueryBuilder(Allocator.Temp).WithAllRW<LevelComponent>();
+            m_LevelGroup = state.GetEntityQuery(builder);
+
+            state.RequireForUpdate<ServerSettings>();
+            m_ScaleFunctionPointer = GhostDistanceImportance.ScaleFunctionPointer;
         }
 
-        protected override void OnUpdate()
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
         {
-            if (!HasSingleton<GhostDistanceImportance>())
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var settings = SystemAPI.GetSingleton<ServerSettings>();
+            if (!SystemAPI.HasSingleton<GhostImportance>())
             {
-                var settings = GetSingleton<ServerSettings>();
                 // Try to store a bit less than full chunks to avoid fragmenting the data too much
                 var maxAsteroidsPerTile = 25;
                 var minTileSize = 256;
-                float asteroidsPerPx = (float)settings.numAsteroids / (float)(settings.levelWidth*settings.levelHeight);
+                float asteroidsPerPx = (float)settings.levelData.numAsteroids / (float)(settings.levelData.levelWidth*settings.levelData.levelHeight);
                 // We want to make sure that asteroidsPerPx * tileSize * tileSize = maxAsteroidsPerTile
                 int tileSize = math.max(minTileSize, (int)math.ceil(math.sqrt((float)maxAsteroidsPerTile / asteroidsPerPx)));
-                var grid = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(grid, new GhostDistanceImportance
+
+                var grid = state.EntityManager.CreateEntity();
+                state.EntityManager.SetName(grid, "GhostImportanceSingleton");
+                state.EntityManager.AddComponentData(grid, new GhostDistanceData
                 {
-                    ScaleImportanceByDistance = GhostDistanceImportance.DefaultScaleFunctionPointer,
                     TileSize = new int3(tileSize, tileSize, 256),
                     TileCenter = new int3(0, 0, 128),
-                    TileBorderWidth = new float3(1f, 1f, 1f)
+                    TileBorderWidth = new float3(1f, 1f, 1f),
+                });
+                state.EntityManager.AddComponentData(grid, new GhostImportance
+                {
+                    ScaleImportanceFunction = m_ScaleFunctionPointer,
+                    GhostConnectionComponentType = ComponentType.ReadOnly<GhostConnectionPosition>(),
+                    GhostImportanceDataType = ComponentType.ReadOnly<GhostDistanceData>(),
+                    GhostImportancePerChunkDataType = ComponentType.ReadOnly<GhostDistancePartitionShared>(),
                 });
             }
+
             if (m_LevelGroup.IsEmptyIgnoreFilter)
             {
-                var settings = GetSingleton<ServerSettings>();
-                var newLevel = EntityManager.CreateEntity();
-                EntityManager.AddComponentData(newLevel, new LevelComponent
-                {
-                    width = settings.levelWidth,
-                    height = settings.levelHeight,
-                    playerForce = settings.playerForce,
-                    bulletVelocity = settings.bulletVelocity
-                });
+                var newLevel = state.EntityManager.CreateEntity();
+                state.EntityManager.AddComponentData(newLevel, settings.levelData);
                 return;
             }
-            JobHandle levelDep;
-            var commandBuffer = m_Barrier.CreateCommandBuffer();
-            var level = m_LevelGroup.ToComponentDataArrayAsync<LevelComponent>(Allocator.TempJob, out levelDep);
 
-            var requestLoadJob = Entities.WithNone<LevelRequestedTag>().WithReadOnly(level).WithDisposeOnCompletion(level).
-                ForEach((Entity entity, in NetworkIdComponent netId) =>
+            var level = m_LevelGroup.ToComponentDataListAsync<LevelComponent>(state.WorldUpdateAllocator,
+                out var levelHandle);
+
+            var levelJob = new LoadLevelJob
             {
-                commandBuffer.AddComponent(entity, new LevelRequestedTag());
-                var req = commandBuffer.CreateEntity();
-                commandBuffer.AddComponent(req, new LevelLoadRequest
+                ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged),
+                level = level,
+            };
+            state.Dependency = JobHandle.CombineDependencies(state.Dependency, levelHandle);
+            levelJob.Schedule();
+        }
+
+        [BurstCompile]
+        [WithNone(typeof(LevelRequestedTag))]
+        internal partial struct LoadLevelJob : IJobEntity
+        {
+            public EntityCommandBuffer ecb;
+            [ReadOnly] public NativeList<LevelComponent> level;
+
+            public void Execute(Entity entity, in NetworkIdComponent networkId)
+            {
+                ecb.AddComponent(entity, new LevelRequestedTag());
+                var req = ecb.CreateEntity();
+                ecb.AddComponent(req, new LevelLoadRequest
                 {
-                    width = level[0].width,
-                    height = level[0].height,
-                    playerForce = level[0].playerForce,
-                    bulletVelocity = level[0].bulletVelocity
+                    levelData = level[0],
                 });
-                commandBuffer.AddComponent(req, new SendRpcCommandRequestComponent {TargetConnection = entity});
-            }).Schedule(JobHandle.CombineDependencies(Dependency, levelDep));
-            Dependency = requestLoadJob;
-            m_Barrier.AddJobHandleForProducer(Dependency);
+                ecb.AddComponent(req, new SendRpcCommandRequestComponent {TargetConnection = entity});
+            }
         }
     }
+
 }

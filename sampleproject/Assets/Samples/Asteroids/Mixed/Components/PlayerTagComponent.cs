@@ -8,5 +8,5 @@ public struct ShipTagComponentData : IComponentData
 public struct ShipStateComponentData : IComponentData
 {
     [GhostField] public int State;
-    public uint WeaponCooldown;
+    [GhostField] public NetworkTick WeaponCooldown;
 }

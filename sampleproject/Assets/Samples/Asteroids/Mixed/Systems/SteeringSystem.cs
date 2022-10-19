@@ -2,53 +2,45 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.NetCode;
-using Unity.Networking.Transport.Utilities;
 using Unity.Collections;
+using Unity.Burst;
 
 namespace Asteroids.Mixed
 {
-    [UpdateInGroup(typeof(GhostPredictionSystemGroup))]
-    public partial class SteeringSystem : SystemBase
+    [UpdateInGroup(typeof(PredictedSimulationSystemGroup))]
+    [BurstCompile]
+    public partial struct SteeringSystem : ISystem
     {
-        private const int k_CoolDownTicksCount = 10;
-
-        private BeginSimulationEntityCommandBufferSystem m_Barrier;
-        private GhostPredictionSystemGroup m_PredictionGroup;
         private Entity m_BulletPrefab;
+        private BufferLookup<ShipCommandData> m_ShipCommandDataFromEntity;
 
-        protected override void OnCreate()
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
         {
-            m_Barrier = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-            m_PredictionGroup = World.GetOrCreateSystem<GhostPredictionSystemGroup>();
-            RequireSingletonForUpdate<LevelComponent>();
-            RequireSingletonForUpdate<AsteroidsSpawner>();
+            m_ShipCommandDataFromEntity = state.GetBufferLookup<ShipCommandData>(true);
+            state.RequireForUpdate<LevelComponent>();
+            state.RequireForUpdate<AsteroidsSpawner>();
+        }
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
         }
 
-        protected override void OnUpdate()
+        [WithAll(typeof(ShipTagComponentData), typeof(ShipCommandData), typeof(Simulate))]
+        [BurstCompile]
+        partial struct SteeringJob : IJobEntity
         {
-            if (m_BulletPrefab == Entity.Null)
+            public LevelComponent level;
+            public EntityCommandBuffer.ParallelWriter commandBuffer;
+            public Entity bulletPrefab;
+            public float deltaTime;
+            public NetworkTick currentTick;
+            public byte isFirstFullTick;
+            [ReadOnly] public BufferLookup<ShipCommandData> inputFromEntity;
+            public void Execute(Entity entity, [EntityInQueryIndex] int entityInQueryIndex,
+                ref Translation position, ref Rotation rotation, ref Velocity velocity,
+                ref ShipStateComponentData state, in GhostOwnerComponent ghostOwner)
             {
-                var foundPrefab = GetSingleton<AsteroidsSpawner>().Bullet;
-                if (foundPrefab != Entity.Null)
-                    m_BulletPrefab = GhostCollectionSystem.CreatePredictedSpawnPrefab(EntityManager, foundPrefab);
-            }
-
-            var level = GetSingleton<LevelComponent>();
-            var commandBuffer = m_Barrier.CreateCommandBuffer().AsParallelWriter();
-            var deltaTime = Time.DeltaTime;
-            var displacement = 100.0f;
-            var playerForce = level.playerForce;
-            var bulletVelocity = level.bulletVelocity;
-            var bulletPrefab = m_BulletPrefab;
-            var currentTick = m_PredictionGroup.PredictingTick;
-            var inputFromEntity = GetBufferFromEntity<ShipCommandData>(true);
-            Entities.WithReadOnly(inputFromEntity).WithAll<ShipTagComponentData, ShipCommandData>().
-                ForEach((Entity entity, int nativeThreadIndex, ref Translation position, ref Rotation rotation,
-                ref Velocity velocity, ref ShipStateComponentData state,
-                in GhostOwnerComponent ghostOwner, in PredictedGhostComponent prediction) =>
-            {
-                if (!GhostPredictionSystemGroup.ShouldPredict(currentTick, prediction))
-                    return;
                 var input = inputFromEntity[entity];
                 ShipCommandData inputData;
                 if (!input.GetDataAtTick(currentTick, out inputData))
@@ -59,49 +51,67 @@ namespace Asteroids.Mixed
                 if (inputData.left == 1)
                 {
                     rotation.Value = math.mul(rotation.Value,
-                        quaternion.RotateZ(math.radians(-displacement * deltaTime)));
+                        quaternion.RotateZ(math.radians(level.shipRotationRate * deltaTime)));
                 }
 
                 if (inputData.right == 1)
                 {
                     rotation.Value = math.mul(rotation.Value,
-                        quaternion.RotateZ(math.radians(displacement * deltaTime)));
+                        quaternion.RotateZ(math.radians(-level.shipRotationRate * deltaTime)));
                 }
 
                 if (inputData.thrust == 1)
                 {
-                    float3 fwd = new float3(0, playerForce * deltaTime, 0);
+                    float3 fwd = new float3(0, level.shipForwardForce * deltaTime, 0);
                     velocity.Value += math.mul(rotation.Value, fwd).xy;
                 }
 
                 position.Value.xy += velocity.Value * deltaTime;
 
-                var canShoot = state.WeaponCooldown == 0 || SequenceHelpers.IsNewer(currentTick, state.WeaponCooldown);
+                var canShoot = !state.WeaponCooldown.IsValid || currentTick.IsNewerThan(state.WeaponCooldown);
                 if (inputData.shoot != 0 && canShoot)
                 {
-                    if (bulletPrefab != Entity.Null)
+                    if (bulletPrefab != Entity.Null && isFirstFullTick == 1)
                     {
-                        var e = commandBuffer.Instantiate(nativeThreadIndex, bulletPrefab);
+                        var e = commandBuffer.Instantiate(entityInQueryIndex, bulletPrefab);
 
-                        commandBuffer.SetComponent(nativeThreadIndex, e, position);
-                        commandBuffer.SetComponent(nativeThreadIndex, e, rotation);
+                        commandBuffer.SetComponent(entityInQueryIndex, e, position);
+                        commandBuffer.SetComponent(entityInQueryIndex, e, rotation);
 
                         var vel = new Velocity
-                            {Value = math.mul(rotation.Value, new float3(0, bulletVelocity, 0)).xy};
+                            {Value = math.mul(rotation.Value, new float3(0, level.bulletVelocity, 0)).xy};
 
-                        commandBuffer.SetComponent(nativeThreadIndex, e,
+                        commandBuffer.SetComponent(entityInQueryIndex, e,
                             new GhostOwnerComponent {NetworkId = ghostOwner.NetworkId});
-                        commandBuffer.SetComponent(nativeThreadIndex, e, vel);
+                        commandBuffer.SetComponent(entityInQueryIndex, e, vel);
                     }
 
-                    state.WeaponCooldown = currentTick + k_CoolDownTicksCount;
+                    state.WeaponCooldown = currentTick;
+                    state.WeaponCooldown.Add(level.bulletRofCooldownTicks);
                 }
-                /*else if (canShoot)
+                else if (canShoot)
                 {
-                    state.WeaponCooldown = 0;
-                }*/
-            }).ScheduleParallel();
-            m_Barrier.AddJobHandleForProducer(Dependency);
+                    state.WeaponCooldown = NetworkTick.Invalid;
+                }
+            }
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var networkTime = SystemAPI.GetSingleton<NetworkTime>();
+            m_ShipCommandDataFromEntity.Update(ref state);
+            var steeringJob = new SteeringJob
+            {
+                level = SystemAPI.GetSingleton<LevelComponent>(),
+                commandBuffer = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+                bulletPrefab = SystemAPI.GetSingleton<AsteroidsSpawner>().Bullet,
+                deltaTime = SystemAPI.Time.DeltaTime,
+                currentTick = networkTime.ServerTick,
+                isFirstFullTick = (byte) (networkTime.IsFirstTimeFullyPredictingTick ? 1 : 0),
+                inputFromEntity = m_ShipCommandDataFromEntity
+            };
+            state.Dependency = steeringJob.ScheduleParallel(state.Dependency);
         }
     }
 }

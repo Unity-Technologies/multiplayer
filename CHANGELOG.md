@@ -1,3 +1,8 @@
+# 2022-10-18
+## Changes
+* Upgraded to Netcode for Entities 1.0.0-exp.8, see the [Netcode for Entities changelog](https://docs.unity3d.com/Packages/com.unity.netcode@1.0/changelog/CHANGELOG.html).
+* Added a player list sample
+
 # 2022-03-18
 ## Changes
 * Upgraded to Netcode for Entities 0.50.0, see the [Netcode for Entities changelog](https://docs.unity3d.com/Packages/com.unity.netcode@0.50/changelog/CHANGELOG.html).

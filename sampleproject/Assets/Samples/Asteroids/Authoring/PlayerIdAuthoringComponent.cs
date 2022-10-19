@@ -1,10 +1,14 @@
 using Unity.Entities;
 using UnityEngine;
 
-public class PlayerIdAuthoringComponent : MonoBehaviour, IConvertGameObjectToEntity
+public class PlayerIdAuthoringComponent : MonoBehaviour
 {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem)
+}
+
+public class PlayerIdAuthoringComponentBaker : Baker<PlayerIdAuthoringComponent>
+{
+    public override void Bake(PlayerIdAuthoringComponent authoring)
     {
-        dstManager.AddComponentData(entity, new PlayerIdComponentData());
+        AddComponent(new PlayerIdComponentData());
     }
 }

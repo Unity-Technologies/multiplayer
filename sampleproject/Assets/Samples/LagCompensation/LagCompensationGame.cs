@@ -3,13 +3,13 @@ using Unity.NetCode;
 using Unity.Networking.Transport;
 using Unity.Collections;
 
-[UpdateInGroup(typeof(ClientSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ThinClientSimulation)]
 [AlwaysSynchronizeSystem]
 public partial class GoInGameLagClientSystem : SystemBase
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<LagCompensationSpawner>();
+        RequireForUpdate<LagCompensationSpawner>();
         RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<NetworkIdComponent>(), ComponentType.Exclude<NetworkStreamInGame>()));
     }
 
@@ -23,16 +23,16 @@ public partial class GoInGameLagClientSystem : SystemBase
         commandBuffer.Playback(EntityManager);
     }
 }
-[UpdateInGroup(typeof(ServerSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 [AlwaysSynchronizeSystem]
 public partial class GoInGameLagServerSystem : SystemBase
 {
     BeginSimulationEntityCommandBufferSystem m_Barrier;
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<LagCompensationSpawner>();
+        RequireForUpdate<LagCompensationSpawner>();
         RequireForUpdate(GetEntityQuery(ComponentType.ReadOnly<NetworkIdComponent>(), ComponentType.Exclude<NetworkStreamInGame>()));
-        m_Barrier = World.GetExistingSystem<BeginSimulationEntityCommandBufferSystem>();
+        m_Barrier = World.GetExistingSystemManaged<BeginSimulationEntityCommandBufferSystem>();
     }
 
     protected override void OnUpdate()

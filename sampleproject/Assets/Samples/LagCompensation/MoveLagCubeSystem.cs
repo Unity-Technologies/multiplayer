@@ -4,13 +4,13 @@ using Unity.Jobs;
 using Unity.NetCode;
 using Unity.Transforms;
 
-[UpdateInGroup(typeof(ServerSimulationSystemGroup))]
+[WorldSystemFilter(WorldSystemFilterFlags.ServerSimulation)]
 public partial class MoveLagCubeSystem : SystemBase
 {
     protected override void OnCreate()
     {
-        RequireSingletonForUpdate<LagCompensationSpawner>();
-        RequireSingletonForUpdate<NetworkStreamInGame>();
+        RequireForUpdate<LagCompensationSpawner>();
+        RequireForUpdate<NetworkStreamInGame>();
     }
     protected override void OnUpdate()
     {
